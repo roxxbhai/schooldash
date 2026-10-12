@@ -74,6 +74,14 @@ export function LoginPage() {
         setTimeout(() => {
           router.push('/student')
         }, 600)
+      } else if (role === 'teacher') {
+        setTimeout(() => {
+          router.push('/teachers')
+        }, 600)
+      } else if (role === 'admin') {
+        setTimeout(() => {
+          router.push('/admin')
+        }, 600)
       }
     } else {
       setError(`Invalid credentials. Demo ID: ${DUMMY_CREDENTIALS.identifier} | Pass: ${DUMMY_CREDENTIALS.password}`)

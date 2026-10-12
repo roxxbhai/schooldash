@@ -111,7 +111,6 @@ export default function StudentDashboardPage({
                 <div className="text-xs font-bold text-slate-800 leading-tight">Aarav Sharma</div>
                 <div className="text-[11px] text-slate-500 font-medium">Class 10 - A</div>
               </div>
-              <ChevronDown className="w-4 h-4 text-slate-400 hidden md:block" />
             </div>
           </div>
         </header>
