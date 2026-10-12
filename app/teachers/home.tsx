@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import TeacherSideNav from './sidenav'
 import {
   Search,
@@ -105,9 +105,14 @@ export default function TeacherHomePage({
     },
   }
 
-  // Get today's day name
-  const todayIndex = new Date().getDay()
-  const todayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][todayIndex]
+  // Get today's day name (evaluated client-side to prevent Next.js prerender error)
+  const [todayName, setTodayName] = useState('Monday')
+
+  useEffect(() => {
+    const daysMap = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+    const day = daysMap[new Date().getDay()]
+    if (day) setTodayName(day)
+  }, [])
 
   // Today's classes
   const todaySchedule = timetable[todayName] || timetable['Monday']
