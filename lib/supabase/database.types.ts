@@ -422,6 +422,18 @@ isOneToOne: false
                            },
 "provisionAppUser":
 { Args: { "actorUserId"?: string,"authUserId": string,"email": string,"fullName": string,"profile"?: Json,"role": Database["public"]['Enums']["userRole"] }; Returns: string
+                           },
+"setAppUserStatus":
+{ Args: { "actorUserId": string,"isActive": boolean,"userId": string }; Returns: Json
+                           },
+"setCurrentAcademicYear":
+{ Args: { "academicYearId": string }; Returns: undefined
+                           },
+"updateStudentProfile":
+{ Args: { "profilePatch"?: Json,"studentId": string,"userPatch"?: Json }; Returns: undefined
+                           },
+"updateTeacherProfile":
+{ Args: { "profilePatch"?: Json,"teacherId": string,"userPatch"?: Json }; Returns: undefined
                            }
           }
           Enums: {

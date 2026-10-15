@@ -97,8 +97,8 @@ export const POST = apiRoute(async (request: Request) => {
   - validate unexpected row shapes;
   - throw `DataAccessError(operation, error.code)` on failure. See
     `lib/auth/repository.ts` for the pattern (`unwrap`).
-- **Required Phase 3 addition:** a shared mapper from PostgREST/Postgres codes
-  to API errors. Today any non-network `DataAccessError` becomes 500.
+- **Done in Phase 3:** `mapDbError` (`lib/api/db-errors.ts`) maps
+  PostgREST/Postgres codes to API errors. See `docs/school-api.md`.
 
   | Code | Return |
   | ---- | ------ |
@@ -185,8 +185,8 @@ Rules:
 
 ## 8. Known open items carried into Phase 3
 
-- The Postgres error-code mapper above (required).
-- The deactivation/reactivation service (required for user management).
+- ~~The Postgres error-code mapper~~ (done in Phase 3: `lib/api/db-errors.ts`).
+- ~~The deactivation/reactivation service~~ (done in Phase 3: `lib/auth/account-status.ts`).
 - Integration coverage for `requireStudentOwnership`/`requireTeacherAssignment`
   repository lookups through real routes (they're unit-tested; RLS enforces the
   same rules and is integration-tested).

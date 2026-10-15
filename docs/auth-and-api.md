@@ -96,6 +96,11 @@ which revokes this device's refresh token) and clears its cookies.
   access token, supabase-js retries the refresh with backoff for up to ~30 s
   before giving up, so logout can be slow during a Supabase outage.
 
+## School management endpoints
+
+Phase 3 endpoints, their permissions, the database error mapping and the
+account-status behaviour are documented in `docs/school-api.md`.
+
 ## Response and error conventions
 
 ```json

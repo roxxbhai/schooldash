@@ -24,6 +24,10 @@
 | `supabase/migrations/20261015142408_rls_policies_and_grants.sql` | Table/column grants, `app.*` helper functions, self-privilege trigger, RLS policies. |
 | `supabase/migrations/20261015142410_account_provisioning.sql` | `provisionAppUser` / `findAuthUserIdByEmail` RPCs (service role only). |
 | `supabase/migrations/20261015142822_consolidate_policies_and_fk_indexes.sql` | Advisor fixes: one permissive policy per command; covering indexes for composite FKs. |
+| `supabase/migrations/20261015154145_account_status.sql` | `setAppUserStatus` (SECURITY DEFINER, service_role only): status change + Auth session revocation + audit. |
+| `supabase/migrations/20261015155521_school_resources.sql` | `setCurrentAcademicYear` (invoker, admin-checked); `app."auditRowChange"` audit trigger. |
+| `supabase/migrations/20261015160422_people_and_relationships.sql` | Atomic `updateTeacherProfile` / `updateStudentProfile` (invoker, admin-checked); more audit triggers (people redacted). |
+| `supabase/migrations/20261015163718_attendance_integrity.sql` | Attendance identity made immutable (column grants), insert-time date/academic-year/active-account checks (triggers), correction audit. |
 | `lib/supabase/database.types.ts` | Types generated from the live schema (`npm run db:types`). |
 | `README.md` | This document. |
 
@@ -139,7 +143,12 @@ Decisions that go beyond a literal reading of the brief:
     Migration 2 revokes those defaults for objects created by `postgres`, so
     every future table needs explicit grants (matching Supabase's 2026 Data API
     change).
-13. **Not modelled (no table in scope):** assignments/homework, fees, school
+13. **Phase 4: attendance identity is immutable.** UPDATE on both
+    attendance tables is limited to `status`, `remarks` and `markedByUserId`.
+    Previously a teacher could move a record to another student or date.
+    Insert triggers reject future dates, dates outside the class's academic
+    year, and deactivated accounts, including for direct Data API writes.
+14. **Not modelled (no table in scope):** assignments/homework, fees, school
    information. These appear in the UI mockups but are outside the 17 tables.
 
 ## Security model
@@ -150,7 +159,7 @@ Decisions that go beyond a literal reading of the brief:
 | ---- | --- | --- | -------- |
 | `createSupabaseServerClient()` (`lib/supabase/server.ts`) | publishable key + user's session cookies | **Enforced** | All user-initiated reads and writes (Route Handlers, Server Components, Server Functions). |
 | `createSupabaseBrowserClient()` (`lib/supabase/client.ts`) | publishable key + browser session | **Enforced** | Client Components (none use it yet). |
-| `createSupabaseAdminClient()` (`lib/supabase/admin.ts`) | secret key (`service_role`) | **Bypassed** | Only `lib/auth/provisioning.ts`: creating Auth identities and application accounts. A unit test fails if anything else imports it. |
+| `createSupabaseAdminClient()` (`lib/supabase/admin.ts`) | secret key (`service_role`) | **Bypassed** | Only `lib/auth/provisioning.ts` (account creation) and `lib/auth/account-status.ts` (deactivation/reactivation, which must delete Auth sessions). A unit test fails if anything else imports it. |
 
 - The server and admin modules import `server-only`, so importing them from a
   Client Component fails the build. `lib/env.ts` is server-only as well.

@@ -117,11 +117,29 @@ describe("applied schema", () => {
     ]);
   });
 
+  it("allows only service_role to execute the privileged public functions", async () => {
+    const grants = await rows(`
+      select p.proname,
+        has_function_privilege('anon', p.oid, 'execute') anon,
+        has_function_privilege('authenticated', p.oid, 'execute') authed,
+        has_function_privilege('service_role', p.oid, 'execute') service
+      from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prosecdef
+        and p.proname <> 'rls_auto_enable' order by 1`);
+    expect(grants).toEqual([
+      { proname: "findAuthUserIdByEmail", anon: false, authed: false, service: true },
+      { proname: "setAppUserStatus", anon: false, authed: false, service: true },
+    ]);
+  });
+
   it("keeps RLS helper functions out of the exposed schema", async () => {
     const exposed = await rows(`
       select p.proname from pg_proc p
       where p.pronamespace = 'public'::regnamespace and p.prosecdef
-        and p.proname not in ('findAuthUserIdByEmail', 'rls_auto_enable')`);
+        and p.proname not in (
+          'findAuthUserIdByEmail', -- reads auth.users (service_role only)
+          'setAppUserStatus',      -- deletes auth.sessions on deactivation (service_role only)
+          'rls_auto_enable'        -- Supabase-managed event trigger
+        )`);
     expect(exposed).toEqual([]);
   });
 });
@@ -157,7 +175,7 @@ describe("constraints reject invalid data", () => {
   it("rejects attendance and results for students not enrolled in the class", async () => {
     await expectSqlError(
       db,
-      `insert into public."studentAttendance" ("studentId", "classId", "attendanceDate", status, "markedByUserId") values ($1, $2, '2099-06-03', 'present', $3)`,
+      `insert into public."studentAttendance" ("studentId", "classId", "attendanceDate", status, "markedByUserId") values ($1, $2, '2015-06-03', 'present', $3)`,
       [ids.student.a, ids.class.tenB, ids.user.admin],
       SQLSTATE.foreignKeyViolation,
     );

@@ -42,6 +42,18 @@ export function created<T>(data: T): Response {
   return ok(data, 201);
 }
 
+export interface PaginationMeta {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+/** Collection response: `{ data: { items, pagination }, error: null }`. */
+export function paginated<T>(items: T[], pagination: PaginationMeta): Response {
+  return ok({ items, pagination });
+}
+
 export function errorResponse(error: ApiError): Response {
   const body: ApiFailure = {
     data: null,

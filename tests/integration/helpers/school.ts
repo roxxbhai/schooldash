@@ -76,7 +76,7 @@ insert into public."teachers" ("id", "userId", "employeeCode") values
 ('${ids.teacher.b}', '${u.teacherB}', 'IT-EMP-B');
 
 insert into public."academicYears" ("id", "name", "startDate", "endDate") values
-('${ids.year}', 'IT-2099', '2099-04-01', '2100-03-31');
+('${ids.year}', 'IT-FIXTURE-YEAR', '2015-04-01', '2016-03-31');
 
 insert into public."classes" ("id", "academicYearId", "name", "section", "classTeacherId") values
 ('${ids.class.tenA}', '${ids.year}', '10', 'A', null),
@@ -96,8 +96,8 @@ insert into public."studentEnrollments" ("studentId", "classId", "academicYearId
 ('${ids.student.inactive}', '${ids.class.tenA}', '${ids.year}', 2);
 
 insert into public."studentAttendance" ("id", "studentId", "classId", "attendanceDate", "status", "markedByUserId") values
-('${ids.attendance.a}', '${ids.student.a}', '${ids.class.tenA}', '2099-06-01', 'present', '${u.teacherA}'),
-('${ids.attendance.b}', '${ids.student.b}', '${ids.class.tenB}', '2099-06-01', 'absent', '${u.teacherB}');
+('${ids.attendance.a}', '${ids.student.a}', '${ids.class.tenA}', '2015-06-01', 'present', '${u.teacherA}'),
+('${ids.attendance.b}', '${ids.student.b}', '${ids.class.tenB}', '2015-06-01', 'absent', '${u.teacherB}');
 
 insert into public."exams" ("id", "academicYearId", "name") values
 ('${ids.exam}', '${ids.year}', 'IT Term 1');

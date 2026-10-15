@@ -127,7 +127,7 @@ describe("student", () => {
     expect(await affected(db, `update public."results" set "marksObtained" = 100 where id = $1`, [result.aMaths])).toBe(0);
     await expectSqlError(
       db,
-      `insert into public."studentAttendance" ("studentId", "classId", "attendanceDate", status, "markedByUserId") values ($1, $2, '2099-06-02', 'present', $3)`,
+      `insert into public."studentAttendance" ("studentId", "classId", "attendanceDate", status, "markedByUserId") values ($1, $2, '2015-06-02', 'present', $3)`,
       [student.a, cls.tenA, user.studentA],
       SQLSTATE.insufficientPrivilege,
     );
@@ -165,7 +165,7 @@ describe("teacher", () => {
     expect(
       await affected(
         db,
-        `insert into public."studentAttendance" ("studentId", "classId", "attendanceDate", status, "markedByUserId") values ($1, $2, '2099-06-02', 'present', $3)`,
+        `insert into public."studentAttendance" ("studentId", "classId", "attendanceDate", status, "markedByUserId") values ($1, $2, '2015-06-02', 'present', $3)`,
         [student.a, cls.tenA, user.teacherA],
       ),
     ).toBe(1);
@@ -175,7 +175,7 @@ describe("teacher", () => {
     await actAs(db, "teacherA");
     await expectSqlError(
       db,
-      `insert into public."studentAttendance" ("studentId", "classId", "attendanceDate", status, "markedByUserId") values ($1, $2, '2099-06-02', 'present', $3)`,
+      `insert into public."studentAttendance" ("studentId", "classId", "attendanceDate", status, "markedByUserId") values ($1, $2, '2015-06-02', 'present', $3)`,
       [student.b, cls.tenB, user.teacherA],
       SQLSTATE.insufficientPrivilege,
     );
@@ -185,7 +185,7 @@ describe("teacher", () => {
     await actAs(db, "teacherA");
     await expectSqlError(
       db,
-      `insert into public."studentAttendance" ("studentId", "classId", "attendanceDate", status, "markedByUserId") values ($1, $2, '2099-06-02', 'present', $3)`,
+      `insert into public."studentAttendance" ("studentId", "classId", "attendanceDate", status, "markedByUserId") values ($1, $2, '2015-06-02', 'present', $3)`,
       [student.a, cls.tenA, user.teacherB],
       SQLSTATE.insufficientPrivilege,
     );
@@ -309,5 +309,57 @@ describe("defense in depth (database owner paths)", () => {
     await actAsOwner(db);
     await expectSqlError(db, `update public."auditLogs" set action = 'tampered'`, [], SQLSTATE.insufficientPrivilege);
     await expectSqlError(db, `delete from public."auditLogs"`, [], SQLSTATE.insufficientPrivilege);
+  });
+});
+
+describe("attendance integrity (migration 8)", () => {
+  const insertStudentAttendance = `insert into public."studentAttendance" ("studentId", "classId", "attendanceDate", status, "markedByUserId") values ($1, $2, $3, 'present', $4)`;
+
+  it("a teacher cannot reassign attendance to another student or date — only status/remarks are editable", async () => {
+    await actAs(db, "teacherA");
+    await expectSqlError(db, `update public."studentAttendance" set "studentId" = $2 where id = $1`, [attendance.a, student.inactive], SQLSTATE.insufficientPrivilege);
+    await expectSqlError(db, `update public."studentAttendance" set "attendanceDate" = '2015-06-09' where id = $1`, [attendance.a], SQLSTATE.insufficientPrivilege);
+    expect(await affected(db, `update public."studentAttendance" set status = 'late', remarks = 'bus', "markedByUserId" = $2 where id = $1`, [attendance.a, user.teacherA])).toBe(1);
+  });
+
+  it("admins cannot reassign teacher attendance either", async () => {
+    await actAs(db, "admin");
+    const { rows } = await db.query(
+      `insert into public."teacherAttendance" ("teacherId", "attendanceDate", status, "markedByUserId") values ($1, '2015-06-01', 'present', $2) returning id`,
+      [ids.teacher.a, user.admin],
+    );
+    await expectSqlError(db, `update public."teacherAttendance" set "teacherId" = $2 where id = $1`, [rows[0].id, ids.teacher.b], SQLSTATE.insufficientPrivilege);
+  });
+
+  it("rejects future dates and dates outside the class's academic year (even via direct writes)", async () => {
+    await actAs(db, "teacherA");
+    await expectSqlError(db, insertStudentAttendance, [student.a, cls.tenA, "2999-01-01", user.teacherA], SQLSTATE.checkViolation);
+    await expectSqlError(db, insertStudentAttendance, [student.a, cls.tenA, "2014-06-01", user.teacherA], SQLSTATE.checkViolation);
+    expect(await affected(db, insertStudentAttendance, [student.a, cls.tenA, "2015-06-05", user.teacherA])).toBe(1);
+  });
+
+  it("rejects new attendance for deactivated students and teachers", async () => {
+    await actAs(db, "admin");
+    await expectSqlError(db, insertStudentAttendance, [student.inactive, cls.tenA, "2015-06-05", user.admin], SQLSTATE.checkViolation);
+    await actAsOwner(db);
+    await db.query(`update public.users set "isActive" = false, "deactivatedAt" = now() where id = $1`, [user.teacherB]);
+    await actAs(db, "admin");
+    await expectSqlError(
+      db,
+      `insert into public."teacherAttendance" ("teacherId", "attendanceDate", status, "markedByUserId") values ($1, '2015-06-01', 'present', $2)`,
+      [ids.teacher.b, user.admin],
+      SQLSTATE.checkViolation,
+    );
+  });
+
+  it("attendance corrections are audited with the editor", async () => {
+    await actAs(db, "teacherA");
+    await db.query(`update public."studentAttendance" set status = 'absent', "markedByUserId" = $2 where id = $1`, [attendance.a, user.teacherA]);
+    await actAsOwner(db);
+    const { rows } = await db.query(
+      `select action, "actorUserId", "oldData"->>'status' as before, "newData"->>'status' as after from public."auditLogs" where "entityId" = $1`,
+      [attendance.a],
+    );
+    expect(rows).toEqual([{ action: "studentAttendance.update", actorUserId: user.teacherA, before: "present", after: "absent" }]);
   });
 });

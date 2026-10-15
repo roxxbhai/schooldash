@@ -10,15 +10,18 @@ const SERVER_ONLY_MODULES = [
   "lib/supabase/server.ts",
   "lib/supabase/admin.ts",
   "lib/api/csrf.ts",
+  "lib/api/db-errors.ts",
   "lib/api/errors.ts",
   "lib/api/log.ts",
   "lib/api/response.ts",
   "lib/api/validation.ts",
+  "lib/auth/account-status.ts",
   "lib/auth/authorization.ts",
   "lib/auth/provisioning.ts",
   "lib/auth/repository.ts",
   "lib/auth/roles.ts",
   "lib/auth/session.ts",
+  "lib/db/query.ts",
 ];
 
 function sourceFiles(): string[] {
@@ -50,11 +53,14 @@ describe("server-only isolation", () => {
     expect(() => requireReal("server-only")).toThrow(/Client Component/);
   });
 
-  it("every lib/auth and lib/api module is listed as server-only", () => {
+  it("every lib/auth, lib/api, lib/db and domain module is server-only", () => {
     const modules = sourceFiles()
       .map(rel)
-      .filter((file) => /^lib\/(auth|api)\//.test(file));
-    expect(modules.every((file) => SERVER_ONLY_MODULES.includes(file))).toBe(true);
+      .filter((file) => /^lib\/(?!supabase\/(client|proxy|database\.types))[^/]+\/.+\.ts$/.test(file));
+    for (const file of modules) {
+      expect(read(file).match(/^import\s+[^;]+;/m)?.[0], file).toBe('import "server-only";');
+    }
+    expect(modules.length).toBeGreaterThanOrEqual(SERVER_ONLY_MODULES.length - 1); // -1: lib/env.ts is top-level
   });
 
   it("no client module imports server-only modules", () => {
@@ -83,16 +89,17 @@ describe("server-only isolation", () => {
     expect(read(".env.example")).not.toMatch(pattern);
   });
 
-  it("only the provisioning service imports the admin (secret-key) client", () => {
+  it("only the provisioning and account-status services import the admin (secret-key) client", () => {
     const importsAdmin = /from\s+["'][^"']*supabase\/admin["']/;
     const importers = sourceFiles()
       .filter((file) => importsAdmin.test(readFileSync(file, "utf8")))
       .map(rel);
-    expect(importers).toEqual(["lib/auth/provisioning.ts"]);
+    expect(importers.sort()).toEqual(["lib/auth/account-status.ts", "lib/auth/provisioning.ts"]);
   });
 
   it("no API route imports the provisioning service (no public account creation)", () => {
     const importsProvisioning = /from\s+["'][^"']*auth\/provisioning["']/;
+    // Admin-guarded people routes reach provisioning only through domain services.
     const offenders = sourceFiles()
       .filter((file) => rel(file).startsWith("app/"))
       .filter((file) => importsProvisioning.test(readFileSync(file, "utf8")))

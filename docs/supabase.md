@@ -79,6 +79,10 @@ Applied (verified with `npm run db:migrations`):
 | `20261015142408_rls_policies_and_grants` | Grants, `app.*` helpers, self-privilege trigger, policies. |
 | `20261015142410_account_provisioning` | `provisionAppUser`, `findAuthUserIdByEmail` (service role only). |
 | `20261015142822_consolidate_policies_and_fk_indexes` | Advisor fixes. Access is unchanged. |
+| `20261015154145_account_status` | `setAppUserStatus`: deactivation/reactivation, session revocation, audit (service role only). |
+| `20261015155521_school_resources` | `setCurrentAcademicYear`; audit trigger `app."auditRowChange"` on years/classes/subjects. |
+| `20261015160422_people_and_relationships` | `updateTeacherProfile` / `updateStudentProfile` (atomic, invoker); audit triggers on people, enrollments, assignments. |
+| `20261015163718_attendance_integrity` | Attendance: UPDATE limited to status/remarks/markedByUserId; insert triggers (date not future, within academic year, account active); correction audit triggers. |
 
 **To change the schema:**
 
@@ -187,6 +191,9 @@ rather than skip if any are missing:
   real `anon`/`authenticated` roles with real JWT claims, and **always rolls
   back**. It covers student/teacher/admin/inactive/unprovisioned access,
   self-promotion, writes and deletes.
+- **`account-status.test.ts`, `school-resources.test.ts`, `people.test.ts`**
+  (Phase 3) call the API Route Handlers against the real project as a
+  dedicated integration admin. See `docs/school-api.md` § Testing.
 - **`auth.test.ts`** runs real Auth sign-in, refresh, revocation, the proxy,
   Data-API RLS with real tokens, disabled sign-up, browser rejection of the
   secret key, and provisioning with compensation. It creates
