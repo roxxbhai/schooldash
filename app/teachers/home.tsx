@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useSyncExternalStore } from 'react'
 import TeacherSideNav from './sidenav'
 import {
   Search,
@@ -14,6 +14,11 @@ interface TeacherHomePageProps {
   activeTab?: string
   onSelectTab?: (tab: string) => void
 }
+
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+
+// The current day never changes during a render pass, so there is nothing to subscribe to.
+const subscribeToNothing = () => () => {}
 
 export default function TeacherHomePage({
   activeTab = 'Home',
@@ -106,13 +111,11 @@ export default function TeacherHomePage({
   }
 
   // Get today's day name (evaluated client-side to prevent Next.js prerender error)
-  const [todayName, setTodayName] = useState('Monday')
-
-  useEffect(() => {
-    const daysMap = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-    const day = daysMap[new Date().getDay()]
-    if (day) setTodayName(day)
-  }, [])
+  const todayName = useSyncExternalStore(
+    subscribeToNothing,
+    () => DAY_NAMES[new Date().getDay()] ?? 'Monday',
+    () => 'Monday',
+  )
 
   // Today's classes
   const todaySchedule = timetable[todayName] || timetable['Monday']

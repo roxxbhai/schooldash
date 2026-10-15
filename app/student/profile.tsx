@@ -233,11 +233,11 @@ export default function StudentProfilePage({
                     <span className="text-slate-800 font-semibold">O+</span>
                   </div>
                   <div className="py-2.5 flex items-center justify-between">
-                    <span className="text-slate-400 font-medium">Father's Name</span>
+                    <span className="text-slate-400 font-medium">Father&apos;s Name</span>
                     <span className="text-slate-800 font-semibold">Rajesh Sharma</span>
                   </div>
                   <div className="py-2.5 flex items-center justify-between">
-                    <span className="text-slate-400 font-medium">Mother's Name</span>
+                    <span className="text-slate-400 font-medium">Mother&apos;s Name</span>
                     <span className="text-slate-800 font-semibold">Priya Sharma</span>
                   </div>
                   <div className="py-2.5 flex items-center justify-between">

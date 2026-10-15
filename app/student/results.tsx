@@ -409,7 +409,7 @@ export default function StudentResultsPage({
               <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
                 <div className="flex items-center gap-2 mb-3">
                   <MessageSquare className="w-4 h-4 text-blue-600" />
-                  <h3 className="text-xs font-bold text-slate-900">Teacher's Remarks</h3>
+                  <h3 className="text-xs font-bold text-slate-900">Teacher&apos;s Remarks</h3>
                 </div>
 
                 <div className="flex items-start gap-3 bg-[#f8faff] p-3.5 rounded-xl border border-blue-50 relative">
