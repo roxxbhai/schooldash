@@ -19,6 +19,8 @@ import {
 } from "@/lib/school/validation";
 import type { Database } from "@/lib/supabase/database.types";
 import * as repo from "@/lib/student-attendance/repository";
+import { enrolledStudentIds } from "@/lib/enrollments/repository";
+import { studentActiveStates } from "@/lib/students/repository";
 
 /**
  * Student attendance — one record per student per day.
@@ -116,8 +118,8 @@ async function validateRecords(
   }
 
   const [active, enrolled] = await Promise.all([
-    repo.studentActiveStates(client, studentIds),
-    repo.enrolledStudentIds(client, classId, studentIds),
+    studentActiveStates(client, studentIds),
+    enrolledStudentIds(client, classId, studentIds),
   ]);
   const issues: ValidationIssue[] = [];
   studentIds.forEach((id, index) => {

@@ -2,7 +2,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { DbErrorContext } from "@/lib/api/db-errors";
 import type { Pagination } from "@/lib/api/validation";
-import { one, page } from "@/lib/db/query";
+import { many, one, page } from "@/lib/db/query";
 import type { Database, Tables, TablesInsert } from "@/lib/supabase/database.types";
 
 /**
@@ -70,4 +70,14 @@ export function deleteAssignment(client: Client, id: string) {
     client.from("teacherAssignments").delete().eq("id", id).select(COLUMNS).maybeSingle(),
     assignmentErrors,
   );
+}
+
+/** Subjects a teacher is assigned to teach in a class. */
+export async function assignedSubjectIds(client: Client, teacherId: string, classId: string): Promise<Set<string>> {
+  const rows = await many<{ subjectId: string }>(
+    "teacherAssignments.subjects",
+    client.from("teacherAssignments").select("subjectId").eq("teacherId", teacherId).eq("classId", classId),
+    assignmentErrors,
+  );
+  return new Set(rows.map((row) => row.subjectId));
 }

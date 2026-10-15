@@ -200,12 +200,27 @@ describe("teacher", () => {
   });
 
   it("cannot enter results for an unassigned subject in an assigned class", async () => {
+    // The fixture's only spare student in 10-A is deactivated, and migration 10
+    // rejects marks for deactivated students in a BEFORE trigger (23514), which
+    // runs before RLS. Reactivate them (rolled back) so this test isolates RLS.
+    await actAsOwner(db);
+    await db.query(`update public.users set "isActive" = true, "deactivatedAt" = null where id = $1`, [user.inactiveStudent]);
     await actAs(db, "teacherA");
     await expectSqlError(
       db,
       `insert into public."results" ("examSubjectId", "studentId", "classId", "marksObtained", "enteredByUserId") values ($1, $2, $3, 50, $4)`,
       [examSubject.tenAScience, student.inactive, cls.tenA, user.teacherA],
       SQLSTATE.insufficientPrivilege,
+    );
+  });
+
+  it("cannot enter results for a deactivated student, even in their own subject (migration 10)", async () => {
+    await actAs(db, "teacherA");
+    await expectSqlError(
+      db,
+      `insert into public."results" ("examSubjectId", "studentId", "classId", "marksObtained", "enteredByUserId") values ($1, $2, $3, 40, $4)`,
+      [examSubject.tenAMaths, student.inactive, cls.tenA, user.teacherA],
+      SQLSTATE.checkViolation,
     );
   });
 
@@ -361,5 +376,41 @@ describe("attendance integrity (migration 8)", () => {
       [attendance.a],
     );
     expect(rows).toEqual([{ action: "studentAttendance.update", actorUserId: user.teacherA, before: "present", after: "absent" }]);
+  });
+});
+
+describe("REGRESSION: column-level UPDATE privileges (Phase 5 audit, migration 9)", () => {
+  it("a teacher cannot move marks to another student, paper or class — only the mark and remarks change", async () => {
+    await actAs(db, "teacherA");
+    for (const [column, value] of [
+      ["studentId", student.inactive],
+      ["examSubjectId", examSubject.tenAScience],
+      ["classId", cls.tenB],
+    ] as const) {
+      await expectSqlError(db, `update public."results" set "${column}" = $2 where id = $1`, [result.aMaths, value], SQLSTATE.insufficientPrivilege);
+    }
+    expect(await affected(db, `update public."results" set "marksObtained" = 91, remarks = 'ok', "enteredByUserId" = $2 where id = $1`, [result.aMaths, user.teacherA])).toBe(1);
+  });
+
+  it("an admin cannot relabel an exam paper that has results", async () => {
+    await actAs(db, "admin");
+    await expectSqlError(db, `update public."examSubjects" set "subjectId" = $2 where id = $1`, [examSubject.tenAMaths, ids.subject.science], SQLSTATE.insufficientPrivilege);
+    await expectSqlError(db, `update public."examSubjects" set "classId" = $2 where id = $1`, [examSubject.tenAMaths, cls.tenB], SQLSTATE.insufficientPrivilege);
+    expect(await affected(db, `update public."examSubjects" set "maxMarks" = 120, "passMarks" = 40 where id = $1`, [examSubject.tenAMaths])).toBe(1);
+  });
+
+  it.each([
+    ["academicYears", "id"], ["academicYears", "createdAt"], ["academicYears", "updatedAt"],
+    ["classes", "academicYearId"], ["classes", "id"],
+    ["exams", "academicYearId"], ["exams", "updatedAt"],
+    ["subjects", "createdAt"],
+    ["students", "userId"], ["teachers", "userId"],
+    ["studentEnrollments", "studentId"], ["studentEnrollments", "academicYearId"],
+    ["teacherAssignments", "teacherId"],
+    ["results", "updatedAt"],
+  ])("even an admin cannot update %s.%s", async (table, column) => {
+    await actAs(db, "admin");
+    const value = column.endsWith("At") ? "2000-01-01" : "00000000-0000-4000-8000-00000000beef";
+    await expectSqlError(db, `update public."${table}" set "${column}" = $1`, [value], SQLSTATE.insufficientPrivilege);
   });
 });

@@ -5,8 +5,6 @@ vi.mock("@/lib/auth/repository", () => ({ findTeacherIdByUserId: vi.fn(), teache
 vi.mock("@/lib/auth/authorization", () => ({ requireStudentOwnership: vi.fn() }));
 vi.mock("@/lib/student-attendance/repository", () => ({
   findClassWithYear: vi.fn(),
-  studentActiveStates: vi.fn(),
-  enrolledStudentIds: vi.fn(),
   insertStudentAttendance: vi.fn(async (_c: unknown, rows: unknown[]) => rows),
   findStudentAttendance: vi.fn(),
   updateStudentAttendance: vi.fn(async (_c: unknown, _id: string, values: unknown) => values),
@@ -19,6 +17,8 @@ vi.mock("@/lib/teacher-attendance/repository", () => ({
   listTeacherAttendance: vi.fn(async () => ({ items: [], total: 0 })),
 }));
 vi.mock("@/lib/teachers/repository", () => ({ findTeacherStatus: vi.fn() }));
+vi.mock("@/lib/students/repository", () => ({ studentActiveStates: vi.fn() }));
+vi.mock("@/lib/enrollments/repository", () => ({ enrolledStudentIds: vi.fn() }));
 
 import { toPagination } from "@/lib/api/validation";
 import { requireStudentOwnership } from "@/lib/auth/authorization";
@@ -26,6 +26,8 @@ import { findTeacherIdByUserId, teacherHasAssignment } from "@/lib/auth/reposito
 import type { AppUser } from "@/lib/auth/session";
 import { attendanceDateSchema, latestAttendanceDate } from "@/lib/school/validation";
 import * as repo from "@/lib/student-attendance/repository";
+import * as studentRepo from "@/lib/students/repository";
+import * as enrollmentRepo from "@/lib/enrollments/repository";
 import {
   bulkStudentAttendanceSchema,
   correctStudentAttendance,
@@ -52,8 +54,8 @@ const year = { id: CLASS, academicYear: { startDate: "2015-04-01", endDate: "201
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(repo.findClassWithYear).mockResolvedValue(year);
-  vi.mocked(repo.studentActiveStates).mockResolvedValue(new Map([[S1, true], [S2, true]]));
-  vi.mocked(repo.enrolledStudentIds).mockResolvedValue(new Set([S1, S2]));
+  vi.mocked(studentRepo.studentActiveStates).mockResolvedValue(new Map([[S1, true], [S2, true]]));
+  vi.mocked(enrollmentRepo.enrolledStudentIds).mockResolvedValue(new Set([S1, S2]));
 });
 
 describe("attendance validation", () => {
@@ -122,9 +124,9 @@ describe("recording student attendance", () => {
   it.each([
     ["an unknown class", () => { vi.mocked(repo.findClassWithYear).mockResolvedValue(null); }, "classId", "Class not found."],
     ["a date outside the academic year", () => {}, "attendanceDate", "The date is outside the class's academic year.", "2016-06-01"],
-    ["an unknown student", () => { vi.mocked(repo.studentActiveStates).mockResolvedValue(new Map()); }, "studentId", "Student not found."],
-    ["a deactivated student", () => { vi.mocked(repo.studentActiveStates).mockResolvedValue(new Map([[S1, false]])); }, "studentId", "The student's account is deactivated."],
-    ["a student not enrolled in the class", () => { vi.mocked(repo.enrolledStudentIds).mockResolvedValue(new Set()); }, "studentId", "The student is not enrolled in this class."],
+    ["an unknown student", () => { vi.mocked(studentRepo.studentActiveStates).mockResolvedValue(new Map()); }, "studentId", "Student not found."],
+    ["a deactivated student", () => { vi.mocked(studentRepo.studentActiveStates).mockResolvedValue(new Map([[S1, false]])); }, "studentId", "The student's account is deactivated."],
+    ["a student not enrolled in the class", () => { vi.mocked(enrollmentRepo.enrolledStudentIds).mockResolvedValue(new Set()); }, "studentId", "The student is not enrolled in this class."],
   ])("rejects %s (422) without writing", async (_label, arrange, path, message, date = "2015-06-01") => {
     arrange();
     await expect(recordStudentAttendance(client, { ...input, attendanceDate: date }, admin)).rejects.toMatchObject({
@@ -156,8 +158,8 @@ describe("bulk class attendance", () => {
   });
 
   it("reports every invalid record by index and writes nothing", async () => {
-    vi.mocked(repo.enrolledStudentIds).mockResolvedValue(new Set([S1]));
-    vi.mocked(repo.studentActiveStates).mockResolvedValue(new Map([[S1, true], [S2, true]]));
+    vi.mocked(enrollmentRepo.enrolledStudentIds).mockResolvedValue(new Set([S1]));
+    vi.mocked(studentRepo.studentActiveStates).mockResolvedValue(new Map([[S1, true], [S2, true]]));
     await expect(recordClassAttendance(client, input, admin)).rejects.toMatchObject({
       status: 422,
       details: [{ path: "records.1.studentId", message: "The student is not enrolled in this class." }],

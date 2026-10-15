@@ -101,23 +101,3 @@ export function findClassWithYear(client: Client, classId: string) {
     studentAttendanceErrors,
   );
 }
-
-/** Students (among `studentIds`) enrolled in `classId`. */
-export async function enrolledStudentIds(client: Client, classId: string, studentIds: string[]): Promise<Set<string>> {
-  const rows = await many<{ studentId: string }>(
-    "studentEnrollments.inClass",
-    client.from("studentEnrollments").select("studentId").eq("classId", classId).in("studentId", studentIds),
-    studentAttendanceErrors,
-  );
-  return new Set(rows.map((row) => row.studentId));
-}
-
-/** Account status of each visible student among `studentIds`. */
-export async function studentActiveStates(client: Client, studentIds: string[]): Promise<Map<string, boolean>> {
-  const rows = await many<{ id: string; user: { isActive: boolean } | null }>(
-    "students.activeStates",
-    client.from("students").select("id, user:users!studentsUserFkey(isActive)").in("id", studentIds) as never,
-    studentAttendanceErrors,
-  );
-  return new Map(rows.map((row) => [row.id, row.user?.isActive === true]));
-}

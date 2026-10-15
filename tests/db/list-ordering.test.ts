@@ -8,6 +8,9 @@ import { listAssignments } from "@/lib/teacher-assignments/repository";
 import { listTeachers } from "@/lib/teachers/repository";
 import { listStudentAttendance } from "@/lib/student-attendance/repository";
 import { listTeacherAttendance } from "@/lib/teacher-attendance/repository";
+import { listExams } from "@/lib/exams/repository";
+import { listExamSubjects } from "@/lib/exam-subjects/repository";
+import { listResults } from "@/lib/results/repository";
 import { toPagination } from "@/lib/api/validation";
 
 /**
@@ -44,6 +47,9 @@ describe.each([
   ["teacher assignments", (c: never) => listAssignments(c, pagination, {})],
   ["student attendance", (c: never) => listStudentAttendance(c, pagination, {})],
   ["teacher attendance", (c: never) => listTeacherAttendance(c, pagination, {})],
+  ["exams", (c: never) => listExams(c, pagination, {})],
+  ["exam subjects", (c: never) => listExamSubjects(c, pagination, {})],
+  ["results", (c: never) => listResults(c, pagination, {})],
 ])("%s list", (_name, list) => {
   it("ends its ordering with a unique column", async () => {
     const { client, orders } = recordingClient();

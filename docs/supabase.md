@@ -83,6 +83,8 @@ Applied (verified with `npm run db:migrations`):
 | `20261015155521_school_resources` | `setCurrentAcademicYear`; audit trigger `app."auditRowChange"` on years/classes/subjects. |
 | `20261015160422_people_and_relationships` | `updateTeacherProfile` / `updateStudentProfile` (atomic, invoker); audit triggers on people, enrollments, assignments. |
 | `20261015163718_attendance_integrity` | Attendance: UPDATE limited to status/remarks/markedByUserId; insert triggers (date not future, within academic year, account active); correction audit triggers. |
+| `20261015171445_column_level_update_grants` | API users may update only the columns the app edits (results/examSubjects identity, ids, timestamps, academic-year links fixed). |
+| `20261015172701_exams_and_results` | Audit triggers on exams, examSubjects, results; results insert rule (student active). |
 
 **To change the schema:**
 

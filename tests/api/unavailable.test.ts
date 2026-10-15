@@ -54,6 +54,14 @@ import * as studentAttendanceBulk from "@/app/api/student-attendance/bulk/route"
 import * as studentAttendanceRecord from "@/app/api/student-attendance/[id]/route";
 import * as teacherAttendance from "@/app/api/teacher-attendance/route";
 import * as teacherAttendanceRecord from "@/app/api/teacher-attendance/[id]/route";
+import * as examsRoute from "@/app/api/exams/route";
+import * as examRoute from "@/app/api/exams/[id]/route";
+import * as papersRoute from "@/app/api/exam-subjects/route";
+import * as paperRoute from "@/app/api/exam-subjects/[id]/route";
+import * as resultsRoute from "@/app/api/results/route";
+import * as resultsBulkRoute from "@/app/api/results/bulk/route";
+import * as resultRoute from "@/app/api/results/[id]/route";
+import * as reportCardRoute from "@/app/api/students/[id]/report-cards/[examId]/route";
 
 const DEAD = "http://127.0.0.1:1";
 const ID = "3f2b8c1e-9d4a-4f6b-8e2c-1a7d5b9c0e3f";
@@ -114,6 +122,20 @@ const cases: Case[] = [
   ["POST /teacher-attendance", teacherAttendance.POST, "POST", { teacherId: ID, attendanceDate: "2015-06-01", status: "present" }],
   ["GET /teacher-attendance/{id}", teacherAttendanceRecord.GET, "GET", undefined],
   ["PATCH /teacher-attendance/{id}", teacherAttendanceRecord.PATCH, "PATCH", { status: "late" }],
+  ["GET /exams", examsRoute.GET, "GET", undefined],
+  ["POST /exams", examsRoute.POST, "POST", { academicYearId: ID, name: "x" }],
+  ["GET /exams/{id}", examRoute.GET, "GET", undefined],
+  ["PATCH /exams/{id}", examRoute.PATCH, "PATCH", { name: "x" }],
+  ["GET /exam-subjects", papersRoute.GET, "GET", undefined],
+  ["POST /exam-subjects", papersRoute.POST, "POST", { examId: ID, classId: ID, subjectId: ID, maxMarks: 10 }],
+  ["GET /exam-subjects/{id}", paperRoute.GET, "GET", undefined],
+  ["PATCH /exam-subjects/{id}", paperRoute.PATCH, "PATCH", { examDate: null }],
+  ["GET /results", resultsRoute.GET, "GET", undefined],
+  ["POST /results", resultsRoute.POST, "POST", { examSubjectId: ID, studentId: ID, marksObtained: 1 }],
+  ["POST /results/bulk", resultsBulkRoute.POST, "POST", { examSubjectId: ID, records: [{ studentId: ID, marksObtained: 1 }] }],
+  ["GET /results/{id}", resultRoute.GET, "GET", undefined],
+  ["PATCH /results/{id}", resultRoute.PATCH, "PATCH", { remarks: "x", expectedUpdatedAt: "2026-01-01T00:00:00Z" }],
+  ["GET /students/{id}/report-cards/{examId}", reportCardRoute.GET, "GET", undefined],
 ];
 
 async function invoke(handler: unknown, method: string, body?: Record<string, unknown>) {
@@ -124,7 +146,7 @@ async function invoke(handler: unknown, method: string, body?: Record<string, un
       headers: { origin: APP, ...(body ? { "content-type": "application/json" } : {}) },
       body: body ? JSON.stringify(body) : undefined,
     }),
-    { params: Promise.resolve({ id: ID }) },
+    { params: Promise.resolve({ id: ID, examId: ID }) },
   );
   return { status: response.status, body: await response.json() };
 }

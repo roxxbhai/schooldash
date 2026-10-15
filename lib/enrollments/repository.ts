@@ -2,7 +2,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { DbErrorContext } from "@/lib/api/db-errors";
 import type { Pagination } from "@/lib/api/validation";
-import { one, page } from "@/lib/db/query";
+import { many, maybeOne, one, page } from "@/lib/db/query";
 import type { Database, Tables, TablesInsert, TablesUpdate } from "@/lib/supabase/database.types";
 
 /**
@@ -83,6 +83,25 @@ export function updateEnrollment(client: Client, id: string, values: TablesUpdat
   return one<Enrollment>(
     "enrollments.update",
     client.from("studentEnrollments").update(values).eq("id", id).select(COLUMNS).maybeSingle(),
+    enrollmentErrors,
+  );
+}
+
+/** Students (among `studentIds`) enrolled in `classId`. */
+export async function enrolledStudentIds(client: Client, classId: string, studentIds: string[]): Promise<Set<string>> {
+  const rows = await many<{ studentId: string }>(
+    "studentEnrollments.inClass",
+    client.from("studentEnrollments").select("studentId").eq("classId", classId).in("studentId", studentIds),
+    enrollmentErrors,
+  );
+  return new Set(rows.map((row) => row.studentId));
+}
+
+/** A student's enrollment in a given academic year, or null. */
+export function findEnrollmentForYear(client: Client, studentId: string, academicYearId: string) {
+  return maybeOne<Enrollment>(
+    "enrollments.forYear",
+    client.from("studentEnrollments").select(COLUMNS).eq("studentId", studentId).eq("academicYearId", academicYearId).maybeSingle(),
     enrollmentErrors,
   );
 }

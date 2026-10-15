@@ -28,6 +28,8 @@
 | `supabase/migrations/20261015155521_school_resources.sql` | `setCurrentAcademicYear` (invoker, admin-checked); `app."auditRowChange"` audit trigger. |
 | `supabase/migrations/20261015160422_people_and_relationships.sql` | Atomic `updateTeacherProfile` / `updateStudentProfile` (invoker, admin-checked); more audit triggers (people redacted). |
 | `supabase/migrations/20261015163718_attendance_integrity.sql` | Attendance identity made immutable (column grants), insert-time date/academic-year/active-account checks (triggers), correction audit. |
+| `supabase/migrations/20261015171445_column_level_update_grants.sql` | Column-level UPDATE grants for every API table: identity, ids and timestamps immutable through the Data API. |
+| `supabase/migrations/20261015172701_exams_and_results.sql` | Audit of exams, papers and marks; deactivated students cannot receive new marks. |
 | `lib/supabase/database.types.ts` | Types generated from the live schema (`npm run db:types`). |
 | `README.md` | This document. |
 
@@ -148,7 +150,14 @@ Decisions that go beyond a literal reading of the brief:
     Previously a teacher could move a record to another student or date.
     Insert triggers reject future dates, dates outside the class's academic
     year, and deactivated accounts, including for direct Data API writes.
-14. **Not modelled (no table in scope):** assignments/homework, fees, school
+14. **Phase 5: column-level UPDATE grants everywhere there is an API.**
+    A teacher could previously move marks to another student or paper, an
+    admin could relabel an exam paper with existing results, and `id`,
+    `createdAt` and `updatedAt` were writable. Now only the columns the app
+    edits are updatable. A trustworthy `updatedAt` also enables optimistic
+    concurrency on marks. Timetable and notices tables keep table-level grants
+    until their APIs are built.
+15. **Not modelled (no table in scope):** assignments/homework, fees, school
    information. These appear in the UI mockups but are outside the 17 tables.
 
 ## Security model

@@ -102,6 +102,9 @@ export async function teardown(...persistent: (TestAccount | undefined)[]): Prom
 // --- tracked test records ----------------------------------------------------------
 
 type Tracked =
+  | "results"
+  | "examSubjects"
+  | "exams"
   | "studentAttendance"
   | "teacherAttendance"
   | "teacherAssignments"
@@ -111,6 +114,9 @@ type Tracked =
   | "academicYears"
   | "authUsers";
 const tracked: Record<Tracked, Set<string>> = {
+  results: new Set(),
+  examSubjects: new Set(),
+  exams: new Set(),
   studentAttendance: new Set(),
   teacherAttendance: new Set(),
   teacherAssignments: new Set(),
@@ -148,6 +154,10 @@ export async function cleanupTracked(): Promise<void> {
     const studentIds = await column(`select id from public.students where "userId" = any($1)`, [userIds]);
     const teacherIds = await column(`select id from public.teachers where "userId" = any($1)`, [userIds]);
 
+    // Results → papers → exams first: they reference enrollments, classes and years.
+    await db.query(`delete from public.results where id = any($1) or "studentId" = any($2) or "enteredByUserId" = any($3) or "examSubjectId" = any($4)`, [ids("results"), studentIds, userIds, ids("examSubjects")]);
+    await db.query(`delete from public."examSubjects" where id = any($1) or "examId" = any($2)`, [ids("examSubjects"), ids("exams")]);
+    await db.query(`delete from public.exams where id = any($1)`, [ids("exams")]);
     // Attendance first: it references enrollments, teachers and the marking user.
     await db.query(`delete from public."studentAttendance" where id = any($1) or "studentId" = any($2) or "markedByUserId" = any($3)`, [ids("studentAttendance"), studentIds, userIds]);
     await db.query(`delete from public."teacherAttendance" where id = any($1) or "teacherId" = any($2) or "markedByUserId" = any($3)`, [ids("teacherAttendance"), teacherIds, userIds]);

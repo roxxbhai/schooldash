@@ -2,7 +2,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { DbErrorContext } from "@/lib/api/db-errors";
 import type { Pagination } from "@/lib/api/validation";
-import { maybeOne, one, page, rpcResult } from "@/lib/db/query";
+import { many, maybeOne, one, page, rpcResult } from "@/lib/db/query";
 import type { Database, Json, Tables } from "@/lib/supabase/database.types";
 
 /**
@@ -87,4 +87,14 @@ export async function updateStudentProfile(client: Client, id: string, userPatch
     client.rpc("updateStudentProfile", { studentId: id, userPatch, profilePatch }),
     studentErrors,
   );
+}
+
+/** Account status of each visible student among `studentIds`. */
+export async function studentActiveStates(client: Client, studentIds: string[]): Promise<Map<string, boolean>> {
+  const rows = await many<{ id: string; user: { isActive: boolean } | null }>(
+    "students.activeStates",
+    client.from("students").select("id, user:users!studentsUserFkey(isActive)").in("id", studentIds) as never,
+    studentErrors,
+  );
+  return new Map(rows.map((row) => [row.id, row.user?.isActive === true]));
 }

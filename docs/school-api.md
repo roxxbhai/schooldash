@@ -1,4 +1,4 @@
-# School management API (Phases 3–4)
+# School management API (Phases 3–5)
 
 These endpoints run against the real Supabase database using the
 request-scoped client, so every query is subject to RLS. They follow
@@ -15,7 +15,7 @@ app/api/<resource>/…/route.ts        guard, CSRF, parse
 
 Domains: `academic-years`, `subjects`, `classes`, `teachers`, `students`,
 `enrollments`, `teacher-assignments`, `student-attendance`,
-`teacher-attendance`.
+`teacher-attendance`, `exams`, `exam-subjects`, `results`, `report-cards`.
 
 ## Collections
 
@@ -179,6 +179,87 @@ Rules:
 **Audit:** corrections (UPDATEs) to either table are audited with the old and
 new rows. Initial records are the routine daily entry and aren't audited
 individually.
+
+### Exams (Phase 5)
+
+| Method | Path | Who | Notes |
+| ------ | ---- | --- | ----- |
+| GET | `/api/exams` | Any active user | `?academicYearId=` |
+| POST | `/api/exams` | Admin | `{ academicYearId, name, startDate?, endDate? }`. Dates must fall within the academic year and be in order. Names are unique per year (409). |
+| GET | `/api/exams/{id}` | Any active user | |
+| PATCH | `/api/exams/{id}` | Admin | `name`, `startDate`, `endDate` (nullable). `academicYearId` is fixed. |
+
+No exam types, grading schemes or scheduling rules exist, so none are
+enforced. Exams are never deleted.
+
+### Exam subjects (papers)
+
+| Method | Path | Who | Notes |
+| ------ | ---- | --- | ----- |
+| GET | `/api/exam-subjects` | RLS-scoped. Admin: all. Teacher: classes they teach. Student: their class. | `?examId=`, `?classId=`, `?subjectId=` |
+| POST | `/api/exam-subjects` | Admin | `{ examId, classId, subjectId, maxMarks, passMarks?, examDate? }`. The class must be in the exam's year, and the year comes from the exam. `0 < maxMarks ≤ 9999.99`, `0 ≤ passMarks ≤ maxMarks`, at most two decimals. `examDate` must fall within the exam's dates, or the year if the exam has none. Duplicates → 409. |
+| GET | `/api/exam-subjects/{id}` | RLS-scoped | |
+| PATCH | `/api/exam-subjects/{id}` | Admin | `maxMarks`, `passMarks`, `examDate`. `maxMarks` can't drop below an already-entered mark (409). Exam, class and subject are fixed, so existing results can't be relabelled. |
+
+### Results (marks)
+
+| Method | Path | Who | Notes |
+| ------ | ---- | --- | ----- |
+| GET | `/api/results` | RLS-scoped. Admin: all. Teacher: papers whose **class and subject** they teach. Student: their own; another `?studentId=` → 403. | `?examId=`, `?examSubjectId=`, `?classId=`, `?subjectId=`, `?studentId=` |
+| POST | `/api/results` | Admin; the paper's subject teacher | `{ examSubjectId, studentId, marksObtained, remarks? }`. `classId` comes from the paper and `enteredByUserId` from the session. |
+| POST | `/api/results/bulk` | Same | `{ examSubjectId, records: [{ studentId, marksObtained, remarks? }] }`, 1–200 records. All-or-nothing; invalid records are named by index. |
+| GET | `/api/results/{id}` | RLS-scoped | |
+| PATCH | `/api/results/{id}` | Admin; the paper's subject teacher | `{ marksObtained?, remarks?, expectedUpdatedAt }`. **Optimistic concurrency:** `expectedUpdatedAt` must equal the record's current `updatedAt`, otherwise 409. Two simultaneous corrections can't both win. |
+
+Rules:
+
+| Rule | Response |
+| ---- | -------- |
+| The paper must exist (a teacher targeting a paper they can't see gets 403, so existence isn't revealed) | 422 / 403 |
+| The student must be active and enrolled in the paper's class | 422 |
+| `0 ≤ marksObtained ≤ maxMarks`, at most two decimals | 422 |
+| One result per student per paper | 409 |
+
+Other rules:
+
+- **Absent and missing marks:** the schema has no "absent" state. A missing
+  mark is simply a result that hasn't been entered, and **0 is a real mark**.
+- **Class teachers** who don't teach the subject can't enter or read its marks,
+  as required by RLS.
+- **Corrections:** only `marksObtained` and `remarks` can change. Entries and
+  corrections are audited with old and new values. Results are never deleted.
+- **Enforced in the database too,** so direct Data API writes can't bypass
+  them: the marks ceiling, non-negative marks, the enrollment foreign key,
+  uniqueness, active students, and the column grants.
+
+### Report-card data
+
+| Method | Path | Who |
+| ------ | ---- | --- |
+| GET | `/api/students/{studentId}/report-cards/{examId}` | Admin: any student. Student: only themselves (else 403). Teacher: students in a class they teach that year, limited to the subjects they teach (other students → 404, other classes → 403). |
+
+Returns:
+
+- `student`, `exam`, and the **class the student was in during that exam's
+  academic year**.
+- `scope`: `allSubjects` or `assignedSubjects`.
+- `subjects[]`, each with `maxMarks`, `passMarks`, `marksObtained`, `remarks`
+  and `status`. `status` is `entered`, or `notEntered` when there's no mark.
+- `summary`: `subjectsConfigured`, `subjectsWithMarks`, `complete`,
+  `totalMarksObtained` and `totalMaxMarks`.
+
+Calculation rules:
+
+- Missing marks are `null`, **never zero**.
+- Totals are sums over every configured subject, returned **only when the card
+  is complete** (every subject marked, full scope). They're computed exactly in
+  hundredths. Incomplete or teacher-scoped cards have `null` totals.
+- **Not provided:** percentage, grade and pass/fail. No rounding rule, grade
+  boundaries or pass rule is defined, so `passMarks` is returned as configured
+  for a client to apply once a rule is agreed.
+- **No publication state:** the schema has no flag, so students see entered
+  marks immediately.
+- No enrollment in the exam's year → 404.
 
 ## Account deactivation behaviour
 

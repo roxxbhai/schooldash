@@ -1,12 +1,22 @@
 import "server-only";
 import { z } from "zod";
-import { validationError } from "@/lib/api/errors";
+import { ApiError, validationError } from "@/lib/api/errors";
 import { uuidSchema } from "@/lib/api/validation";
 import { Constants } from "@/lib/supabase/database.types";
 
 /** Shared validation pieces for the school-management APIs. */
 
 export const idParamsSchema = z.object({ id: uuidSchema });
+
+/** Resolves a referenced record or reports it as a 422 on `field`. */
+export async function referenced<T>(lookup: Promise<T>, field: string, message: string): Promise<T> {
+  try {
+    return await lookup;
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) throw validationError([{ path: field, message }]);
+    throw error;
+  }
+}
 
 /** Rejects an update with no fields (422) and strips undefined keys. */
 export function requireChanges<T extends Record<string, unknown>>(input: T): Partial<T> {
@@ -76,3 +86,19 @@ export function refineDateFilters<T extends { date?: string; from?: string; to?:
     ctx.addIssue({ code: "custom", path: ["to"], message: "to must not be before from." });
   }
 }
+
+// --- marks -------------------------------------------------------------------------
+
+/**
+ * Marks as stored in numeric(6,2): 0 – 9999.99 with at most two decimals.
+ * More decimals are rejected (Postgres would otherwise round them silently).
+ */
+export const marksSchema = z
+  .number()
+  .min(0)
+  .max(9999.99)
+  .refine((value) => Math.abs(value * 100 - Math.round(value * 100)) < 1e-6, "At most two decimal places.");
+
+/** Converts marks to integer hundredths so totals are exact (no floating-point drift). */
+export const toHundredths = (marks: number) => Math.round(marks * 100);
+export const fromHundredths = (hundredths: number) => hundredths / 100;
