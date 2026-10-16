@@ -62,6 +62,13 @@ import * as resultsRoute from "@/app/api/results/route";
 import * as resultsBulkRoute from "@/app/api/results/bulk/route";
 import * as resultRoute from "@/app/api/results/[id]/route";
 import * as reportCardRoute from "@/app/api/students/[id]/report-cards/[examId]/route";
+import * as timetableRoute from "@/app/api/timetable-entries/route";
+import * as timetableEntryRoute from "@/app/api/timetable-entries/[id]/route";
+import * as noticesRoute from "@/app/api/notices/route";
+import * as noticeRoute from "@/app/api/notices/[id]/route";
+import * as noticeAudiencesRoute from "@/app/api/notices/[id]/audiences/route";
+import * as noticePublishRoute from "@/app/api/notices/[id]/publish/route";
+import * as noticeArchiveRoute from "@/app/api/notices/[id]/archive/route";
 
 const DEAD = "http://127.0.0.1:1";
 const ID = "3f2b8c1e-9d4a-4f6b-8e2c-1a7d5b9c0e3f";
@@ -136,6 +143,18 @@ const cases: Case[] = [
   ["GET /results/{id}", resultRoute.GET, "GET", undefined],
   ["PATCH /results/{id}", resultRoute.PATCH, "PATCH", { remarks: "x", expectedUpdatedAt: "2026-01-01T00:00:00Z" }],
   ["GET /students/{id}/report-cards/{examId}", reportCardRoute.GET, "GET", undefined],
+  ["GET /timetable-entries", timetableRoute.GET, "GET", undefined],
+  ["POST /timetable-entries", timetableRoute.POST, "POST", { classId: ID, subjectId: ID, dayOfWeek: 1, startTime: "09:00", endTime: "09:45" }],
+  ["GET /timetable-entries/{id}", timetableEntryRoute.GET, "GET", undefined],
+  ["PATCH /timetable-entries/{id}", timetableEntryRoute.PATCH, "PATCH", { room: "x" }],
+  ["DELETE /timetable-entries/{id}", timetableEntryRoute.DELETE, "DELETE", undefined],
+  ["GET /notices", noticesRoute.GET, "GET", undefined],
+  ["POST /notices", noticesRoute.POST, "POST", { title: "x", body: "y", audiences: [{ role: "STUDENT" }] }],
+  ["GET /notices/{id}", noticeRoute.GET, "GET", undefined],
+  ["PATCH /notices/{id}", noticeRoute.PATCH, "PATCH", { title: "x" }],
+  ["PUT /notices/{id}/audiences", noticeAudiencesRoute.PUT, "PUT", { audiences: [{ classId: ID }] }],
+  ["POST /notices/{id}/publish", noticePublishRoute.POST, "POST", undefined],
+  ["POST /notices/{id}/archive", noticeArchiveRoute.POST, "POST", undefined],
 ];
 
 async function invoke(handler: unknown, method: string, body?: Record<string, unknown>) {

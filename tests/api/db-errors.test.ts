@@ -15,6 +15,8 @@ function asApi(error: unknown): ApiError {
 describe("mapDbError", () => {
   it.each([
     ["23505", 409, "CONFLICT"],
+    ["23P01", 409, "CONFLICT"],
+    ["55000", 409, "CONFLICT"],
     ["23502", 422, "VALIDATION_ERROR"],
     ["23514", 422, "VALIDATION_ERROR"],
     ["22001", 422, "VALIDATION_ERROR"],

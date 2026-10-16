@@ -83,6 +83,16 @@ export function mapDbError(
     return conflict(rule?.message ?? "A record with these details already exists.");
   }
 
+  // exclusion_violation, e.g. overlapping timetable periods.
+  if (code === "23P01") {
+    return conflict(rule?.message ?? "This overlaps with an existing record.");
+  }
+
+  // object_not_in_prerequisite_state: a state rule (e.g. a notice that is no longer a draft).
+  if (code === "55000") {
+    return conflict(rule?.message ?? "The record is not in a state that allows this change.");
+  }
+
   if (code === "23503") {
     // Deleting/updating a row that others reference vs. pointing at a row that doesn't exist.
     const referenced = /still referenced|update or delete on table/i.test(`${error.message} ${error.details}`);

@@ -85,6 +85,8 @@ Applied (verified with `npm run db:migrations`):
 | `20261015163718_attendance_integrity` | Attendance: UPDATE limited to status/remarks/markedByUserId; insert triggers (date not future, within academic year, account active); correction audit triggers. |
 | `20261015171445_column_level_update_grants` | API users may update only the columns the app edits (results/examSubjects identity, ids, timestamps, academic-year links fixed). |
 | `20261015172701_exams_and_results` | Audit triggers on exams, examSubjects, results; results insert rule (student active). |
+| `20261016090000_timetable_integrity` | `btree_gist`; `timetableEntries.academicYearId` (derived from the class by trigger); class and teacher no-overlap exclusion constraints; column-level UPDATE grants; audit. |
+| `20261016100000_notices_workflow` | Notice lifecycle trigger (draft → published → archived); audiences changeable only on drafts (RLS); column-level INSERT/UPDATE grants; `createNotice` / `setNoticeAudiences` / `publishNotice` (atomic, invoker); audit. |
 
 **To change the schema:**
 
@@ -194,8 +196,11 @@ rather than skip if any are missing:
   back**. It covers student/teacher/admin/inactive/unprovisioned access,
   self-promotion, writes and deletes.
 - **`account-status.test.ts`, `school-resources.test.ts`, `people.test.ts`**
-  (Phase 3) call the API Route Handlers against the real project as a
-  dedicated integration admin. See `docs/school-api.md` § Testing.
+  (Phase 3), `attendance.test.ts` (Phase 4), `exams.test.ts`,
+  `results.test.ts`, `report-cards.test.ts` (Phase 5), and
+  `timetable.test.ts`, `notices.test.ts` (Phase 6) call the API Route Handlers
+  against the real project as a dedicated integration admin. See
+  `docs/school-api.md` § Testing.
 - **`auth.test.ts`** runs real Auth sign-in, refresh, revocation, the proxy,
   Data-API RLS with real tokens, disabled sign-up, browser rejection of the
   secret key, and provisioning with compensation. It creates
@@ -231,7 +236,10 @@ creates and deletes identities.
   app-level limiter.
 - **Logout during a Supabase outage** may take up to ~30 s: supabase-js retries
   the refresh before the local cookie fallback runs.
-- **Teacher double-booking** in timetables is not prevented at the database
-  level.
+- **Timetable conflicts** (class and teacher overlaps) are enforced by
+  database exclusion constraints since migration 11. Rooms are free text and
+  are not checked for clashes.
+- **Notices** have no delete endpoint. Admins still hold the Data API DELETE
+  grant on `notices` (design decision 10); deleting removes its audiences too.
 - **`users.email`** is a copy of the Auth email. If a user changes their login
   email in Auth, it isn't synchronized automatically yet.

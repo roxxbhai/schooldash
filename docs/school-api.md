@@ -1,4 +1,4 @@
-# School management API (Phases 3–5)
+# School management API (Phases 3–6)
 
 These endpoints run against the real Supabase database using the
 request-scoped client, so every query is subject to RLS. They follow
@@ -15,7 +15,8 @@ app/api/<resource>/…/route.ts        guard, CSRF, parse
 
 Domains: `academic-years`, `subjects`, `classes`, `teachers`, `students`,
 `enrollments`, `teacher-assignments`, `student-attendance`,
-`teacher-attendance`, `exams`, `exam-subjects`, `results`, `report-cards`.
+`teacher-attendance`, `exams`, `exam-subjects`, `results`, `report-cards`,
+`timetable`, `notices`.
 
 ## Collections
 
@@ -261,6 +262,109 @@ Calculation rules:
   marks immediately.
 - No enrollment in the exam's year → 404.
 
+### Timetable (Phase 6)
+
+| Method | Path | Who | Notes |
+| ------ | ---- | --- | ----- |
+| GET | `/api/timetable-entries` | RLS-scoped. Admin: all. Teacher: their own periods and those of classes they teach. Student: their classes. | `?academicYearId=`, `?classId=`, `?teacherId=`, `?subjectId=`, `?dayOfWeek=`. Ordered by day, start time. |
+| POST | `/api/timetable-entries` | Admin | `{ classId, subjectId, teacherId?, dayOfWeek, startTime, endTime, room? }` |
+| GET | `/api/timetable-entries/{id}` | RLS-scoped | |
+| PATCH | `/api/timetable-entries/{id}` | Admin | Any of the create fields. Validated against the **complete resulting entry**. |
+| DELETE | `/api/timetable-entries/{id}` | Admin | Returns the removed entry. Entries are configuration, not history (audited). |
+
+Teachers cannot create or change any timetable entry, including their own.
+
+Representation:
+
+- `dayOfWeek` is ISO 8601: 1 = Monday … 7 = Sunday.
+- Times are school-local wall-clock times with no time zone. Send `"HH:MM"` or
+  `"HH:MM:SS"` (24-hour); responses use `"HH:MM:SS"`.
+- `academicYearId` is read-only: the database copies it from the class.
+
+Validation (422):
+
+| Rule | Field |
+| ---- | ----- |
+| `startTime` < `endTime` | `endTime` |
+| Class and subject exist | `classId` / `subjectId` |
+| The teacher (optional, `null` = unstaffed period) exists and is active | `teacherId` |
+| The teacher holds a teacher assignment for exactly this class **and** subject (also a composite foreign key) | `teacherId` |
+
+Conflicts (409), enforced by **database exclusion constraints**, so concurrent
+requests cannot both succeed (tested with parallel requests):
+
+- **Class:** no two periods of the same class overlap on the same day.
+- **Teacher:** no two periods of the same teacher overlap on the same day in
+  the same academic year. Unstaffed periods are exempt.
+- Periods are half-open `[start, end)`: two periods overlap when each starts
+  before the other ends. Back-to-back periods (09:00–09:45 and 09:45–10:30)
+  don't conflict.
+- An entry never conflicts with itself when updated.
+
+Not modelled, because the schema has no support and no requirement exists:
+rooms as a constrained resource (`room` is a free-text label, not checked for
+clashes), dated exceptions or holidays, timetable versions, and a curriculum
+of which subjects a class takes. Without a teacher, any existing subject may
+be scheduled for a class.
+
+### Notices (Phase 6)
+
+| Method | Path | Who | Notes |
+| ------ | ---- | --- | ----- |
+| GET | `/api/notices` | Admin: every notice in every state, with `audiences`. Teacher/student: only published notices addressed to them, without `audiences`. | `?status=draft\|published\|archived`. Newest published first. |
+| POST | `/api/notices` | Admin | `{ title, body, category?, audiences?: [{ role } \| { classId }] }`. Creates a **draft** together with its audiences in one transaction. |
+| GET | `/api/notices/{id}` | Same as the list. Anything else → 404, so guessing an id reveals nothing. | |
+| PATCH | `/api/notices/{id}` | Admin; drafts only | `title`, `body`, `category`. |
+| PUT | `/api/notices/{id}/audiences` | Admin; drafts only | `{ audiences: [...] }`, at most 50. Replaces the whole set atomically. |
+| POST | `/api/notices/{id}/publish` | Admin | draft → published. Needs at least one audience. `publishedAt` comes from the database clock. |
+| POST | `/api/notices/{id}/archive` | Admin | draft or published → archived. |
+
+There is no delete endpoint. Status values are the database enum: `draft`,
+`published`, `archived`.
+
+**State transitions** (enforced by a database trigger for every writer,
+including direct Data API calls; violations → 409):
+
+```
+draft ──publish──▶ published ──archive──▶ archived
+  └──────────────────archive───────────────────▲
+```
+
+- Only drafts can be edited or re-targeted.
+- Published notices are locked: content, audiences and `publishedAt` cannot
+  change. To correct one, archive it and publish a new notice.
+- Archived is final; there is no republishing.
+- A notice with no audience cannot be published.
+
+**Audiences:** each entry is either a role (`{ "role": "STUDENT" }`) or a
+class (`{ "classId": "…" }`), never both.
+
+- Duplicates → 422. Overlapping audiences (STUDENT plus one class) are allowed.
+- An unknown class → 422 at `audiences.<i>.classId`.
+- A notice is visible to the union of its audiences.
+
+**Visibility** comes from the existing RLS policy (`app.canViewNotice`) and is
+verified with real identities:
+
+| Audience | Who sees the published notice |
+| -------- | ----------------------------- |
+| Role | Every **active** user with that role |
+| Class | Students enrolled in the class, and teachers who teach it: a subject assignment, or its class teacher |
+
+- Drafts and archived notices are visible only to admins.
+- Deactivated users see nothing.
+- Class membership counts in any academic year: classes belong to one year, so
+  a class notice stays visible to that class's former students.
+
+**Atomicity:** create-with-audiences, audience replacement and publish run as
+single database functions (`createNotice`, `setNoticeAudiences`,
+`publishNotice`, `SECURITY INVOKER` so RLS applies). A failure leaves nothing
+partially written, which is tested with a bad audience mid-list. Re-targeting
+locks the notice row, so a concurrent publish and re-target can't produce a
+published notice without audiences.
+
+No delivery (email, SMS, push) exists; notices are read through the API.
+
 ## Account deactivation behaviour
 
 `lib/auth/account-status.ts` calls `public."setAppUserStatus"`. Only the
@@ -295,6 +399,8 @@ never returned.
 | Code | Meaning | Response |
 | ---- | ------- | -------- |
 | `23505` | unique violation | 409 `CONFLICT`, with a per-constraint message |
+| `23P01` | exclusion violation (overlapping timetable periods) | 409 `CONFLICT`, with a per-constraint message |
+| `55000` | state rule (e.g. a notice that is no longer a draft) | 409 `CONFLICT`, with a per-rule message |
 | `23503` (insert/update) | referenced row missing | 422 `VALIDATION_ERROR` on the field |
 | `23503` (delete/update of a referenced row) | still referenced | 409 `CONFLICT` |
 | `23514`, `23502`, `22001`, `22007`, `22008`, `22023` | check, not-null, length or date violations | 422 |
@@ -323,6 +429,9 @@ the change, with `actorUserId` set to the signed-in user:
 | `studentEnrollments` | insert, update | old and new rows |
 | `teacherAssignments` | insert, delete | old and new rows |
 | `users` (fullName/phone), `students`, `teachers` | update | **changed field names only (redacted)** |
+| `exams`, `examSubjects`, `results` | insert, update | old and new rows |
+| `timetableEntries`, `notices` | insert, update, delete | old and new rows |
+| `noticeAudiences` | insert, delete | old and new rows |
 
 Provisioning (`users.provision`) and status changes (`users.deactivate` /
 `users.reactivate`) audit themselves. Updates that change nothing aren't
@@ -336,6 +445,7 @@ logged.
 | Set current academic year | One transaction. |
 | Status change | One transaction, including session revocation and audit. |
 | Account creation | Spans Supabase Auth and Postgres, so it **is not atomic**. The database part is one transaction. If it fails, the Auth user is deleted again (compensation). If that also fails, `ProvisioningRecoveryError` names the orphaned Auth user; re-run with `linkExistingAuthUser` or delete it in the dashboard. |
+| Notice create with audiences, audience replacement, publish | One transaction each (`createNotice`, `setNoticeAudiences`, `publishNotice`, run as the caller). |
 | Single-row creates and updates | One statement, so atomic, with the audit row written by the same transaction's trigger. |
 
 ## When Supabase is unavailable
@@ -353,7 +463,8 @@ about 7 s to return 503. Writes aren't retried.
 | Suite | Command | Talks to Supabase? |
 | ----- | ------- | ------------------ |
 | Unit: services, mapper, query helpers, status service | `npm test` | **No.** Repositories and provisioning are mocked. |
-| Integration: `account-status.test.ts`, `school-resources.test.ts`, `people.test.ts` | `npm run test:integration` | **Yes.** Route Handlers run in-process against the real project. |
+| Integration: `account-status.test.ts`, `school-resources.test.ts`, `people.test.ts`, `attendance.test.ts`, `exams.test.ts`, `results.test.ts`, `report-cards.test.ts`, `timetable.test.ts`, `notices.test.ts` | `npm run test:integration` | **Yes.** Route Handlers run in-process against the real project. |
+| Integration: `rls.test.ts`, `schema.test.ts` | `npm run test:integration` | **Yes.** Real roles and JWT claims inside transactions that are always rolled back. |
 
 How the integration tests stay safe:
 

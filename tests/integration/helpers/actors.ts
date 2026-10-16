@@ -102,6 +102,8 @@ export async function teardown(...persistent: (TestAccount | undefined)[]): Prom
 // --- tracked test records ----------------------------------------------------------
 
 type Tracked =
+  | "notices"
+  | "timetableEntries"
   | "results"
   | "examSubjects"
   | "exams"
@@ -114,6 +116,8 @@ type Tracked =
   | "academicYears"
   | "authUsers";
 const tracked: Record<Tracked, Set<string>> = {
+  notices: new Set(),
+  timetableEntries: new Set(),
   results: new Set(),
   examSubjects: new Set(),
   exams: new Set(),
@@ -154,6 +158,10 @@ export async function cleanupTracked(): Promise<void> {
     const studentIds = await column(`select id from public.students where "userId" = any($1)`, [userIds]);
     const teacherIds = await column(`select id from public.teachers where "userId" = any($1)`, [userIds]);
 
+    // Notices (their audiences cascade) reference classes and the creating user.
+    await db.query(`delete from public.notices where id = any($1) or "createdByUserId" = any($2)`, [ids("notices"), userIds]);
+    // Timetable entries reference assignments, classes, subjects and teachers.
+    await db.query(`delete from public."timetableEntries" where id = any($1) or "teacherId" = any($2) or "classId" = any($3)`, [ids("timetableEntries"), teacherIds, ids("classes")]);
     // Results → papers → exams first: they reference enrollments, classes and years.
     await db.query(`delete from public.results where id = any($1) or "studentId" = any($2) or "enteredByUserId" = any($3) or "examSubjectId" = any($4)`, [ids("results"), studentIds, userIds, ids("examSubjects")]);
     await db.query(`delete from public."examSubjects" where id = any($1) or "examId" = any($2)`, [ids("examSubjects"), ids("exams")]);

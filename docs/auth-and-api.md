@@ -98,8 +98,9 @@ which revokes this device's refresh token) and clears its cookies.
 
 ## School management endpoints
 
-Phase 3 endpoints, their permissions, the database error mapping and the
-account-status behaviour are documented in `docs/school-api.md`.
+School endpoints (Phases 3–6: school resources, people, attendance, exams and
+results, timetable, notices), their permissions, the database error mapping
+and the account-status behaviour are documented in `docs/school-api.md`.
 
 ## Response and error conventions
 

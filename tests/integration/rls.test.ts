@@ -414,3 +414,188 @@ describe("REGRESSION: column-level UPDATE privileges (Phase 5 audit, migration 9
     await expectSqlError(db, `update public."${table}" set "${column}" = $1`, [value], SQLSTATE.insufficientPrivilege);
   });
 });
+
+describe("timetable integrity (Phase 6, migration 11)", () => {
+  const insertEntry = `insert into public."timetableEntries" ("classId", "subjectId", "teacherId", "dayOfWeek", "startTime", "endTime") values ($1, $2, $3, $4, $5, $6) returning id, "academicYearId"`;
+  const maths = ids.subject.maths;
+  const science = ids.subject.science;
+  const seedEntry = async (classId: string, subjectId: string, teacherId: string | null, day: number, start: string, end: string) => {
+    await actAsOwner(db);
+    return (await db.query(insertEntry, [classId, subjectId, teacherId, day, start, end])).rows[0].id as string;
+  };
+
+  it("teachers and students cannot create entries, even for their own class", async () => {
+    await actAs(db, "teacherA");
+    await expectSqlError(db, insertEntry, [cls.tenA, maths, ids.teacher.a, 1, "09:00", "09:45"], SQLSTATE.insufficientPrivilege);
+    await actAs(db, "studentA");
+    await expectSqlError(db, insertEntry, [cls.tenA, maths, null, 1, "09:00", "09:45"], SQLSTATE.insufficientPrivilege);
+  });
+
+  it("teachers cannot update or delete entries, including their own periods", async () => {
+    const id = await seedEntry(cls.tenA, maths, ids.teacher.a, 1, "09:00", "09:45");
+    await actAs(db, "teacherA");
+    expect(await select(`select id from public."timetableEntries" where id = $1`, [id])).toEqual([id]);
+    expect(await affected(db, `update public."timetableEntries" set room = 'mine' where id = $1`, [id])).toBe(0);
+    expect(await affected(db, `delete from public."timetableEntries" where id = $1`, [id])).toBe(0);
+  });
+
+  it("visibility: students their class, teachers their own periods and classes they teach", async () => {
+    const tenA = await seedEntry(cls.tenA, maths, ids.teacher.a, 1, "09:00", "09:45");
+    const tenB = await seedEntry(cls.tenB, science, ids.teacher.b, 1, "09:00", "09:45");
+    const both = [tenA, tenB];
+    await actAs(db, "studentA");
+    expect(await select(`select id from public."timetableEntries" where id = any($1)`, [both])).toEqual([tenA]);
+    await actAs(db, "studentB");
+    expect(await select(`select id from public."timetableEntries" where id = any($1)`, [both])).toEqual([tenB]);
+    await actAs(db, "teacherA");
+    expect(await select(`select id from public."timetableEntries" where id = any($1)`, [both])).toEqual([tenA]);
+    await actAs(db, "teacherB");
+    expect(await select(`select id from public."timetableEntries" where id = any($1)`, [both])).toEqual([tenB]);
+    await actAs(db, "inactiveStudent");
+    expect(await select(`select id from public."timetableEntries" where id = any($1)`, [both])).toEqual([]);
+  });
+
+  it("academicYearId is always derived from the class (a supplied value is overwritten)", async () => {
+    await actAs(db, "admin");
+    const { rows } = await db.query(
+      `insert into public."timetableEntries" ("classId", "subjectId", "dayOfWeek", "startTime", "endTime", "academicYearId") values ($1, $2, 2, '09:00', '09:45', $3) returning "academicYearId"`,
+      [cls.tenA, maths, "00000000-0000-4000-8000-00000000beef"],
+    );
+    expect(rows[0].academicYearId).toBe(ids.year);
+  });
+
+  it.each(["academicYearId", "id", "createdAt", "updatedAt"])("even an admin cannot update timetableEntries.%s", async (column) => {
+    const id = await seedEntry(cls.tenA, maths, null, 1, "09:00", "09:45");
+    await actAs(db, "admin");
+    const value = column.endsWith("At") ? "2000-01-01" : "00000000-0000-4000-8000-00000000beef";
+    await expectSqlError(db, `update public."timetableEntries" set "${column}" = $2 where id = $1`, [id, value], SQLSTATE.insufficientPrivilege);
+  });
+
+  it("overlapping class periods are rejected by the database (23P01); adjacent periods are allowed", async () => {
+    await seedEntry(cls.tenA, maths, null, 1, "09:00", "09:45");
+    await actAs(db, "admin");
+    await expectSqlError(db, insertEntry, [cls.tenA, science, null, 1, "09:44", "10:30"], "23P01");
+    await expectSqlError(db, insertEntry, [cls.tenA, science, null, 1, "08:00", "12:00"], "23P01");
+    expect((await db.query(insertEntry, [cls.tenA, science, null, 1, "09:45", "10:30"])).rowCount).toBe(1);
+    expect((await db.query(insertEntry, [cls.tenA, science, null, 1, "08:15", "09:00"])).rowCount).toBe(1);
+  });
+
+  it("a teacher cannot be double-booked across classes in the same year; unstaffed periods are exempt", async () => {
+    await actAsOwner(db);
+    await db.query(`insert into public."teacherAssignments" ("teacherId", "classId", "subjectId") values ($1, $2, $3)`, [ids.teacher.a, cls.tenB, maths]);
+    await seedEntry(cls.tenA, maths, ids.teacher.a, 3, "11:00", "11:45");
+    await actAs(db, "admin");
+    await expectSqlError(db, insertEntry, [cls.tenB, maths, ids.teacher.a, 3, "11:30", "12:15"], "23P01");
+    expect((await db.query(insertEntry, [cls.tenB, maths, null, 3, "11:30", "12:15"])).rowCount).toBe(1);
+    // Assigning the teacher to that now-unstaffed period would double-book them.
+    await expectSqlError(db, `update public."timetableEntries" set "teacherId" = $1 where "classId" = $2 and "dayOfWeek" = 3`, [ids.teacher.a, cls.tenB], "23P01");
+  });
+
+  it("a timetabled teacher must hold the matching class + subject assignment (23503)", async () => {
+    await actAs(db, "admin");
+    await expectSqlError(db, insertEntry, [cls.tenA, science, ids.teacher.a, 4, "09:00", "09:45"], SQLSTATE.foreignKeyViolation);
+  });
+
+  it("inserts, updates and deletes are audited with the acting admin", async () => {
+    await actAs(db, "admin");
+    const id = (await db.query(insertEntry, [cls.tenA, maths, null, 5, "09:00", "09:45"])).rows[0].id;
+    await db.query(`update public."timetableEntries" set room = 'R1' where id = $1`, [id]);
+    await db.query(`delete from public."timetableEntries" where id = $1`, [id]);
+    await actAsOwner(db);
+    const { rows } = await db.query(`select action, "actorUserId" from public."auditLogs" where "entityId" = $1 order by action`, [id]); // one transaction: same timestamp
+    expect(rows).toEqual([
+      { action: "timetableEntries.delete", actorUserId: user.admin },
+      { action: "timetableEntries.insert", actorUserId: user.admin },
+      { action: "timetableEntries.update", actorUserId: user.admin },
+    ]);
+  });
+});
+
+describe("notices workflow (Phase 6, migration 12)", () => {
+  it("drafts, archived notices and other audiences stay invisible; recipients see published notices addressed to them", async () => {
+    await actAsOwner(db);
+    await db.query(`update public.notices set status = 'archived' where id = $1`, [notice.allStudents]);
+    await actAs(db, "studentA");
+    expect(await select(`select id from public."notices" where id = any($1)`, [Object.values(notice)])).toEqual([]);
+    await actAs(db, "studentB");
+    expect(await select(`select id from public."notices" where id = any($1)`, [Object.values(notice)])).toEqual([notice.classTenB]);
+    await actAs(db, "teacherA"); // teaches 10-A only
+    expect(await select(`select id from public."notices" where id = any($1)`, [Object.values(notice)])).toEqual([notice.teachersOnly]);
+  });
+
+  it("an admin cannot insert a notice that is already published, or set its id or author afterwards", async () => {
+    await actAs(db, "admin");
+    await expectSqlError(
+      db,
+      `insert into public.notices (title, body, "createdByUserId", status, "publishedAt") values ('x', 'y', $1, 'published', now())`,
+      [user.admin],
+      SQLSTATE.insufficientPrivilege,
+    );
+    for (const column of ["id", "createdByUserId", "createdAt", "updatedAt"]) {
+      const value = column.endsWith("At") ? "2000-01-01" : user.teacherA;
+      await expectSqlError(db, `update public.notices set "${column}" = $2 where id = $1`, [notice.draft, value], SQLSTATE.insufficientPrivilege);
+    }
+    await expectSqlError(db, `update public."noticeAudiences" set "audienceRole" = 'teacher' where "noticeId" = $1`, [notice.draft], SQLSTATE.insufficientPrivilege);
+  });
+
+  it("audiences can be added or removed only while the notice is a draft", async () => {
+    await actAs(db, "admin");
+    await expectSqlError(db, `insert into public."noticeAudiences" ("noticeId", "audienceRole") values ($1, 'teacher')`, [notice.allStudents], SQLSTATE.insufficientPrivilege);
+    expect(await affected(db, `delete from public."noticeAudiences" where "noticeId" = $1`, [notice.allStudents])).toBe(0);
+    expect(await affected(db, `insert into public."noticeAudiences" ("noticeId", "audienceRole") values ($1, 'teacher')`, [notice.draft])).toBe(1);
+    expect(await affected(db, `delete from public."noticeAudiences" where "noticeId" = $1`, [notice.draft])).toBe(1);
+  });
+
+  it("status transitions: draft → published → archived; never back, never republished", async () => {
+    await actAs(db, "admin");
+    const NOT_ALLOWED = "55000";
+    await expectSqlError(db, `update public.notices set status = 'draft' where id = $1`, [notice.allStudents], NOT_ALLOWED);
+    await expectSqlError(db, `update public.notices set title = 'edited' where id = $1`, [notice.allStudents], NOT_ALLOWED);
+    await expectSqlError(db, `update public.notices set "publishedAt" = now() - interval '1 day' where id = $1`, [notice.allStudents], NOT_ALLOWED);
+    expect(await affected(db, `update public.notices set status = 'archived' where id = $1`, [notice.allStudents])).toBe(1);
+    await db.query(`update public.notices set status = 'archived' where id = $1`, [notice.allStudents]);
+    await expectSqlError(db, `update public.notices set status = 'published' where id = $1`, [notice.allStudents], NOT_ALLOWED);
+    await expectSqlError(db, `update public.notices set status = 'draft' where id = $1`, [notice.allStudents], NOT_ALLOWED);
+    expect(await affected(db, `update public.notices set title = 'edited draft' where id = $1`, [notice.draft])).toBe(1);
+  });
+
+  it("publishNotice needs an audience, stamps publishedAt and works only on drafts", async () => {
+    await actAs(db, "admin");
+    await db.query(`delete from public."noticeAudiences" where "noticeId" = $1`, [notice.draft]);
+    await expectSqlError(db, `select public."publishNotice"($1)`, [notice.draft], "55000");
+    await db.query(`select public."setNoticeAudiences"($1, '[{"audienceRole": "student"}]'::jsonb)`, [notice.draft]);
+    await db.query(`select public."publishNotice"($1)`, [notice.draft]);
+    const { rows } = await db.query(`select status, "publishedAt" <= now() as stamped from public.notices where id = $1`, [notice.draft]);
+    expect(rows).toEqual([{ status: "published", stamped: true }]);
+    await expectSqlError(db, `select public."publishNotice"($1)`, [notice.draft], "55000");
+    await expectSqlError(db, `select public."setNoticeAudiences"($1, '[]'::jsonb)`, [notice.draft], "55000");
+  });
+
+  it("createNotice is atomic and records the caller as author", async () => {
+    await actAs(db, "admin");
+    await expectSqlError(db, `select public."createNotice"('IT atomic', 'b', null, $1::jsonb)`, [JSON.stringify([{ audienceRole: "student" }, { classId: "00000000-0000-4000-8000-00000000beef" }])], SQLSTATE.foreignKeyViolation);
+    expect(await select(`select id from public.notices where title = 'IT atomic'`)).toEqual([]);
+    const id = (await db.query(`select public."createNotice"('IT ok', 'b', null, $1::jsonb) as id`, [JSON.stringify([{ classId: cls.tenA }])])).rows[0].id;
+    const { rows } = await db.query(`select status, "createdByUserId", (select count(*)::int from public."noticeAudiences" where "noticeId" = $1) as audiences from public.notices where id = $1`, [id]);
+    expect(rows).toEqual([{ status: "draft", createdByUserId: user.admin, audiences: 1 }]);
+  });
+
+  it("teachers and students cannot call the notice functions", async () => {
+    for (const who of ["teacherA", "studentA"] as const) {
+      await actAs(db, who);
+      await expectSqlError(db, `select public."createNotice"('x', 'y', null, '[]'::jsonb)`, [], SQLSTATE.insufficientPrivilege);
+      await expectSqlError(db, `select public."publishNotice"($1)`, [notice.draft], SQLSTATE.insufficientPrivilege);
+      await expectSqlError(db, `select public."setNoticeAudiences"($1, '[]'::jsonb)`, [notice.draft], SQLSTATE.insufficientPrivilege);
+    }
+    await actAsAnon(db);
+    await expectSqlError(db, `select public."publishNotice"($1)`, [notice.draft], SQLSTATE.insufficientPrivilege);
+  });
+
+  it("notice changes are audited", async () => {
+    await actAs(db, "admin");
+    await db.query(`update public.notices set title = 'audited' where id = $1`, [notice.draft]);
+    await actAsOwner(db);
+    const { rows } = await db.query(`select action, "actorUserId", metadata from public."auditLogs" where "entityId" = $1 and action = 'notices.update'`, [notice.draft]);
+    expect(rows).toEqual([{ action: "notices.update", actorUserId: user.admin, metadata: { changedFields: ["title"] } }]);
+  });
+});

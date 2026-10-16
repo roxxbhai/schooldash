@@ -20,3 +20,7 @@ const DB_TO_APP_ROLE: Record<DbUserRole, AppRole> = {
 export function toAppRole(role: DbUserRole): AppRole {
   return DB_TO_APP_ROLE[role];
 }
+
+export function toDbRole(role: AppRole): DbUserRole {
+  return role.toLowerCase() as DbUserRole;
+}

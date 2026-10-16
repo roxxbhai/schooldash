@@ -30,6 +30,8 @@
 | `supabase/migrations/20261015163718_attendance_integrity.sql` | Attendance identity made immutable (column grants), insert-time date/academic-year/active-account checks (triggers), correction audit. |
 | `supabase/migrations/20261015171445_column_level_update_grants.sql` | Column-level UPDATE grants for every API table: identity, ids and timestamps immutable through the Data API. |
 | `supabase/migrations/20261015172701_exams_and_results.sql` | Audit of exams, papers and marks; deactivated students cannot receive new marks. |
+| `supabase/migrations/20261016090000_timetable_integrity.sql` | Timetable academic year (derived), class/teacher no-overlap exclusion constraints, column grants, audit. |
+| `supabase/migrations/20261016100000_notices_workflow.sql` | Notice lifecycle trigger, draft-only audience changes, column grants, atomic notice functions, audit. |
 | `lib/supabase/database.types.ts` | Types generated from the live schema (`npm run db:types`). |
 | `README.md` | This document. |
 
@@ -80,6 +82,14 @@ Tables, in creation (foreign-key dependency) order:
   a profile depends on it (`ON UPDATE RESTRICT`).
 - **Timetable staffing:** a timetabled teacher must hold a matching
   `teacherAssignments` row.
+- **Timetable conflicts (migration 11):** exclusion constraints
+  `timetableEntriesClassNoOverlap` (class, day, time range) and
+  `timetableEntriesTeacherNoOverlap` (teacher, academic year, day, time range).
+  Ranges are half-open, so back-to-back periods are allowed.
+- **Notice lifecycle (migration 12):** `noticesValidateChange` allows only
+  draft → published → archived and draft → archived. Publishing needs an
+  audience, content is locked after draft, and `publishedAt` is fixed once
+  set.
 - **Notices:** a `published` notice must have `publishedAt`.
 - **Audit logs:** `UPDATE`/`DELETE` are rejected by trigger for every role.
 
@@ -155,9 +165,18 @@ Decisions that go beyond a literal reading of the brief:
     admin could relabel an exam paper with existing results, and `id`,
     `createdAt` and `updatedAt` were writable. Now only the columns the app
     edits are updatable. A trustworthy `updatedAt` also enables optimistic
-    concurrency on marks. Timetable and notices tables keep table-level grants
-    until their APIs are built.
-15. **Not modelled (no table in scope):** assignments/homework, fees, school
+    concurrency on marks. Timetable and notices tables got their column grants in Phase 6
+    (migrations 11 and 12).
+15. **Phase 6: `timetableEntries.academicYearId`.** Classes belong to one
+    year, but teachers don't. Without the year, a teacher's old timetable
+    would block the new one under the no-overlap rule. The column is always
+    copied from the class by trigger (callers can't set it) and pinned by a
+    composite FK to `classes(id, academicYearId)`.
+16. **Phase 6: notices are locked once published.** Edits and re-targeting
+    are allowed only on drafts, and archived is final. No requirement
+    covered editing published notices, so the safe choice was made; revisit
+    if needed. Notice audience rows are replaced, never updated in place.
+17. **Not modelled (no table in scope):** assignments/homework, fees, school
    information. These appear in the UI mockups but are outside the 17 tables.
 
 ## Security model
@@ -353,7 +372,7 @@ schema. If required, add it in a later phase and extend the student SELECT rule.
 | Operation | Rule | Check |
 | --------- | ---- | ----- |
 | SELECT | A: all. T: entries where `"teacherId" = app.currentTeacherId()` or for classes they teach. S: entries for classes they are enrolled in. | Ownership; assignment |
-| INSERT / UPDATE / DELETE | A only. | — |
+| INSERT / UPDATE / DELETE | A only. UPDATE limited to classId, subjectId, teacherId, dayOfWeek, startTime, endTime, room. | — |
 
 ### `notices` and `noticeAudiences`
 
@@ -371,7 +390,7 @@ schema. If required, add it in a later phase and extend the student SELECT rule.
 | `notices` | SELECT | A: all (including drafts/archived). T/S: `app.canViewNotice("id")`. | Notice-audience |
 | `notices` | INSERT / UPDATE / DELETE | A only. | — |
 | `noticeAudiences` | SELECT | A: all. T/S: rows of notices where `app.canViewNotice("noticeId")`. | Notice-audience |
-| `noticeAudiences` | INSERT / UPDATE / DELETE | A only. | — |
+| `noticeAudiences` | INSERT / DELETE | A only, and only while the notice is a draft (`app.isDraftNotice`, migration 12). No UPDATE grant. | — |
 
 Draft and archived notices are never visible to teachers or students.
 
@@ -433,4 +452,5 @@ through Phase 3 Route Handlers guarded by `requireAdmin()` that call
 
 - Phase 3 admin APIs that call `provisionAccount` and change role/status.
 - A publish flag for exam results, if students must not see marks immediately.
-- Teacher double-booking prevention in `timetableEntries` (needs `btree_gist`).
+- ~~Teacher double-booking prevention in `timetableEntries`~~ (done in
+  Phase 6, migration 11).

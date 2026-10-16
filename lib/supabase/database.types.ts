@@ -361,14 +361,14 @@ isOneToOne: false
                   ]
                 },"timetableEntries": {
                   Row: {
-                    "classId": string,"createdAt": string,"dayOfWeek": number,"endTime": string,"id": string,"room": string | null,"startTime": string,"subjectId": string,"teacherId": string | null,"updatedAt": string
+                    "academicYearId": string,"classId": string,"createdAt": string,"dayOfWeek": number,"endTime": string,"id": string,"room": string | null,"startTime": string,"subjectId": string,"teacherId": string | null,"updatedAt": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "classId": string,"createdAt"?: string,"dayOfWeek": number,"endTime": string,"id"?: string,"room"?: string | null,"startTime": string,"subjectId": string,"teacherId"?: string | null,"updatedAt"?: string
+                    "academicYearId": string,"classId": string,"createdAt"?: string,"dayOfWeek": number,"endTime": string,"id"?: string,"room"?: string | null,"startTime": string,"subjectId": string,"teacherId"?: string | null,"updatedAt"?: string
                   }
                   Update: {
-                    "classId"?: string,"createdAt"?: string,"dayOfWeek"?: number,"endTime"?: string,"id"?: string,"room"?: string | null,"startTime"?: string,"subjectId"?: string,"teacherId"?: string | null,"updatedAt"?: string
+                    "academicYearId"?: string,"classId"?: string,"createdAt"?: string,"dayOfWeek"?: number,"endTime"?: string,"id"?: string,"room"?: string | null,"startTime"?: string,"subjectId"?: string,"teacherId"?: string | null,"updatedAt"?: string
                   }
                   Relationships: [
                     {
@@ -395,6 +395,12 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "teacherAssignments"
       referencedColumns: ["teacherId","classId","subjectId"]
+    },{
+      foreignKeyName: "timetableEntriesClassYearFkey"
+      columns: ["classId","academicYearId"]
+isOneToOne: false
+      referencedRelation: "classes"
+      referencedColumns: ["id","academicYearId"]
     }
                   ]
                 },"users": {
@@ -417,17 +423,26 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "findAuthUserIdByEmail":
+            "createNotice":
+{ Args: { "audiences": Json,"body": string,"category": string,"title": string }; Returns: string
+                           },
+"findAuthUserIdByEmail":
 { Args: { "email": string }; Returns: string
                            },
 "provisionAppUser":
 { Args: { "actorUserId"?: string,"authUserId": string,"email": string,"fullName": string,"profile"?: Json,"role": Database["public"]['Enums']["userRole"] }; Returns: string
+                           },
+"publishNotice":
+{ Args: { "noticeId": string }; Returns: undefined
                            },
 "setAppUserStatus":
 { Args: { "actorUserId": string,"isActive": boolean,"userId": string }; Returns: Json
                            },
 "setCurrentAcademicYear":
 { Args: { "academicYearId": string }; Returns: undefined
+                           },
+"setNoticeAudiences":
+{ Args: { "audiences": Json,"noticeId": string }; Returns: undefined
                            },
 "updateStudentProfile":
 { Args: { "profilePatch"?: Json,"studentId": string,"userPatch"?: Json }; Returns: undefined
