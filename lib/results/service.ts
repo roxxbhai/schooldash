@@ -8,7 +8,7 @@ import type { Pagination } from "@/lib/api/validation";
 import { requireStudentOwnership } from "@/lib/auth/authorization";
 import { findTeacherIdByUserId, teacherHasAssignment } from "@/lib/auth/repository";
 import type { AppUser } from "@/lib/auth/session";
-import { pageMeta } from "@/lib/db/query";
+import { orNullIfMissing, pageMeta } from "@/lib/db/query";
 import { findExamSubject } from "@/lib/exam-subjects/repository";
 import type { ExamSubject } from "@/lib/exam-subjects/repository";
 import { marksSchema, optionalText, referenced } from "@/lib/school/validation";
@@ -173,7 +173,7 @@ export async function correctResult(
   if (updated) return updated;
 
   // Nothing matched: either the row changed since the client read it, or it vanished.
-  const current = await repo.findResult(client, id).catch(() => null);
+  const current = await orNullIfMissing(repo.findResult(client, id));
   if (!current) throw notFound("Result not found.");
   throw conflict("These marks were changed by someone else since you loaded them. Reload and try again.");
 }

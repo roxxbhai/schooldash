@@ -151,6 +151,14 @@ describe("correcting marks (optimistic concurrency)", () => {
     await expect(correctResult(client, ID(60), { marksObtained: 45, expectedUpdatedAt: NOW }, admin)).rejects.toMatchObject({ status: 404 });
   });
 
+  it("REGRESSION: an outage during the re-read is a 503, not a misleading 404", async () => {
+    vi.mocked(repo.updateResultIfUnchanged).mockResolvedValue(null);
+    vi.mocked(repo.findResult)
+      .mockResolvedValueOnce({ id: ID(60), examSubjectId: PAPER.id } as never)
+      .mockRejectedValueOnce(new ApiError(503, "SERVICE_UNAVAILABLE", "x"));
+    await expect(correctResult(client, ID(60), { marksObtained: 45, expectedUpdatedAt: NOW }, admin)).rejects.toMatchObject({ status: 503 });
+  });
+
   it("rejects marks above maxMarks before writing", async () => {
     await expect(correctResult(client, ID(60), { marksObtained: 51, expectedUpdatedAt: NOW }, admin)).rejects.toMatchObject({ status: 422 });
     expect(repo.updateResultIfUnchanged).not.toHaveBeenCalled();

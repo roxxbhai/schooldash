@@ -1,5 +1,5 @@
 import "server-only";
-import { notFound } from "@/lib/api/errors";
+import { ApiError, notFound } from "@/lib/api/errors";
 import { mapDbError } from "@/lib/api/db-errors";
 import type { DbErrorContext, DbErrorLike } from "@/lib/api/db-errors";
 import type { Pagination } from "@/lib/api/validation";
@@ -58,6 +58,19 @@ export async function rpcResult<T>(
   const { data, error } = await query;
   if (error) throw mapDbError(error, operation, context);
   return data as T;
+}
+
+/**
+ * The row, or null if it doesn't exist (404). Any other failure — e.g. the
+ * database being unreachable — is rethrown, never mistaken for "missing".
+ */
+export async function orNullIfMissing<T>(lookup: Promise<T>): Promise<T | null> {
+  try {
+    return await lookup;
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) return null;
+    throw error;
+  }
 }
 
 export interface Page<T> {

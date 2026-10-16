@@ -6,7 +6,7 @@ import type { Pagination } from "@/lib/api/validation";
 import { uuidSchema } from "@/lib/api/validation";
 import { APP_ROLES, toAppRole, toDbRole } from "@/lib/auth/roles";
 import type { AppUser } from "@/lib/auth/session";
-import { pageMeta } from "@/lib/db/query";
+import { orNullIfMissing, pageMeta } from "@/lib/db/query";
 import { optionalText, requireChanges } from "@/lib/school/validation";
 import { Constants } from "@/lib/supabase/database.types";
 import type { Database } from "@/lib/supabase/database.types";
@@ -120,7 +120,7 @@ export async function createNotice(client: Client, input: z.output<typeof create
 
 /** Explains why a conditional change matched nothing: 404 if gone, else the state conflict. */
 async function stateConflict(client: Client, id: string, message: string): Promise<never> {
-  const current = await repo.findNotice(client, id, false).catch(() => null);
+  const current = await orNullIfMissing(repo.findNotice(client, id, false));
   if (!current) throw notFound("Notice not found.");
   throw conflict(message);
 }

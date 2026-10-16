@@ -201,6 +201,17 @@ rather than skip if any are missing:
   `timetable.test.ts`, `notices.test.ts` (Phase 6) call the API Route Handlers
   against the real project as a dedicated integration admin. See
   `docs/school-api.md` § Testing.
+- **`phase6-matrix.test.ts`** and **`workflow.test.ts`** (final audit) give
+  the timetable and notice routes the same contract matrix as Phase 3, and
+  run a whole school year end to end through the API: deactivation,
+  reactivation, concurrent duplicates and identity-injection attempts.
+- **Schema drift:** Docker isn't required. Without it, `supabase db diff`
+  can't run, so `schema.test.ts` instead checks that migration versions match,
+  that the policy set equals a replay of every `create`/`drop policy`, and
+  that every function body equals its latest migration definition.
+  `npm run db:types` output should also be unchanged. Column, index and
+  constraint definitions aren't compared one by one, except through the
+  targeted constraint tests.
 - **`auth.test.ts`** runs real Auth sign-in, refresh, revocation, the proxy,
   Data-API RLS with real tokens, disabled sign-up, browser rejection of the
   secret key, and provisioning with compensation. It creates

@@ -464,7 +464,8 @@ about 7 s to return 503. Writes aren't retried.
 | ----- | ------- | ------------------ |
 | Unit: services, mapper, query helpers, status service | `npm test` | **No.** Repositories and provisioning are mocked. |
 | Integration: `account-status.test.ts`, `school-resources.test.ts`, `people.test.ts`, `attendance.test.ts`, `exams.test.ts`, `results.test.ts`, `report-cards.test.ts`, `timetable.test.ts`, `notices.test.ts` | `npm run test:integration` | **Yes.** Route Handlers run in-process against the real project. |
-| Integration: `rls.test.ts`, `schema.test.ts` | `npm run test:integration` | **Yes.** Real roles and JWT claims inside transactions that are always rolled back. |
+| Integration: `rls.test.ts`, `schema.test.ts` | `npm run test:integration` | **Yes.** Real roles and JWT claims inside transactions that are always rolled back. `schema.test.ts` also compares the live policies and function bodies with the migrations. |
+| Integration: `phase6-matrix.test.ts`, `workflow.test.ts` (final audit) | `npm run test:integration` | **Yes.** The uniform contract matrix for timetable and notice routes, an end-to-end school year built through the API, concurrent duplicates, retries and identity injection. |
 
 How the integration tests stay safe:
 

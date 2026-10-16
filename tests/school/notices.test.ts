@@ -116,6 +116,12 @@ describe("state rules", () => {
     await expect(updateNotice(client, NOTICE_ID, { title: "x" })).rejects.toMatchObject({ status: 404 });
   });
 
+  it("REGRESSION: an outage while explaining a failed change is a 503, not a misleading 404", async () => {
+    vi.mocked(repo.updateNoticeIfStatus).mockResolvedValue(null);
+    vi.mocked(repo.findNotice).mockRejectedValueOnce(new ApiError(503, "SERVICE_UNAVAILABLE", "x"));
+    await expect(updateNotice(client, NOTICE_ID, { title: "x" })).rejects.toMatchObject({ status: 503 });
+  });
+
   it("archiving is allowed from draft or published; archiving twice is a 409", async () => {
     vi.mocked(repo.updateNoticeIfStatus).mockResolvedValueOnce(ROW as never);
     await archiveNotice(client, NOTICE_ID);

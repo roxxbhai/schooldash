@@ -1,4 +1,4 @@
-import { readdirSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import type pg from "pg";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
@@ -38,6 +38,41 @@ describe("applied schema", () => {
       (r) => r.version,
     );
     expect(remote).toEqual(local);
+  });
+
+  // Docker (and therefore `supabase db diff`) is unavailable here, so the live
+  // catalog is compared with what the migrations declare, statement by statement.
+  const migrationSql = () =>
+    readdirSync(MIGRATIONS_DIR)
+      .filter((f) => f.endsWith(".sql"))
+      .sort()
+      .map((f) => readFileSync(path.join(MIGRATIONS_DIR, f), "utf8").replace(/--[^\n]*/g, ""))
+      .join("\n");
+
+  it("has exactly the policies the migrations declare (replaying create/drop policy in order)", async () => {
+    const declared = new Map<string, string>();
+    const statement = /(create|drop) policy "([^"]+)" on (?:public\.)?"?(\w+)"?(?:\s+for (\w+))?/gi;
+    for (const [, verb, name, table, command] of migrationSql().matchAll(statement)) {
+      const key = `${table}.${name}`;
+      if (verb.toLowerCase() === "drop") declared.delete(key);
+      else declared.set(key, (command ?? "all").toUpperCase());
+    }
+    const live = await rows(`select tablename, policyname, cmd, roles::text[] as roles from pg_policies where schemaname = 'public'`);
+    expect(new Map(live.map((p) => [`${p.tablename}.${p.policyname}`, p.cmd]))).toEqual(declared);
+    expect(live.every((p) => p.roles.length === 1 && p.roles[0] === "authenticated")).toBe(true);
+  });
+
+  it("has every function body exactly as the latest migration defines it", async () => {
+    const declared = new Map<string, string>();
+    const fn = /create (?:or replace )?function (?:(\w+)\.)?"(\w+)"\([\s\S]*?\bas \$\$([\s\S]*?)\$\$/gi;
+    for (const [, schema, name, body] of migrationSql().matchAll(fn)) declared.set(`${schema ?? "public"}.${name}`, body.trim());
+    expect(declared.size).toBeGreaterThan(25);
+    const live = await rows(
+      `select n.nspname || '.' || p.proname as name, p.prosrc from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname || '.' || p.proname = any($1)`,
+      [[...declared.keys()]],
+    );
+    expect(live.map((r) => r.name).sort()).toEqual([...declared.keys()].sort());
+    for (const r of live) expect(r.prosrc.replace(/--[^\n]*/g, "").trim(), r.name).toBe(declared.get(r.name));
   });
 
   it("has exactly the 17 application tables in public, all with RLS enabled", async () => {
