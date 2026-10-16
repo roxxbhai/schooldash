@@ -10,36 +10,36 @@
  */
 
 const id = (prefix: string, n: number) =>
-  `${prefix}-0000-4000-8000-${String(n).padStart(12, "0")}`;
+  `${prefix}-0000-4000-8000-${String(n).padStart(12, '0')}`;
 
 export const ids = {
   auth: {
-    admin: id("a0000001", 1),
-    studentA: id("a0000001", 2),
-    studentB: id("a0000001", 3),
-    teacherA: id("a0000001", 4),
-    teacherB: id("a0000001", 5),
-    inactiveStudent: id("a0000001", 6),
-    unprovisioned: id("a0000001", 7),
+    admin: id('a0000001', 1),
+    studentA: id('a0000001', 2),
+    studentB: id('a0000001', 3),
+    teacherA: id('a0000001', 4),
+    teacherB: id('a0000001', 5),
+    inactiveStudent: id('a0000001', 6),
+    unprovisioned: id('a0000001', 7),
   },
   user: {
-    admin: id("b0000001", 1),
-    studentA: id("b0000001", 2),
-    studentB: id("b0000001", 3),
-    teacherA: id("b0000001", 4),
-    teacherB: id("b0000001", 5),
-    inactiveStudent: id("b0000001", 6),
+    admin: id('b0000001', 1),
+    studentA: id('b0000001', 2),
+    studentB: id('b0000001', 3),
+    teacherA: id('b0000001', 4),
+    teacherB: id('b0000001', 5),
+    inactiveStudent: id('b0000001', 6),
   },
-  student: { a: id("c0000001", 1), b: id("c0000001", 2), inactive: id("c0000001", 3) },
-  teacher: { a: id("d0000001", 1), b: id("d0000001", 2) },
-  year: id("e0000001", 1),
-  class: { tenA: id("e0000002", 1), tenB: id("e0000002", 2) },
-  subject: { maths: id("e0000003", 1), science: id("e0000003", 2) },
-  exam: id("e0000004", 1),
-  examSubject: { tenAMaths: id("e0000005", 1), tenAScience: id("e0000005", 2), tenBScience: id("e0000005", 3) },
-  result: { aMaths: id("e0000006", 1), aScience: id("e0000006", 2), bScience: id("e0000006", 3) },
-  attendance: { a: id("e0000007", 1), b: id("e0000007", 2) },
-  notice: { allStudents: id("e0000008", 1), classTenB: id("e0000008", 2), draft: id("e0000008", 3), teachersOnly: id("e0000008", 4) },
+  student: { a: id('c0000001', 1), b: id('c0000001', 2), inactive: id('c0000001', 3) },
+  teacher: { a: id('d0000001', 1), b: id('d0000001', 2) },
+  year: id('e0000001', 1),
+  class: { tenA: id('e0000002', 1), tenB: id('e0000002', 2) },
+  subject: { maths: id('e0000003', 1), science: id('e0000003', 2) },
+  exam: id('e0000004', 1),
+  examSubject: { tenAMaths: id('e0000005', 1), tenAScience: id('e0000005', 2), tenBScience: id('e0000005', 3) },
+  result: { aMaths: id('e0000006', 1), aScience: id('e0000006', 2), bScience: id('e0000006', 3) },
+  attendance: { a: id('e0000007', 1), b: id('e0000007', 2) },
+  notice: { allStudents: id('e0000008', 1), classTenB: id('e0000008', 2), draft: id('e0000008', 3), teachersOnly: id('e0000008', 4) },
 } as const;
 
 export function seedSql(): string {
@@ -49,22 +49,22 @@ export function seedSql(): string {
 
   const authRows = Object.entries(a)
     .map(([who, authId]) => `('${authId}', '${email(who)}', 'authenticated', 'authenticated')`)
-    .join(",\n");
+    .join(',\n');
 
   const userRow = (who: keyof typeof u, role: string, active = true) =>
-    `('${u[who]}', '${a[who]}', '${email(who)}', 'IT ${who}', '${role}', ${active}, ${active ? "null" : "now()"})`;
+    `('${u[who]}', '${a[who]}', '${email(who)}', 'IT ${who}', '${role}', ${active}, ${active ? 'null' : 'now()'})`;
 
   return `
 insert into auth.users (id, email, aud, role) values
 ${authRows};
 
 insert into public."users" ("id", "authUserId", "email", "fullName", "role", "isActive", "deactivatedAt") values
-${userRow("admin", "admin")},
-${userRow("studentA", "student")},
-${userRow("studentB", "student")},
-${userRow("teacherA", "teacher")},
-${userRow("teacherB", "teacher")},
-${userRow("inactiveStudent", "student", false)};
+${userRow('admin', 'admin')},
+${userRow('studentA', 'student')},
+${userRow('studentB', 'student')},
+${userRow('teacherA', 'teacher')},
+${userRow('teacherB', 'teacher')},
+${userRow('inactiveStudent', 'student', false)};
 
 insert into public."students" ("id", "userId", "admissionNumber") values
 ('${ids.student.a}', '${u.studentA}', 'IT-ADM-A'),

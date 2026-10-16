@@ -1,8 +1,9 @@
-import { randomBytes } from "node:crypto";
-import { provisionAccount } from "@/lib/auth/provisioning";
-import type { ProvisionAccountInput } from "@/lib/auth/provisioning";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { connect } from "./db";
+import { connect } from './db';
+import { randomBytes } from 'node:crypto';
+import { provisionAccount } from '@/functions/provisioning';
+import { unwrapResult } from '@/helpers/function-result';
+import type { ProvisionAccountInput } from '@/functions/provisioning';
+import { createSupabaseAdminClient } from '@/helpers/supabase-admin';
 
 /**
  * Real identities and records for route-level integration tests.
@@ -16,11 +17,11 @@ import { connect } from "./db";
  *   deleted — never the real administrator or real school data.
  */
 
-export const IT_ADMIN_EMAIL = "schooldash-it-admin@example.com";
-export const runId = `${Date.now().toString(36)}${randomBytes(2).toString("hex")}`;
+export const IT_ADMIN_EMAIL = 'schooldash-it-admin@example.com';
+export const runId = `${Date.now().toString(36)}${randomBytes(2).toString('hex')}`;
 export const testEmail = (label: string) => `it-${runId}-${label}@example.com`;
 export const testCode = (label: string) => `IT-${runId}-${label}`.toUpperCase();
-export const testPassword = () => `It-${randomBytes(18).toString("base64url")}`;
+export const testPassword = () => `It-${randomBytes(18).toString('base64url')}`;
 
 const admin = () => createSupabaseAdminClient();
 
@@ -34,7 +35,7 @@ export interface TestAccount {
 }
 
 async function setStatus(userId: string, isActive: boolean) {
-  const { error } = await admin().rpc("setAppUserStatus", { userId, isActive, actorUserId: null as never });
+  const { error } = await admin().rpc('setAppUserStatus', { userId, isActive, actorUserId: null as never });
   if (error) throw new Error(`setAppUserStatus failed: ${error.code}`);
 }
 
@@ -46,10 +47,10 @@ async function setStatus(userId: string, isActive: boolean) {
  */
 async function ensurePersistent(
   email: string,
-  input: { fullName: string; role: "ADMIN" } | { fullName: string; role: "TEACHER"; profile: { employeeCode: string } },
+  input: { fullName: string; role: 'ADMIN' } | { fullName: string; role: 'TEACHER'; profile: { employeeCode: string } },
 ): Promise<TestAccount> {
   const password = testPassword();
-  const found = await admin().rpc("findAuthUserIdByEmail", { email });
+  const found = await admin().rpc('findAuthUserIdByEmail', { email });
   if (found.error) throw new Error(`lookup failed: ${found.error.code}`);
 
   if (found.data) {
@@ -58,27 +59,27 @@ async function ensurePersistent(
   }
   const db = await connect();
   try {
-    let row = (await db.query(`select id, "isActive" from public.users where lower(email) = $1`, [email])).rows[0];
+    let row = (await db.query('select id, "isActive" from public.users where lower(email) = $1', [email])).rows[0];
     if (!row) {
-      const account = await provisionAccount({ ...input, email, password }, { linkExistingAuthUser: true });
+      const account = unwrapResult(await provisionAccount({ ...input, email, password }, { linkExistingAuthUser: true }));
       row = { id: account.userId, isActive: true };
     }
     if (!row.isActive) await setStatus(row.id, true);
-    const authUserId = (await admin().rpc("findAuthUserIdByEmail", { email })).data!;
+    const authUserId = (await admin().rpc('findAuthUserIdByEmail', { email })).data!;
     return { email, password, userId: row.id, authUserId };
   } finally {
     await db.end();
   }
 }
 
-export const ensureItAdmin = () => ensurePersistent(IT_ADMIN_EMAIL, { fullName: "Integration Test Admin", role: "ADMIN" });
+export const ensureItAdmin = () => ensurePersistent(IT_ADMIN_EMAIL, { fullName: 'Integration Test Admin', role: 'ADMIN' });
 
-export const IT_TEACHER_EMAIL = "schooldash-it-teacher@example.com";
+export const IT_TEACHER_EMAIL = 'schooldash-it-teacher@example.com';
 export const ensureItTeacher = () =>
   ensurePersistent(IT_TEACHER_EMAIL, {
-    fullName: "Integration Test Teacher",
-    role: "TEACHER",
-    profile: { employeeCode: "IT-PERSISTENT-TEACHER" },
+    fullName: 'Integration Test Teacher',
+    role: 'TEACHER',
+    profile: { employeeCode: 'IT-PERSISTENT-TEACHER' },
   });
 
 /** Deactivates a persistent identity and invalidates this run's password. */
@@ -102,19 +103,19 @@ export async function teardown(...persistent: (TestAccount | undefined)[]): Prom
 // --- tracked test records ----------------------------------------------------------
 
 type Tracked =
-  | "notices"
-  | "timetableEntries"
-  | "results"
-  | "examSubjects"
-  | "exams"
-  | "studentAttendance"
-  | "teacherAttendance"
-  | "teacherAssignments"
-  | "studentEnrollments"
-  | "classes"
-  | "subjects"
-  | "academicYears"
-  | "authUsers";
+  | 'notices'
+  | 'timetableEntries'
+  | 'results'
+  | 'examSubjects'
+  | 'exams'
+  | 'studentAttendance'
+  | 'teacherAttendance'
+  | 'teacherAssignments'
+  | 'studentEnrollments'
+  | 'classes'
+  | 'subjects'
+  | 'academicYears'
+  | 'authUsers';
 const tracked: Record<Tracked, Set<string>> = {
   notices: new Set(),
   timetableEntries: new Set(),
@@ -138,12 +139,12 @@ export function track(kind: Tracked, id: string | undefined | null): void {
 /** Provisions a tracked student/teacher/admin account with a known password. */
 export async function provisionTestAccount(
   label: string,
-  input: DistributiveOmit<ProvisionAccountInput, "email" | "password" | "fullName"> & { fullName?: string },
+  input: DistributiveOmit<ProvisionAccountInput, 'email' | 'password' | 'fullName'> & { fullName?: string },
 ): Promise<TestAccount> {
   const email = testEmail(label);
   const password = testPassword();
-  const account = await provisionAccount({ fullName: `IT ${label}`, ...input, email, password } as ProvisionAccountInput);
-  track("authUsers", account.authUserId);
+  const account = unwrapResult(await provisionAccount({ fullName: `IT ${label}`, ...input, email, password } as ProvisionAccountInput));
+  track('authUsers', account.authUserId);
   return { email, password, userId: account.userId, authUserId: account.authUserId };
 }
 
@@ -154,42 +155,42 @@ export async function cleanupTracked(): Promise<void> {
   const column = async (sql: string, params: unknown[]) =>
     (await db.query(sql, params)).rows.map((row) => row.id as string);
   try {
-    const userIds = await column(`select id from public.users where "authUserId" = any($1)`, [ids("authUsers")]);
-    const studentIds = await column(`select id from public.students where "userId" = any($1)`, [userIds]);
-    const teacherIds = await column(`select id from public.teachers where "userId" = any($1)`, [userIds]);
+    const userIds = await column('select id from public.users where "authUserId" = any($1)', [ids('authUsers')]);
+    const studentIds = await column('select id from public.students where "userId" = any($1)', [userIds]);
+    const teacherIds = await column('select id from public.teachers where "userId" = any($1)', [userIds]);
 
     // Notices (their audiences cascade) reference classes and the creating user.
-    await db.query(`delete from public.notices where id = any($1) or "createdByUserId" = any($2)`, [ids("notices"), userIds]);
+    await db.query('delete from public.notices where id = any($1) or "createdByUserId" = any($2)', [ids('notices'), userIds]);
     // Timetable entries reference assignments, classes, subjects and teachers.
-    await db.query(`delete from public."timetableEntries" where id = any($1) or "teacherId" = any($2) or "classId" = any($3)`, [ids("timetableEntries"), teacherIds, ids("classes")]);
+    await db.query('delete from public."timetableEntries" where id = any($1) or "teacherId" = any($2) or "classId" = any($3)', [ids('timetableEntries'), teacherIds, ids('classes')]);
     // Results → papers → exams first: they reference enrollments, classes and years.
-    await db.query(`delete from public.results where id = any($1) or "studentId" = any($2) or "enteredByUserId" = any($3) or "examSubjectId" = any($4)`, [ids("results"), studentIds, userIds, ids("examSubjects")]);
-    await db.query(`delete from public."examSubjects" where id = any($1) or "examId" = any($2)`, [ids("examSubjects"), ids("exams")]);
-    await db.query(`delete from public.exams where id = any($1)`, [ids("exams")]);
+    await db.query('delete from public.results where id = any($1) or "studentId" = any($2) or "enteredByUserId" = any($3) or "examSubjectId" = any($4)', [ids('results'), studentIds, userIds, ids('examSubjects')]);
+    await db.query('delete from public."examSubjects" where id = any($1) or "examId" = any($2)', [ids('examSubjects'), ids('exams')]);
+    await db.query('delete from public.exams where id = any($1)', [ids('exams')]);
     // Attendance first: it references enrollments, teachers and the marking user.
-    await db.query(`delete from public."studentAttendance" where id = any($1) or "studentId" = any($2) or "markedByUserId" = any($3)`, [ids("studentAttendance"), studentIds, userIds]);
-    await db.query(`delete from public."teacherAttendance" where id = any($1) or "teacherId" = any($2) or "markedByUserId" = any($3)`, [ids("teacherAttendance"), teacherIds, userIds]);
-    await db.query(`delete from public."teacherAssignments" where id = any($1) or "teacherId" = any($2)`, [ids("teacherAssignments"), teacherIds]);
-    await db.query(`delete from public."studentEnrollments" where id = any($1) or "studentId" = any($2)`, [ids("studentEnrollments"), studentIds]);
-    await db.query(`update public.classes set "classTeacherId" = null where "classTeacherId" = any($1)`, [teacherIds]);
-    await db.query(`delete from public.classes where id = any($1)`, [ids("classes")]);
-    await db.query(`delete from public.subjects where id = any($1)`, [ids("subjects")]);
-    await db.query(`delete from public."academicYears" where id = any($1)`, [ids("academicYears")]);
-    await db.query(`delete from public.students where id = any($1)`, [studentIds]);
-    await db.query(`delete from public.teachers where id = any($1)`, [teacherIds]);
+    await db.query('delete from public."studentAttendance" where id = any($1) or "studentId" = any($2) or "markedByUserId" = any($3)', [ids('studentAttendance'), studentIds, userIds]);
+    await db.query('delete from public."teacherAttendance" where id = any($1) or "teacherId" = any($2) or "markedByUserId" = any($3)', [ids('teacherAttendance'), teacherIds, userIds]);
+    await db.query('delete from public."teacherAssignments" where id = any($1) or "teacherId" = any($2)', [ids('teacherAssignments'), teacherIds]);
+    await db.query('delete from public."studentEnrollments" where id = any($1) or "studentId" = any($2)', [ids('studentEnrollments'), studentIds]);
+    await db.query('update public.classes set "classTeacherId" = null where "classTeacherId" = any($1)', [teacherIds]);
+    await db.query('delete from public.classes where id = any($1)', [ids('classes')]);
+    await db.query('delete from public.subjects where id = any($1)', [ids('subjects')]);
+    await db.query('delete from public."academicYears" where id = any($1)', [ids('academicYears')]);
+    await db.query('delete from public.students where id = any($1)', [studentIds]);
+    await db.query('delete from public.teachers where id = any($1)', [teacherIds]);
     // One user at a time: a user referenced by an audit entry as the actor can
     // never be deleted (audit history is immutable). Such users are retained,
     // deactivated, with their password rotated — and reported.
     for (const userId of userIds) {
-      const actor = (await db.query(`select exists(select 1 from public."auditLogs" where "actorUserId" = $1) as actor`, [userId])).rows[0].actor;
-      const authUserId = (await db.query(`select "authUserId" from public.users where id = $1`, [userId])).rows[0].authUserId as string;
+      const actor = (await db.query('select exists(select 1 from public."auditLogs" where "actorUserId" = $1) as actor', [userId])).rows[0].actor;
+      const authUserId = (await db.query('select "authUserId" from public.users where id = $1', [userId])).rows[0].authUserId as string;
       if (actor) {
         await setStatus(userId, false).catch(() => undefined); // may already be inactive
         await admin().auth.admin.updateUserById(authUserId, { password: testPassword() });
         tracked.authUsers.delete(authUserId);
         console.warn(`[integration cleanup] retained audit actor ${userId} (deactivated, password rotated)`);
       } else {
-        await db.query(`delete from public.users where id = $1`, [userId]);
+        await db.query('delete from public.users where id = $1', [userId]);
       }
     }
   } finally {

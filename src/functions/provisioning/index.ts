@@ -1,0 +1,172 @@
+import 'server-only';
+import { isAuthApiError } from '@supabase/supabase-js';
+import { z } from 'zod';
+import { conflict, DataAccessError, validationError } from '@/helpers/api-error';
+import { functionFailure, functionSuccess } from '@/helpers/function-result';
+import { logServerError } from '@/helpers/logger';
+import { toValidationIssues } from '@/helpers/request-validation';
+import { toDbRole } from '@/helpers/roles';
+import { createSupabaseAdminClient } from '@/helpers/supabase-admin';
+import type { FunctionResult } from '@/types/function-result';
+import type { ProvisionedAccount, ProvisionOptions } from '@/types/provisioning';
+import type { DbClient } from '@/types/supabase';
+
+/**
+ * TRUSTED, SERVER-ONLY ACCOUNT PROVISIONING.
+ *
+ * CREATES (OR LINKS) A SUPABASE AUTH IDENTITY AND ITS APPLICATION `users`
+ * ROW, PLUS THE student/teacher PROFILE, USING THE SECRET-KEY CLIENT. THIS IS
+ * THE ONLY PLACE THAT ASSIGNS ROLES. CALLERS MUST ALREADY HAVE AUTHORIZED THE
+ * OPERATION — THE INITIAL-ADMIN CLI (scripts/bootstrap-admin.ts) OR, FROM
+ * ADMIN-ONLY ROUTE HANDLERS GUARDED BY `requireAdmin()`. NEVER EXPOSE
+ * IT THROUGH A PUBLIC ENDPOINT, AND NEVER PASS A ROLE TAKEN FROM REQUEST DATA
+ * WITHOUT CHECKING THE CALLER MAY GRANT IT.
+ *
+ * AUTH AND POSTGRES CANNOT SHARE A TRANSACTION, SO:
+ *   1. THE AUTH USER IS CREATED (OR AN EXISTING ONE IS FOUND AND LINKED);
+ *   2. `public."provisionAppUser"` INSERTS USERS + PROFILE + AUDIT ENTRY IN A
+ *      SINGLE DATABASE TRANSACTION;
+ *   3. IF STEP 2 FAILS AND STEP 1 CREATED THE AUTH USER, THAT AUTH USER IS
+ *      DELETED AGAIN (COMPENSATION). IF EVEN THAT FAILS, A
+ *      `ProvisioningRecoveryError` NAMES THE ORPHANED AUTH USER SO AN OPERATOR
+ *      CAN RE-RUN PROVISIONING WITH `linkExistingAuthUser` OR DELETE IT.
+ */
+
+const optionalText = z.string().trim().min(1).max(200).optional();
+const optionalDate = z.iso.date().optional();
+
+const studentProfileSchema = z.strictObject({
+  admissionNumber: z.string().trim().min(1).max(50),
+  admissionDate: optionalDate,
+  dateOfBirth: optionalDate,
+  gender: optionalText,
+  bloodGroup: z.string().trim().min(1).max(10).optional(),
+  fatherName: optionalText,
+  motherName: optionalText,
+  address: z.string().trim().min(1).max(500).optional(),
+});
+
+const teacherProfileSchema = z.strictObject({
+  employeeCode: z.string().trim().min(1).max(50),
+  qualification: optionalText,
+  dateOfJoining: optionalDate,
+});
+
+const baseSchema = {
+  email: z.string().trim().toLowerCase().pipe(z.email()),
+  fullName: z.string().trim().min(1).max(200),
+  /** INITIAL PASSWORD. OMIT TO CREATE THE IDENTITY WITHOUT ONE (SET VIA reset/invite). */
+  password: z.string().min(12).max(72).optional(),
+};
+
+const provisionInputSchema = z.discriminatedUnion('role', [
+  z.strictObject({ ...baseSchema, role: z.literal('ADMIN') }),
+  z.strictObject({ ...baseSchema, role: z.literal('TEACHER'), profile: teacherProfileSchema }),
+  z.strictObject({ ...baseSchema, role: z.literal('STUDENT'), profile: studentProfileSchema }),
+]);
+
+export type ProvisionAccountInput = z.input<typeof provisionInputSchema>;
+
+/** PROVISIONING FAILED AND THE COMPENSATING CLEANUP ALSO FAILED (LOGGED WITH THE AUTH USER ID). */
+class ProvisioningRecoveryError extends Error {
+  readonly orphanedAuthUserId: string;
+
+  constructor(orphanedAuthUserId: string) {
+    super(
+      `Provisioning failed and Auth user ${orphanedAuthUserId} could not be removed. ` +
+        'Re-run provisioning with linkExistingAuthUser, or delete the user in the dashboard.',
+    );
+    this.name = 'ProvisioningRecoveryError';
+    this.orphanedAuthUserId = orphanedAuthUserId;
+  }
+}
+
+export async function provisionAccount(
+  rawInput: ProvisionAccountInput,
+  options: ProvisionOptions = {},
+): Promise<FunctionResult<ProvisionedAccount>> {
+  try {
+    return functionSuccess(await createAccount(rawInput, options));
+  } catch (error) {
+    return functionFailure(error, 'provisioning.provisionAccount');
+  }
+}
+
+async function createAccount(rawInput: ProvisionAccountInput, options: ProvisionOptions): Promise<ProvisionedAccount> {
+  const parsed = provisionInputSchema.safeParse(rawInput);
+  if (!parsed.success) throw validationError(toValidationIssues(parsed.error));
+  const input = parsed.data;
+
+  const admin = options.client ?? createSupabaseAdminClient();
+
+  // 1. FIND OR CREATE THE AUTH IDENTITY.
+  const existing = await admin.rpc('findAuthUserIdByEmail', { email: input.email });
+  if (existing.error) throw new DataAccessError('auth.findUserByEmail', existing.error.code);
+
+  let authUserId: string;
+  let isAuthUserCreated = false;
+
+  if (existing.data) {
+    if (!options.linkExistingAuthUser) {
+      throw conflict('An account with this email address already exists.');
+    }
+    authUserId = existing.data;
+  } else {
+    const created = await admin.auth.admin.createUser({
+      email: input.email,
+      password: input.password,
+      email_confirm: true,
+    });
+    if (created.error || !created.data.user) {
+      if (isAuthApiError(created.error) && created.error.code === 'email_exists') {
+        throw conflict('An account with this email address already exists.');
+      }
+      logServerError('provisioning.createAuthUser', created.error);
+      throw new DataAccessError('auth.createUser', created.error?.code ?? 'UNKNOWN');
+    }
+    authUserId = created.data.user.id;
+    isAuthUserCreated = true;
+  }
+
+  // 2. CREATE THE APPLICATION ACCOUNT ATOMICALLY.
+  const result = await admin.rpc('provisionAppUser', {
+    authUserId,
+    email: input.email,
+    fullName: input.fullName,
+    role: toDbRole(input.role),
+    profile: 'profile' in input ? input.profile : {},
+    actorUserId: options.actorUserId ?? undefined,
+  });
+
+  if (result.error || !result.data) {
+    // 3. COMPENSATE: NEVER LEAVE AN AUTH IDENTITY WE CREATED WITHOUT AN ACCOUNT.
+    if (isAuthUserCreated) await removeAuthUser(admin, authUserId);
+    throw mapProvisionError(result.error?.code);
+  }
+
+  return { userId: result.data, authUserId, role: input.role, isAuthUserCreated };
+}
+
+async function removeAuthUser(admin: DbClient, authUserId: string): Promise<void> {
+  try {
+    const { error } = await admin.auth.admin.deleteUser(authUserId);
+    if (!error) return;
+    logServerError('provisioning.compensate', error, { authUserId });
+  } catch (error) {
+    logServerError('provisioning.compensate', error, { authUserId });
+  }
+  throw new ProvisioningRecoveryError(authUserId);
+}
+
+function mapProvisionError(code: string | undefined): Error {
+  switch (code) {
+    case '23505': // UNIQUE: IDENTITY, EMAIL OR admission/employee NUMBER ALREADY USED
+      return conflict('An account or profile with these details already exists.');
+    case '22023': // MISSING REQUIRED PROFILE FIELD
+    case '22007': // INVALID DATE
+    case '22008':
+      return validationError([{ path: 'profile', message: 'The profile is invalid.' }]);
+    default:
+      return new DataAccessError('users.provision', code);
+  }
+}

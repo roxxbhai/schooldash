@@ -1,5 +1,5 @@
-import { fakeCookieStore } from "../../helpers/fake-cookies";
-import { POST as login } from "@/app/api/auth/login/route";
+import { fakeCookieStore } from '../../helpers/fake-cookies';
+import { POST as login } from '@/app/api/auth/login/route';
 
 /**
  * Calls Route Handlers in-process against the REAL Supabase project. Only the
@@ -13,7 +13,7 @@ import { POST as login } from "@/app/api/auth/login/route";
  */
 
 export type CookieStore = ReturnType<typeof fakeCookieStore>;
-export const APP = "http://localhost:3000";
+export const APP = 'http://localhost:3000';
 
 export interface Harness {
   state: { cookies: CookieStore };
@@ -33,8 +33,8 @@ export async function signIn(harness: Harness, email: string, password: string):
   harness.state.cookies = store;
   const response = await login(
     new Request(`${APP}/api/auth/login`, {
-      method: "POST",
-      headers: { origin: APP, "content-type": "application/json" },
+      method: 'POST',
+      headers: { origin: APP, 'content-type': 'application/json' },
       body: JSON.stringify({ email, password }),
     }),
   );
@@ -55,8 +55,8 @@ export async function call(
   const request = new Request(`${APP}${path}`, {
     method,
     headers: {
-      ...(method === "GET" ? {} : { origin: APP }),
-      ...(hasBody ? { "content-type": "application/json" } : {}),
+      ...(method === 'GET' ? {} : { origin: APP }),
+      ...(hasBody ? { 'content-type': 'application/json' } : {}),
       ...options.headers,
     },
     body: hasBody ? JSON.stringify(options.body) : undefined,

@@ -18,13 +18,13 @@ export function fakeCookieStore(initial: Record<string, string> = {}) {
     writes,
     getAll: () => [...jar].map(([name, value]) => ({ name, value })),
     get: (name: string) => (jar.has(name) ? { name, value: jar.get(name)! } : undefined),
-    set(name: string, value: string, options?: CookieWrite["options"]) {
+    set(name: string, value: string, options?: CookieWrite['options']) {
       writes.push({ name, value, options });
-      if (value === "" || options?.maxAge === 0) jar.delete(name);
+      if (value === '' || options?.maxAge === 0) jar.delete(name);
       else jar.set(name, value);
     },
     delete(name: string) {
-      writes.push({ name, value: "", options: { maxAge: 0 } });
+      writes.push({ name, value: '', options: { maxAge: 0 } });
       jar.delete(name);
     },
   };

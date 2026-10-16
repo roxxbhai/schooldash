@@ -1,4 +1,4 @@
-import type { SupabaseClient, User } from "@supabase/supabase-js";
+import type { SupabaseClient, User } from '@supabase/supabase-js';
 
 /**
  * Minimal in-memory stand-in for the parts of SupabaseClient that the auth
@@ -27,7 +27,7 @@ export function fakeSupabase(options: FakeSupabaseOptions = {}) {
   const queries: RecordedQuery[] = [];
 
   function from(table: string) {
-    const query: RecordedQuery = { table, columns: "", filters: [] };
+    const query: RecordedQuery = { table, columns: '', filters: [] };
     queries.push(query);
     let max = Infinity;
 
@@ -47,14 +47,14 @@ export function fakeSupabase(options: FakeSupabaseOptions = {}) {
       async maybeSingle() {
         const failure = options.failingTables?.[table];
         if (failure !== undefined) {
-          return { data: null, error: { code: failure, message: "failed" } };
+          return { data: null, error: { code: failure, message: 'failed' } };
         }
-        const columns = query.columns.split(",").map((c) => c.trim());
+        const columns = query.columns.split(',').map((c) => c.trim());
         const rows = (options.tables?.[table] ?? [])
           .filter((row) => query.filters.every(([c, v]) => row[c] === v))
           .slice(0, max);
         if (rows.length > 1) {
-          return { data: null, error: { code: "PGRST116", message: "multiple rows" } };
+          return { data: null, error: { code: 'PGRST116', message: 'multiple rows' } };
         }
         if (rows.length === 0) return { data: null, error: null };
         return {
@@ -82,7 +82,7 @@ export function fakeSupabase(options: FakeSupabaseOptions = {}) {
 export function authUser(id: string, metadata: Record<string, unknown> = {}): User {
   return {
     id,
-    aud: "authenticated",
+    aud: 'authenticated',
     app_metadata: metadata,
     user_metadata: metadata,
     created_at: new Date(0).toISOString(),

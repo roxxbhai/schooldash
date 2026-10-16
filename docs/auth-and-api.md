@@ -9,19 +9,19 @@
 
 | Module | Responsibility |
 | ------ | -------------- |
-| `lib/supabase/server.ts` | `createSupabaseServerClient()`: request-scoped client (publishable key + session cookies). `clearSupabaseAuthCookies()`: logout fallback. |
-| `lib/supabase/client.ts` | `createSupabaseBrowserClient()` for Client Components (publishable key only). |
-| `lib/supabase/proxy.ts` + `proxy.ts` | Session refresh before pages/handlers run (`getClaims()`). |
-| `lib/auth/provisioning.ts` | `provisionAccount()`: the only secret-key user; creates Auth identities and application accounts. |
-| `lib/auth/session.ts` | `getAuthenticatedUser`, `resolveAppUser`, `getCurrentAppUser`, `signInWithPassword`, `signOutCurrentSession`, `toSessionProfile`. |
-| `lib/auth/authorization.ts` | Guards: `requireAuthenticatedUser`, `requireRole`, `requireAdmin`, `requireStudentOwnership`, `requireTeacherAssignment`. |
-| `lib/auth/repository.ts` | All auth-related database reads (the mock/integration test boundary). |
-| `lib/auth/roles.ts` | `AppRole` (`ADMIN`/`TEACHER`/`STUDENT`) and mapping from the lowercase DB enum. |
-| `lib/api/response.ts` | `ok`, `created`, `errorResponse`, `toErrorResponse`, `apiRoute`. |
-| `lib/api/errors.ts` | `ApiError` and one factory per error code. |
-| `lib/api/validation.ts` | `parseJsonBody`, `parseParams`, `parseQuery`, `uuidSchema`, `assertUuid`, pagination. |
-| `lib/api/csrf.ts` | `assertSameOrigin` for state-changing handlers. |
-| `lib/api/log.ts` | `logServerError`: metadata-only error logging. |
+| `src/helpers/supabase-server/index.ts` | `createSupabaseServerClient()`: request-scoped client (publishable key + session cookies). `clearSupabaseAuthCookies()`: logout fallback. |
+| `src/helpers/supabase-browser/index.ts` | `createSupabaseBrowserClient()` for Client Components (publishable key only). |
+| `src/helpers/supabase-proxy/index.ts` + `src/proxy.ts` | Session refresh before pages/handlers run (`getClaims()`). |
+| `src/functions/provisioning/index.ts` | `provisionAccount()`: the only secret-key user; creates Auth identities and application accounts. |
+| `src/functions/session/index.ts` | `getAuthenticatedUser`, `getCurrentAppUser`, `signInWithPassword`, `signOutCurrentSession`, `toSessionProfile`, and the `users`-row lookup. |
+| `src/functions/authorization/index.ts` | Guards: `requireAuthenticatedUser`, `requireRole`, `requireAdmin`, `requireStudentOwnership`, `requireTeacherAssignment`; checks `teachesClass`, `teacherHasAssignment`, `findTeacherIdByUserId`. |
+| `src/helpers/roles/index.ts` | `toAppRole` / `toDbRole`: the only mapping between the API's uppercase roles and the lowercase database enum. |
+| `src/helpers/api-response/index.ts` | `ok`, `created`, `paginated`, `errorResponse`, `toErrorResponse`, `apiRoute`. |
+| `src/helpers/function-result/index.ts` | `functionSuccess`, `functionFailure`, `unwrapResult`: the `{ success, message, data }` contract of `src/functions` (see `docs/architecture.md`). |
+| `src/helpers/api-error/index.ts` | `ApiError`, `DataAccessError`, one factory per error code, and `toApiError` (classifies anything thrown). |
+| `src/helpers/request-validation/index.ts` | `parseJsonBody`, `parseParams`, `parseQuery`, `uuidSchema`, `assertUuid`, pagination. |
+| `src/helpers/csrf/index.ts` | `assertSameOrigin` for state-changing handlers. |
+| `src/helpers/logger/index.ts` | `logServerError`: metadata-only error logging. |
 
 Every module above imports `server-only`. Importing one from a Client
 Component fails the build, and `tests/server-only.test.ts` enforces this.
@@ -150,22 +150,24 @@ export const GET = apiRoute(async (request: Request, { params }: RouteContext<"/
 
 | Guard | Allows | Rejects |
 | ----- | ------ | ------- |
-| `requireAuthenticatedUser()` | Any active, provisioned user | 401 no/invalid session; 403 unprovisioned/inactive |
-| `requireRole(roles)` | Users whose **database** role is in `roles` | 401; 403 other roles |
-| `requireAdmin()` | Active `ADMIN` | 401; 403 |
-| `requireStudentOwnership(studentId, { allowAdmin? })` | The student whose `students.userId` is the caller; admins only if `allowAdmin: true` | 401; 400 malformed id; 403 other students, teachers, admins without opt-in |
-| `requireTeacherAssignment(teacherId, classId, subjectId?)` | The caller's own teacher profile, assigned to the class (and subject when given) via `teacherAssignments`, or as class teacher when no subject is given | 401; 400 malformed ids; 403 another teacher's id, unassigned class/subject, non-teachers (including admins) |
+| `requireAuthenticatedUser(client)` | Any active, provisioned user | 401 no/invalid session; 403 unprovisioned/inactive |
+| `requireRole(client, roles)` | Users whose **database** role is in `roles` | 401; 403 other roles |
+| `requireAdmin(client)` | Active `ADMIN` | 401; 403 |
+| `requireStudentOwnership(client, studentId, { isAdminAllowed? })` | The student whose `students.userId` is the caller; admins only if `isAdminAllowed: true` | 401; 400 malformed id; 403 other students, teachers, admins without opt-in |
+| `requireTeacherAssignment(client, { teacherId, classId, subjectId? })` | The caller's own teacher profile, assigned to the class (and subject when given) via `teacherAssignments`, or as class teacher when no subject is given | 401; 400 malformed ids; 403 another teacher's id, unassigned class/subject, non-teachers (including admins) |
 
-The guards accept `{ client }` for dependency injection in tests; in
-production they create the request-scoped client themselves.
+Every guard takes the request-scoped client and returns the standard
+`{ success, message, data }` result. Routes call
+`unwrapResult(await requireAdmin(supabase))`, which gives the user or rethrows
+the 401/403 for `apiRoute`.
 
 **Verification:** the guards' logic is unit-tested against an in-memory fake.
 The same rules are enforced in the database by RLS (`app.teachesClass`,
 `app.teachesClassSubject`, …), which `tests/integration/rls.test.ts` verifies
 against the real database. `getCurrentAppUser` and the user lookup are verified
 end to end in `tests/integration/auth.test.ts`. The student and teacher
-ownership lookups in `lib/auth/repository.ts` get their first real caller in
-Phase 3. Add Route-level integration tests there.
+ownership lookups are exercised end to end by the route-level integration
+suites (`phase3-matrix`, `people`, `attendance`, `results`, `workflow`).
 
 ## Security safeguards
 
@@ -176,7 +178,7 @@ Phase 3. Add Route-level integration tests there.
    caller's own records.
 2. **No service role for user requests.** Auth, guards and API routes use the
    anon-key client, so RLS applies. A test fails if any of them imports
-   `lib/supabase/admin.ts`.
+   `src/helpers/supabase-admin/index.ts`.
 3. **No secrets in responses, logs or bundles.**
    - `logServerError` records only event, error name, code and status. It never
      logs messages, which can contain emails or values.
@@ -207,7 +209,7 @@ Phase 3. Add Route-level integration tests there.
    - Writes happen only in Route Handlers, where Next.js allows them. The
      try/catch in `setAll` covers Server Components, which cannot write
      cookies.
-   - `proxy.ts` refreshes expired sessions with `getClaims()` before any page
+   - `src/proxy.ts` refreshes expired sessions with `getClaims()` before any page
      or handler runs, and forwards the new cookies with `no-store` headers.
      Route Handlers still validate with `getUser()`.
 10. **Server-only.** All of the modules above import `server-only`.

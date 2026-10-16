@@ -12,7 +12,7 @@
     "bootstrap:admin": "tsx --conditions=react-server --env-file=.env.local scripts/bootstrap-admin.ts",
     "test:integration": "vitest run --config vitest.integration.config.mts",
     "db:push": "sh -c 'set -a && . ./.env.local && set +a && supabase db push --db-url \"$SUPABASE_DB_URL\" \"$@\"' --",
-    "db:types": "sh -c 'set -a && . ./.env.local && set +a && supabase gen types typescript --db-url \"$SUPABASE_DB_URL\" --schema public > lib/supabase/database.types.ts'",
+    "db:types": "sh -c 'set -a && . ./.env.local && set +a && supabase gen types typescript --db-url \"$SUPABASE_DB_URL\" --schema public > src/types/database/index.ts'",
     "db:migrations": "sh -c 'set -a && . ./.env.local && set +a && supabase migration list --db-url \"$SUPABASE_DB_URL\" \"$@\"' --",
     "db:advisors": "sh -c 'set -a && . ./.env.local && set +a && supabase db advisors --db-url \"$SUPABASE_DB_URL\" --type all \"$@\"' --"
   },

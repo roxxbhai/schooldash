@@ -15,7 +15,7 @@ Related docs:
 | -------- | ------- | -------- |
 | `NEXT_PUBLIC_SUPABASE_URL` | App (server + browser) | Public |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | App (server + browser). `sb_publishable_…` | Public; RLS applies |
-| `SUPABASE_SECRET_KEY` | `lib/supabase/admin.ts` only (provisioning). `sb_secret_…` | **Secret.** Bypasses RLS. Never `NEXT_PUBLIC_`. |
+| `SUPABASE_SECRET_KEY` | `src/helpers/supabase-admin/index.ts` only (provisioning). `sb_secret_…` | **Secret.** Bypasses RLS. Never `NEXT_PUBLIC_`. |
 | `SUPABASE_DB_URL` | Migrations, type generation, integration tests. Never read by the app. | **Secret.** Database password. |
 
 Where to find them in the dashboard:
@@ -28,7 +28,7 @@ Where to find them in the dashboard:
   (`@` → `%40`).
 
 The app validates its variables only when a client is created
-(`lib/env.ts`). If they are missing, API routes return
+(`src/configs/index.ts`). If they are missing, API routes return
 `503 SERVICE_UNAVAILABLE`, never a fabricated success, and pages and the proxy
 keep working without auth.
 
@@ -58,7 +58,7 @@ Useful scripts (the `db:*` scripts read `.env.local`):
 | `npm run test:integration` | Tests against the **real** project (section 6). |
 | `npm run db:migrations` | Compares local and applied migrations. |
 | `npm run db:push` | Applies pending migrations. |
-| `npm run db:types` | Regenerates `lib/supabase/database.types.ts` from the live schema. |
+| `npm run db:types` | Regenerates `src/types/database/index.ts` from the live schema. |
 | `npm run db:advisors` | Runs Supabase's security and performance advisors. |
 | `npm run bootstrap:admin -- --email … --name "…"` | Creates the first admin (section 5). |
 
@@ -126,7 +126,7 @@ Applied (verified with `npm run db:migrations`):
   integration test. Accounts are created only by the provisioning service.
 - **Sessions** are stored in `sb-<ref>-auth-token` cookies written by
   `@supabase/ssr`. The session flow:
-  1. **`proxy.ts`** (Next 16's replacement for middleware) calls
+  1. **`src/proxy.ts`** (Next 16's replacement for middleware) calls
      `supabase.auth.getClaims()` on every non-static request that has an auth
      cookie. This refreshes expired access tokens and forwards the new cookies
      to the page/handler and the browser, with `no-store` headers. Requests
@@ -149,7 +149,7 @@ Applied (verified with `npm run db:migrations`):
 
 ## 5. Account provisioning and recovery
 
-`lib/auth/provisioning.ts` → `provisionAccount(input, options)`. It is
+`src/functions/provisioning/index.ts` → `provisionAccount(input, options)`. It is
 server-only, the only importer of the secret-key client, and never reachable
 from a public route (enforced by a unit test).
 

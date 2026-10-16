@@ -1,218 +1,228 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-// Attendance service unit tests: repositories and guards are mocked. No Supabase.
-vi.mock("@/lib/auth/repository", () => ({ findTeacherIdByUserId: vi.fn(), teacherHasAssignment: vi.fn() }));
-vi.mock("@/lib/auth/authorization", () => ({ requireStudentOwnership: vi.fn() }));
-vi.mock("@/lib/student-attendance/repository", () => ({
-  findClassWithYear: vi.fn(),
-  insertStudentAttendance: vi.fn(async (_c: unknown, rows: unknown[]) => rows),
-  findStudentAttendance: vi.fn(),
-  updateStudentAttendance: vi.fn(async (_c: unknown, _id: string, values: unknown) => values),
-  listStudentAttendance: vi.fn(async () => ({ items: [], total: 0 })),
+// UNIT TESTS OF THE STUDENT AND TEACHER ATTENDANCE ROUTES: REAL HANDLERS, A
+// RECORDING FAKE DATABASE CLIENT AND STUBBED GUARDS. NO SUPABASE.
+vi.mock('next/server', async (original) => ({ ...(await original<typeof import('next/server')>()), connection: async () => {} }));
+vi.mock('@/helpers/supabase-server', () => ({ createSupabaseServerClient: vi.fn() }));
+vi.mock('@/functions/authorization', async (original) => ({
+  ...(await original<typeof import('@/functions/authorization')>()),
+  ...(await import('../helpers/route-harness')).guardMocks(),
+  findTeacherIdByUserId: vi.fn(),
+  teachesClass: vi.fn(),
+  requireStudentOwnership: vi.fn(async () => ({ success: true, message: '', data: null })),
 }));
-vi.mock("@/lib/teacher-attendance/repository", () => ({
-  insertTeacherAttendance: vi.fn(async (_c: unknown, row: unknown) => row),
-  findTeacherAttendance: vi.fn(),
-  updateTeacherAttendance: vi.fn(async (_c: unknown, _id: string, values: unknown) => values),
-  listTeacherAttendance: vi.fn(async () => ({ items: [], total: 0 })),
-}));
-vi.mock("@/lib/teachers/repository", () => ({ findTeacherStatus: vi.fn() }));
-vi.mock("@/lib/students/repository", () => ({ studentActiveStates: vi.fn() }));
-vi.mock("@/lib/enrollments/repository", () => ({ enrolledStudentIds: vi.fn() }));
 
-import { toPagination } from "@/lib/api/validation";
-import { requireStudentOwnership } from "@/lib/auth/authorization";
-import { findTeacherIdByUserId, teacherHasAssignment } from "@/lib/auth/repository";
-import type { AppUser } from "@/lib/auth/session";
-import { attendanceDateSchema, latestAttendanceDate } from "@/lib/school/validation";
-import * as repo from "@/lib/student-attendance/repository";
-import * as studentRepo from "@/lib/students/repository";
-import * as enrollmentRepo from "@/lib/enrollments/repository";
-import {
-  bulkStudentAttendanceSchema,
-  correctStudentAttendance,
-  createStudentAttendanceSchema,
-  listStudentAttendance,
-  listStudentAttendanceQuerySchema,
-  recordClassAttendance,
-  recordStudentAttendance,
-} from "@/lib/student-attendance/service";
-import * as teacherAttendanceRepo from "@/lib/teacher-attendance/repository";
-import { listTeacherAttendance, recordTeacherAttendance } from "@/lib/teacher-attendance/service";
-import * as teacherRepo from "@/lib/teachers/repository";
+import * as studentAttendance from '@/app/api/student-attendance/route';
+import * as studentAttendanceBulk from '@/app/api/student-attendance/bulk/route';
+import * as studentAttendanceRecord from '@/app/api/student-attendance/[id]/route';
+import * as teacherAttendance from '@/app/api/teacher-attendance/route';
+import { findTeacherIdByUserId, requireStudentOwnership, teachesClass } from '@/functions/authorization';
+import { attendanceDateSchema, latestAttendanceDate } from '@/helpers/school-validation';
+import { createSupabaseServerClient } from '@/helpers/supabase-server';
+import { fakeDb } from '../helpers/fake-db';
+import { okResult } from '../helpers/function-result';
+import { actAs, callRoute, makeUser } from '../helpers/route-harness';
 
-const client = {} as never;
-const ID = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
-const admin: AppUser = { id: ID(1), authUserId: "a", role: "ADMIN", isActive: true };
-const teacher: AppUser = { id: ID(2), authUserId: "b", role: "TEACHER", isActive: true };
-const student: AppUser = { id: ID(3), authUserId: "c", role: "STUDENT", isActive: true };
+const ID = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
+const admin = makeUser('ADMIN', ID(1));
+const teacher = makeUser('TEACHER', ID(2));
+const student = makeUser('STUDENT', ID(3));
 const CLASS = ID(40);
 const S1 = ID(31);
 const S2 = ID(32);
-const year = { id: CLASS, academicYear: { startDate: "2015-04-01", endDate: "2016-03-31" } };
+let db: ReturnType<typeof fakeDb>;
+
+/** THE CLASS, ITS YEAR, AND TWO ACTIVE, ENROLLED STUDENTS — UNLESS A TEST SAYS OTHERWISE. */
+function seedValidSchool(overrides: { classRow?: unknown; students?: unknown[]; enrolled?: string[] } = {}) {
+  db.respondTo('classes.select', { data: 'classRow' in overrides ? overrides.classRow : { id: CLASS, academicYear: { startDate: '2015-04-01', endDate: '2016-03-31' } } });
+  db.respondTo('students.select', { data: overrides.students ?? [{ id: S1, user: { isActive: true } }, { id: S2, user: { isActive: true } }] });
+  db.respondTo('studentEnrollments.select', { data: (overrides.enrolled ?? [S1, S2]).map((studentId) => ({ studentId })) });
+  db.respondTo('studentAttendance.insert', { data: [{ id: ID(60) }, { id: ID(61) }] });
+}
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.mocked(repo.findClassWithYear).mockResolvedValue(year);
-  vi.mocked(studentRepo.studentActiveStates).mockResolvedValue(new Map([[S1, true], [S2, true]]));
-  vi.mocked(enrollmentRepo.enrolledStudentIds).mockResolvedValue(new Set([S1, S2]));
+  db = fakeDb();
+  vi.mocked(createSupabaseServerClient).mockResolvedValue(db.client);
+  actAs(admin);
 });
 
-describe("attendance validation", () => {
-  it("uses exactly the database statuses", () => {
-    expect(createStudentAttendanceSchema.safeParse({ studentId: S1, classId: CLASS, attendanceDate: "2015-06-01", status: "late" }).success).toBe(true);
-    for (const status of ["PRESENT", "holiday", ""]) {
-      expect(createStudentAttendanceSchema.safeParse({ studentId: S1, classId: CLASS, attendanceDate: "2015-06-01", status }).success, status).toBe(false);
-    }
+const input = { studentId: S1, classId: CLASS, attendanceDate: '2015-06-01', status: 'present' };
+const record = (body: object) => callRoute(studentAttendance.POST, { body });
+
+describe('attendance validation', () => {
+  it('uses exactly the database statuses', async () => {
+    seedValidSchool();
+    expect((await record({ ...input, status: 'late' })).status).toBe(201);
+    for (const status of ['PRESENT', 'holiday', '']) expect((await record({ ...input, status })).status, status).toBe(422);
   });
 
-  it("rejects future and invalid dates; allows up to one day ahead of UTC", () => {
-    expect(latestAttendanceDate(new Date("2026-10-15T23:00:00Z"))).toBe("2026-10-16");
-    expect(attendanceDateSchema.safeParse("2999-01-01").success).toBe(false);
-    expect(attendanceDateSchema.safeParse("2015-02-30").success).toBe(false);
+  it('rejects future and invalid dates; allows up to one day ahead of UTC', () => {
+    expect(latestAttendanceDate(new Date('2026-10-15T23:00:00Z'))).toBe('2026-10-16');
+    expect(attendanceDateSchema.safeParse('2999-01-01').success).toBe(false);
+    expect(attendanceDateSchema.safeParse('2015-02-30').success).toBe(false);
     expect(attendanceDateSchema.safeParse(latestAttendanceDate()).success).toBe(true);
   });
 
-  it("rejects client-supplied markedByUserId", () => {
-    expect(createStudentAttendanceSchema.safeParse({ studentId: S1, classId: CLASS, attendanceDate: "2015-06-01", status: "present", markedByUserId: ID(9) }).success).toBe(false);
+  it('rejects client-supplied markedByUserId', async () => {
+    expect((await record({ ...input, markedByUserId: ID(9) })).status).toBe(422);
   });
 
-  it("validates date filters", () => {
-    expect(listStudentAttendanceQuerySchema.safeParse({ date: "2015-06-01", from: "2015-06-01" }).success).toBe(false);
-    expect(listStudentAttendanceQuerySchema.safeParse({ from: "2015-06-02", to: "2015-06-01" }).success).toBe(false);
-    expect(listStudentAttendanceQuerySchema.safeParse({ from: "2015-06-01", to: "2015-06-30", status: "absent" }).success).toBe(true);
+  it('validates date filters', async () => {
+    const list = (query: string) => callRoute(studentAttendance.GET, { path: `/api/student-attendance?${query}` });
+    expect((await list('date=2015-06-01&from=2015-06-01')).status).toBe(400);
+    expect((await list('from=2015-06-02&to=2015-06-01')).status).toBe(400);
+    expect((await list('from=2015-06-01&to=2015-06-30&status=absent')).status).toBe(200);
   });
 
-  it("bulk submissions: 1–200 records, no duplicate students", () => {
-    const base = { classId: CLASS, attendanceDate: "2015-06-01" };
-    expect(bulkStudentAttendanceSchema.safeParse({ ...base, records: [] }).success).toBe(false);
-    const dup = bulkStudentAttendanceSchema.safeParse({ ...base, records: [{ studentId: S1, status: "present" }, { studentId: S1, status: "absent" }] });
-    expect(dup.error?.issues[0].path).toEqual(["records", 1, "studentId"]);
-    const tooMany = Array.from({ length: 201 }, (_, i) => ({ studentId: ID(1000 + i), status: "present" }));
-    expect(bulkStudentAttendanceSchema.safeParse({ ...base, records: tooMany }).success).toBe(false);
+  it('bulk submissions: 1–200 records, no duplicate students', async () => {
+    const bulk = (records: unknown[]) => callRoute(studentAttendanceBulk.POST, { body: { classId: CLASS, attendanceDate: '2015-06-01', records } });
+    expect((await bulk([])).status).toBe(422);
+    const duplicate = await bulk([{ studentId: S1, status: 'present' }, { studentId: S1, status: 'absent' }]);
+    expect(duplicate.body.error?.details?.[0].path).toBe('records.1.studentId');
+    const tooMany = Array.from({ length: 201 }, (_, i) => ({ studentId: ID(1000 + i), status: 'present' }));
+    expect((await bulk(tooMany)).status).toBe(422);
   });
 });
 
-describe("recording student attendance", () => {
-  const input = { studentId: S1, classId: CLASS, attendanceDate: "2015-06-01", status: "present" as const };
-
-  it("records the acting user as marker", async () => {
-    await recordStudentAttendance(client, input, admin);
-    expect(repo.insertStudentAttendance).toHaveBeenCalledWith(client, [{ ...input, markedByUserId: admin.id }]);
+describe('recording student attendance', () => {
+  it('records the acting user as marker', async () => {
+    seedValidSchool();
+    await record(input);
+    expect(db.callsTo('studentAttendance', 'insert')[0].payload).toEqual([{ ...input, markedByUserId: admin.id }]);
   });
 
   it("refuses a teacher who doesn't teach the class, before validating or writing", async () => {
-    vi.mocked(findTeacherIdByUserId).mockResolvedValue(ID(20));
-    vi.mocked(teacherHasAssignment).mockResolvedValue(false);
-    await expect(recordStudentAttendance(client, input, teacher)).rejects.toMatchObject({ status: 403 });
-    expect(teacherHasAssignment).toHaveBeenCalledWith(client, { teacherId: ID(20), classId: CLASS });
-    expect(repo.findClassWithYear).not.toHaveBeenCalled();
-    expect(repo.insertStudentAttendance).not.toHaveBeenCalled();
+    actAs(teacher);
+    vi.mocked(teachesClass).mockResolvedValue(okResult(false));
+    expect((await record(input)).status).toBe(403);
+    expect(teachesClass).toHaveBeenCalledWith(db.client, teacher, { classId: CLASS });
+    expect(db.callsTo('classes')).toHaveLength(0);
+    expect(db.callsTo('studentAttendance', 'insert')).toHaveLength(0);
   });
 
-  it("allows a teacher of the class", async () => {
-    vi.mocked(findTeacherIdByUserId).mockResolvedValue(ID(20));
-    vi.mocked(teacherHasAssignment).mockResolvedValue(true);
-    await recordStudentAttendance(client, input, teacher);
-    expect(repo.insertStudentAttendance).toHaveBeenCalled();
+  it('allows a teacher of the class', async () => {
+    seedValidSchool();
+    actAs(teacher);
+    vi.mocked(teachesClass).mockResolvedValue(okResult(true));
+    expect((await record(input)).status).toBe(201);
+    expect(db.callsTo('studentAttendance', 'insert')).toHaveLength(1);
   });
 
-  it("refuses students outright", async () => {
-    await expect(recordStudentAttendance(client, input, student)).rejects.toMatchObject({ status: 403 });
+  it('refuses students outright', async () => {
+    actAs(student);
+    expect((await record(input)).status).toBe(403);
   });
 
   it.each([
-    ["an unknown class", () => { vi.mocked(repo.findClassWithYear).mockResolvedValue(null); }, "classId", "Class not found."],
-    ["a date outside the academic year", () => {}, "attendanceDate", "The date is outside the class's academic year.", "2016-06-01"],
-    ["an unknown student", () => { vi.mocked(studentRepo.studentActiveStates).mockResolvedValue(new Map()); }, "studentId", "Student not found."],
-    ["a deactivated student", () => { vi.mocked(studentRepo.studentActiveStates).mockResolvedValue(new Map([[S1, false]])); }, "studentId", "The student's account is deactivated."],
-    ["a student not enrolled in the class", () => { vi.mocked(enrollmentRepo.enrolledStudentIds).mockResolvedValue(new Set()); }, "studentId", "The student is not enrolled in this class."],
-  ])("rejects %s (422) without writing", async (_label, arrange, path, message, date = "2015-06-01") => {
-    arrange();
-    await expect(recordStudentAttendance(client, { ...input, attendanceDate: date }, admin)).rejects.toMatchObject({
-      status: 422,
-      details: [{ path, message }],
-    });
-    expect(repo.insertStudentAttendance).not.toHaveBeenCalled();
+    ['an unknown class', { classRow: null }, 'classId', 'Class not found.', '2015-06-01'],
+    ['a date outside the academic year', {}, 'attendanceDate', "The date is outside the class's academic year.", '2016-06-01'],
+    ['an unknown student', { students: [] }, 'studentId', 'Student not found.', '2015-06-01'],
+    ['a deactivated student', { students: [{ id: S1, user: { isActive: false } }] }, 'studentId', "The student's account is deactivated.", '2015-06-01'],
+    ['a student not enrolled in the class', { enrolled: [] }, 'studentId', 'The student is not enrolled in this class.', '2015-06-01'],
+  ])('rejects %s (422) without writing', async (_label, overrides, path, message, date) => {
+    seedValidSchool(overrides);
+    const result = await record({ ...input, attendanceDate: date });
+    expect([result.status, result.body.error?.details]).toEqual([422, [{ path, message }]]);
+    expect(db.callsTo('studentAttendance', 'insert')).toHaveLength(0);
   });
 });
 
-describe("bulk class attendance", () => {
-  const input = {
+describe('bulk class attendance', () => {
+  const submission = {
     classId: CLASS,
-    attendanceDate: "2015-06-01",
+    attendanceDate: '2015-06-01',
     records: [
-      { studentId: S1, status: "present" as const },
-      { studentId: S2, status: "absent" as const, remarks: "sick" },
+      { studentId: S1, status: 'present' },
+      { studentId: S2, status: 'absent', remarks: 'sick' },
     ],
   };
 
-  it("inserts every record in one call, marked by the actor", async () => {
-    const result = await recordClassAttendance(client, input, admin);
-    expect(repo.insertStudentAttendance).toHaveBeenCalledTimes(1);
-    expect(vi.mocked(repo.insertStudentAttendance).mock.calls[0][1]).toEqual([
-      { studentId: S1, status: "present", classId: CLASS, attendanceDate: "2015-06-01", markedByUserId: admin.id },
-      { studentId: S2, status: "absent", remarks: "sick", classId: CLASS, attendanceDate: "2015-06-01", markedByUserId: admin.id },
+  it('inserts every record in one statement, marked by the actor', async () => {
+    seedValidSchool();
+    const result = await callRoute(studentAttendanceBulk.POST, { body: submission });
+    expect(db.callsTo('studentAttendance', 'insert')).toHaveLength(1);
+    expect(db.callsTo('studentAttendance', 'insert')[0].payload).toEqual([
+      { studentId: S1, status: 'present', classId: CLASS, attendanceDate: '2015-06-01', markedByUserId: admin.id },
+      { studentId: S2, status: 'absent', remarks: 'sick', classId: CLASS, attendanceDate: '2015-06-01', markedByUserId: admin.id },
     ]);
-    expect(result.count).toBe(2);
+    expect(result.body.data.count).toBe(2);
   });
 
-  it("reports every invalid record by index and writes nothing", async () => {
-    vi.mocked(enrollmentRepo.enrolledStudentIds).mockResolvedValue(new Set([S1]));
-    vi.mocked(studentRepo.studentActiveStates).mockResolvedValue(new Map([[S1, true], [S2, true]]));
-    await expect(recordClassAttendance(client, input, admin)).rejects.toMatchObject({
-      status: 422,
-      details: [{ path: "records.1.studentId", message: "The student is not enrolled in this class." }],
-    });
-    expect(repo.insertStudentAttendance).not.toHaveBeenCalled();
+  it('reports every invalid record by index and writes nothing', async () => {
+    seedValidSchool({ enrolled: [S1] });
+    const result = await callRoute(studentAttendanceBulk.POST, { body: submission });
+    expect([result.status, result.body.error?.details]).toEqual([422, [{ path: 'records.1.studentId', message: 'The student is not enrolled in this class.' }]]);
+    expect(db.callsTo('studentAttendance', 'insert')).toHaveLength(0);
   });
 });
 
-describe("correcting student attendance", () => {
+describe('correcting student attendance', () => {
+  const correct = (body: object) => callRoute(studentAttendanceRecord.PATCH, { method: 'PATCH', params: { id: ID(60) }, body });
+
   it("authorizes against the record's own class and records the editor", async () => {
-    vi.mocked(repo.findStudentAttendance).mockResolvedValue({ classId: CLASS } as never);
-    vi.mocked(findTeacherIdByUserId).mockResolvedValue(ID(20));
-    vi.mocked(teacherHasAssignment).mockResolvedValue(false);
-    await expect(correctStudentAttendance(client, ID(60), { status: "late" }, teacher)).rejects.toMatchObject({ status: 403 });
-    expect(repo.updateStudentAttendance).not.toHaveBeenCalled();
+    db.respondTo('studentAttendance.select', { data: { id: ID(60), classId: CLASS } });
+    db.respondTo('studentAttendance.update', { data: { id: ID(60) } });
+    actAs(teacher);
+    vi.mocked(teachesClass).mockResolvedValue(okResult(false));
+    expect((await correct({ status: 'late' })).status).toBe(403);
+    expect(teachesClass).toHaveBeenCalledWith(db.client, teacher, { classId: CLASS });
+    expect(db.callsTo('studentAttendance', 'update')).toHaveLength(0);
 
-    await correctStudentAttendance(client, ID(60), { status: "late", remarks: null }, admin);
-    expect(repo.updateStudentAttendance).toHaveBeenCalledWith(client, ID(60), { status: "late", remarks: null, markedByUserId: admin.id });
+    actAs(admin);
+    expect((await correct({ status: 'late', remarks: null })).status).toBe(200);
+    expect(db.callsTo('studentAttendance', 'update')[0].payload).toEqual({ status: 'late', remarks: null, markedByUserId: admin.id });
   });
 
-  it("rejects an empty correction", async () => {
-    await expect(correctStudentAttendance(client, ID(60), {}, admin)).rejects.toMatchObject({ status: 422 });
+  it('rejects an empty correction', async () => {
+    expect((await correct({})).status).toBe(422);
   });
 });
 
-describe("reading attendance", () => {
+describe('reading attendance', () => {
   it("a student asking for another student's attendance gets an ownership check", async () => {
-    await listStudentAttendance(client, toPagination({ page: 1, limit: 20 }), { studentId: S2 }, student);
-    expect(requireStudentOwnership).toHaveBeenCalledWith(S2, { client });
+    actAs(student);
+    await callRoute(studentAttendance.GET, { path: `/api/student-attendance?studentId=${S2}` });
+    expect(requireStudentOwnership).toHaveBeenCalledWith(db.client, S2);
   });
 
   it("a teacher asking for another teacher's attendance gets 403", async () => {
-    vi.mocked(findTeacherIdByUserId).mockResolvedValue(ID(20));
-    await expect(listTeacherAttendance(client, toPagination({ page: 1, limit: 20 }), { teacherId: ID(21) }, teacher)).rejects.toMatchObject({ status: 403 });
-    await expect(listTeacherAttendance(client, toPagination({ page: 1, limit: 20 }), { teacherId: ID(20) }, teacher)).resolves.toBeDefined();
+    actAs(teacher);
+    vi.mocked(findTeacherIdByUserId).mockResolvedValue(okResult(ID(20)));
+    const list = (teacherId: string) => callRoute(teacherAttendance.GET, { path: `/api/teacher-attendance?teacherId=${teacherId}` });
+    expect((await list(ID(21))).status).toBe(403);
+    expect((await list(ID(20))).status).toBe(200);
   });
 });
 
-describe("recording teacher attendance", () => {
-  it("rejects a deactivated teacher before writing", async () => {
-    vi.mocked(teacherRepo.findTeacherStatus).mockResolvedValue({ id: ID(20), user: { isActive: false } });
-    await expect(recordTeacherAttendance(client, { teacherId: ID(20), attendanceDate: "2015-06-01", status: "present" }, admin)).rejects.toMatchObject({ status: 422 });
-    expect(teacherAttendanceRepo.insertTeacherAttendance).not.toHaveBeenCalled();
+describe('recording teacher attendance', () => {
+  const recordTeacher = (status: string) => callRoute(teacherAttendance.POST, { body: { teacherId: ID(20), attendanceDate: '2015-06-01', status } });
+
+  it('rejects a deactivated teacher before writing', async () => {
+    db.respondTo('teachers.select', { data: { id: ID(20), user: { isActive: false } } });
+    expect((await recordTeacher('present')).status).toBe(422);
+    expect(db.callsTo('teacherAttendance', 'insert')).toHaveLength(0);
   });
 
-  it("records the acting admin as marker", async () => {
-    vi.mocked(teacherRepo.findTeacherStatus).mockResolvedValue({ id: ID(20), user: { isActive: true } });
-    await recordTeacherAttendance(client, { teacherId: ID(20), attendanceDate: "2015-06-01", status: "leave" }, admin);
-    expect(teacherAttendanceRepo.insertTeacherAttendance).toHaveBeenCalledWith(client, {
+  it('records the acting admin as marker', async () => {
+    db.respondTo('teachers.select', { data: { id: ID(20), user: { isActive: true } } });
+    db.respondTo('teacherAttendance.insert', { data: [{ id: ID(70) }] });
+    expect((await recordTeacher('leave')).status).toBe(201);
+    expect(db.callsTo('teacherAttendance', 'insert')[0].payload).toEqual({
       teacherId: ID(20),
-      attendanceDate: "2015-06-01",
-      status: "leave",
+      attendanceDate: '2015-06-01',
+      status: 'leave',
       markedByUserId: admin.id,
     });
+  });
+});
+
+describe('list ordering ends with a unique column (stable pagination)', () => {
+  it.each([
+    ['student attendance', studentAttendance.GET, 'studentAttendance'],
+    ['teacher attendance', teacherAttendance.GET, 'teacherAttendance'],
+  ])('%s', async (_name, handler, table) => {
+    await callRoute(handler);
+    expect(db.callsTo(table, 'select')[0].orders.at(-1)).toBe('id');
   });
 });

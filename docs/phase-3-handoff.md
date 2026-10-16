@@ -1,14 +1,19 @@
 # Phase 3 handoff: integration contract
 
+> **Updated in Phase 7.** The service/repository layer was removed and the
+> code moved under `src/`. Guards now take the client first and return
+> `{ success, message, data }` results. `docs/architecture.md` is the current
+> reference; the contracts below are kept up to date with it.
+
 Everything Phase 3 builds must use the interfaces below. They are implemented,
 and they are verified against the real Supabase project in the pre-Phase-3
 release gate (2026-10-15).
 
 **Non-negotiable**
 
-- Phase 3 reads and writes the **real Supabase database** through production
-  repository modules.
-- Mocks and fakes (`tests/helpers/fake-supabase.ts`, a stubbed `fetch`) are for
+- All code reads and writes the **real Supabase database** through the
+  production route handlers and `src/functions` modules.
+- Mocks and fakes (`tests/helpers/fake-supabase.ts`, `tests/helpers/fake-db.ts`, a stubbed `fetch`) are for
   **unit tests only**. They must never become a data store, and no code path may
   return success for a write that did not happen.
 
@@ -16,11 +21,14 @@ release gate (2026-10-15).
 
 | Need | Use | Returns / throws |
 | ---- | --- | ---------------- |
-| Any signed-in, active user | `requireAuthenticatedUser({ client })` | `AppUser` or 401 / 403 `ACCOUNT_NOT_PROVISIONED` / 403 `ACCOUNT_INACTIVE` |
-| A specific role | `requireRole(["ADMIN", "TEACHER"], { client })` | `AppUser` or 401 / 403 |
-| Admin only | `requireAdmin({ client })` | `AppUser` or 401 / 403 |
-| A student's own record | `requireStudentOwnership(studentId, { client, allowAdmin? })` | `{ user, studentId, grantedBy }` or 400 / 401 / 403 |
-| A teacher's assigned class/subject | `requireTeacherAssignment(teacherId, classId, subjectId?, { client })` | `{ user, teacherId, classId, subjectId? }` or 400 / 401 / 403 |
+| Any signed-in, active user | `requireAuthenticatedUser(client)` | `AppUser` or 401 / 403 `ACCOUNT_NOT_PROVISIONED` / 403 `ACCOUNT_INACTIVE` |
+| A specific role | `requireRole(client, ['ADMIN', 'TEACHER'])` | `AppUser` or 401 / 403 |
+| Admin only | `requireAdmin(client)` | `AppUser` or 401 / 403 |
+| A student's own record | `requireStudentOwnership(client, studentId, { isAdminAllowed? })` | `{ user, studentId, grantedBy }` or 400 / 401 / 403 |
+| A teacher's assigned class/subject | `requireTeacherAssignment(client, { teacherId, classId, subjectId? })` | `{ user, teacherId, classId, subjectId? }` or 400 / 401 / 403 |
+
+Each returns the standard result; `unwrapResult(…)` yields the value above or
+rethrows the error.
 
 `AppUser = { id, authUserId, role: "ADMIN" | "TEACHER" | "STUDENT", isActive: true }`.
 
@@ -30,7 +38,7 @@ release gate (2026-10-15).
   role comes from the `users` row. JWT `user_metadata`/`app_metadata` is never
   used for authorization.
 - The DB enum is lowercase (`admin`); the API is uppercase (`ADMIN`). Map them
-  only with `toAppRole` (`lib/auth/roles.ts`).
+  only with `toAppRole` (`src/helpers/roles/index.ts`).
 - IDs passed to guards identify the resource being accessed. They are compared
   against the caller's own records, never trusted as identity.
 
@@ -38,66 +46,70 @@ release gate (2026-10-15).
 
 | Client | Where | Key | RLS |
 | ------ | ----- | --- | --- |
-| `createSupabaseServerClient()` (`lib/supabase/server.ts`) | Route Handlers, Server Components, Server Functions | publishable + user cookies | **Applies.** Use this for all normal reads and writes. |
-| `createSupabaseBrowserClient()` (`lib/supabase/client.ts`) | Client Components | publishable | Applies |
-| `createSupabaseAdminClient()` (`lib/supabase/admin.ts`) | **Only** `lib/auth/provisioning.ts` | secret | **Bypassed** |
+| `createSupabaseServerClient()` (`src/helpers/supabase-server/index.ts`) | Route Handlers, Server Components, Server Functions | publishable + user cookies | **Applies.** Use this for all normal reads and writes. |
+| `createSupabaseBrowserClient()` (`src/helpers/supabase-browser/index.ts`) | Client Components | publishable | Applies |
+| `createSupabaseAdminClient()` (`src/helpers/supabase-admin/index.ts`) | **Only** `src/functions/provisioning/index.ts` | secret | **Bypassed** |
 
-- Create **one** server client per request and pass it to the guard and the
-  repositories, so the guard and queries share the same session:
+- Create **one** server client per request and pass it to the guard and every
+  query, so they share the same session:
 
   ```ts
   const supabase = await createSupabaseServerClient();
-  const user = await requireAdmin({ client: supabase });
-  const rows = await listSubjects(supabase, pagination);
+  const user = unwrapResult(await requireAdmin(supabase));
   ```
 - Clients are typed with the generated `Database` type
-  (`lib/supabase/database.types.ts`). Repository signatures take
-  `SupabaseClient<Database>`.
+  (`src/types/database/index.ts`). Functions take
+  `DbClient` (`src/types/supabase`), i.e. `SupabaseClient<Database>`.
 - `tests/server-only.test.ts` fails if anything except
-  `lib/auth/provisioning.ts` imports the admin client, or if any `app/` file
-  imports the provisioning service. If Phase 3 needs a new privileged
+  `src/functions/provisioning/index.ts` imports the admin client, or if any route other than the two admin-guarded people routes
+  (`POST /api/teachers`, `POST /api/students`, both calling `requireAdmin`
+  first) imports the provisioning function. If Phase 3 needs a new privileged
   operation, add it as a reviewed function next to `provisionAccount`, update
   that test deliberately, and document why RLS cannot express it.
 
 ## 3. Layering
 
 ```
-app/api/<resource>/route.ts      Route Handler: apiRoute, CSRF, guard, parse, call service, respond
-lib/<domain>/service.ts          Business rules (e.g. "a class teacher must teach in that class")
-lib/<domain>/repository.ts       Supabase queries only; map rows/errors; no HTTP concerns
+src/app/api/<resource>/route.ts     Route Handler: apiRoute, CSRF, guard, parse, queries, respond
+src/functions/<module>/index.ts     Logic shared between routes; returns { success, message, data }
+src/helpers/…                       Errors, responses, validation, query wrappers (throwing or pure)
 ```
 
 **Route Handler template**
 
 ```ts
-import { z } from "zod";
-import { assertSameOrigin } from "@/lib/api/csrf";
-import { apiRoute, created } from "@/lib/api/response";
-import { parseJsonBody } from "@/lib/api/validation";
-import { requireAdmin } from "@/lib/auth/authorization";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { createSubject } from "@/lib/subjects/service";
+import { z } from 'zod';
+import { SUBJECT_COLUMNS, SUBJECT_ERRORS } from '@/constants/subjects';
+import { requireAdmin } from '@/functions/authorization';
+import { apiRoute, created } from '@/helpers/api-response';
+import { assertSameOrigin } from '@/helpers/csrf';
+import { one } from '@/helpers/db-query';
+import { unwrapResult } from '@/helpers/function-result';
+import { parseJsonBody } from '@/helpers/request-validation';
+import { createSupabaseServerClient } from '@/helpers/supabase-server';
+import type { Subject } from '@/types/subjects';
 
-const bodySchema = z.strictObject({ code: z.string().trim().min(1).max(20), name: z.string().trim().min(1).max(100) });
+const createSubjectSchema = z.strictObject({ code: z.string().trim().min(1).max(20), name: z.string().trim().min(1).max(100) });
 
 export const POST = apiRoute(async (request: Request) => {
-  assertSameOrigin(request);                         // every state-changing handler
+  assertSameOrigin(request); // EVERY STATE-CHANGING HANDLER
   const supabase = await createSupabaseServerClient();
-  const user = await requireAdmin({ client: supabase });
-  const input = await parseJsonBody(request, bodySchema);
-  return created(await createSubject(supabase, input, user));
+  unwrapResult(await requireAdmin(supabase));
+  const newSubject = await parseJsonBody(request, createSubjectSchema);
+  const query = supabase.from('subjects').insert(newSubject).select(SUBJECT_COLUMNS).maybeSingle();
+  return created(await one<Subject>('subjects.insert', query, SUBJECT_ERRORS));
 });
 ```
 
-- **GET with params:** use `parseParams(params, z.object({ id: uuidSchema }))`.
-  For collections, use `getPagination(new URL(request.url).searchParams)`, then
-  `.range(from, to)`.
-- **Repositories** must:
-  - check `error` on every Supabase result and never return partial data;
-  - validate unexpected row shapes;
-  - throw `DataAccessError(operation, error.code)` on failure. See
-    `lib/auth/repository.ts` for the pattern (`unwrap`).
-- **Done in Phase 3:** `mapDbError` (`lib/api/db-errors.ts`) maps
+- **GET with params:** use `parseParams(context.params, idParamsSchema)`. For
+  collections, use `getPagination(searchParams)`, `.range(from, to)` and
+  `page(operation, query, pagination, errors)`, which returns
+  `{ items, pagination }`.
+- **Every query** goes through `src/helpers/db-query` (`one`, `maybeOne`,
+  `many`, `page`, `rpcResult`, `parseRow`). A failed query always throws a
+  mapped error and never returns partial data; `parseRow` validates row shapes
+  with zod where authorization depends on them.
+- **Done in Phase 3:** `mapDbError` (`src/helpers/db-error/index.ts`) maps
   PostgREST/Postgres codes to API errors. See `docs/school-api.md`.
 
   | Code | Return |
@@ -114,7 +126,7 @@ export const POST = apiRoute(async (request: Request) => {
 
 - **Success:** `ok(data)` (200) or `created(data)` (201) →
   `{ "data": …, "error": null }`.
-- **Failure:** throw an `ApiError` (factories in `lib/api/errors.ts`) →
+- **Failure:** throw an `ApiError` (factories in `src/helpers/api-error/index.ts`) →
   `{ "data": null, "error": { "code", "message", "details"? } }`.
 - **Status rules:**
   - 400: malformed body, params or query.
@@ -168,7 +180,7 @@ export const POST = apiRoute(async (request: Request) => {
 
 | What | Where | How |
 | ---- | ----- | --- |
-| Route/service logic | `tests/<domain>/*.test.ts` (`npm test`) | Mock at the repository boundary or use `fake-supabase.ts`. Offline. |
+| Route and function logic | `tests/school/*.test.ts`, `tests/auth/*.test.ts` (`npm test`) | Real route handlers against `tests/helpers/fake-db.ts` with `tests/helpers/route-harness.ts`; guards against `fake-supabase.ts`. Offline. |
 | RLS for new tables/policies | `tests/integration/rls.test.ts` (`npm run test:integration`) | Extend `helpers/school.ts` fixtures; `actAs(db, "studentA")`, then assert exact visible IDs, `expectSqlError(…, "42501")` for denied writes, and `affected(…) === 0` for filtered updates. Always rolled back. |
 | Real end-to-end | `tests/integration/*.test.ts` | Real Auth sessions via `provisionAccount` with `it-<run>-*@example.com` identities. Delete them in `afterAll`. |
 
@@ -185,10 +197,9 @@ Rules:
 
 ## 8. Known open items carried into Phase 3
 
-- ~~The Postgres error-code mapper~~ (done in Phase 3: `lib/api/db-errors.ts`).
-- ~~The deactivation/reactivation service~~ (done in Phase 3: `lib/auth/account-status.ts`).
-- Integration coverage for `requireStudentOwnership`/`requireTeacherAssignment`
-  repository lookups through real routes (they're unit-tested; RLS enforces the
-  same rules and is integration-tested).
+- ~~The Postgres error-code mapper~~ (done in Phase 3: `src/helpers/db-error/index.ts`).
+- ~~The deactivation/reactivation service~~ (done in Phase 3: `src/functions/account-status/index.ts`).
+- ~~Integration coverage for the ownership lookups through real routes~~
+  (done: the route-level integration suites exercise them).
 - `users.email` isn't synced if a user changes their Auth email.
-- No app-level rate limiting; no DB-level teacher double-booking guard.
+- No app-level rate limiting. (Teacher double-booking is prevented in the database since Phase 6.)

@@ -32,7 +32,7 @@
 | `supabase/migrations/20261015172701_exams_and_results.sql` | Audit of exams, papers and marks; deactivated students cannot receive new marks. |
 | `supabase/migrations/20261016090000_timetable_integrity.sql` | Timetable academic year (derived), class/teacher no-overlap exclusion constraints, column grants, audit. |
 | `supabase/migrations/20261016100000_notices_workflow.sql` | Notice lifecycle trigger, draft-only audience changes, column grants, atomic notice functions, audit. |
-| `lib/supabase/database.types.ts` | Types generated from the live schema (`npm run db:types`). |
+| `src/types/database/index.ts` | Types generated from the live schema (`npm run db:types`). |
 | `README.md` | This document. |
 
 ## Schema overview
@@ -140,7 +140,7 @@ Decisions that go beyond a literal reading of the brief:
    policy.
 9. **API role names are uppercase.** The database enum stores `admin`,
    `teacher`, `student`; the API exposes `ADMIN`, `TEACHER`, `STUDENT`. The
-   mapping lives only in `lib/auth/roles.ts`.
+   mapping lives only in `src/helpers/roles/index.ts`.
 10. **Phase 2.5 — deletes are granted only for configuration rows.**
     Admins may DELETE `teacherAssignments`, `timetableEntries`, `notices` and
     `noticeAudiences`. Every other table has no DELETE grant for any API user:
@@ -185,12 +185,12 @@ Decisions that go beyond a literal reading of the brief:
 
 | Path | Key | RLS | Used for |
 | ---- | --- | --- | -------- |
-| `createSupabaseServerClient()` (`lib/supabase/server.ts`) | publishable key + user's session cookies | **Enforced** | All user-initiated reads and writes (Route Handlers, Server Components, Server Functions). |
-| `createSupabaseBrowserClient()` (`lib/supabase/client.ts`) | publishable key + browser session | **Enforced** | Client Components (none use it yet). |
-| `createSupabaseAdminClient()` (`lib/supabase/admin.ts`) | secret key (`service_role`) | **Bypassed** | Only `lib/auth/provisioning.ts` (account creation) and `lib/auth/account-status.ts` (deactivation/reactivation, which must delete Auth sessions). A unit test fails if anything else imports it. |
+| `createSupabaseServerClient()` (`src/helpers/supabase-server/index.ts`) | publishable key + user's session cookies | **Enforced** | All user-initiated reads and writes (Route Handlers, Server Components, Server Functions). |
+| `createSupabaseBrowserClient()` (`src/helpers/supabase-browser/index.ts`) | publishable key + browser session | **Enforced** | Client Components (none use it yet). |
+| `createSupabaseAdminClient()` (`src/helpers/supabase-admin/index.ts`) | secret key (`service_role`) | **Bypassed** | Only `src/functions/provisioning/index.ts` (account creation) and `src/functions/account-status/index.ts` (deactivation/reactivation, which must delete Auth sessions). A unit test fails if anything else imports it. |
 
 - The server and admin modules import `server-only`, so importing them from a
-  Client Component fails the build. `lib/env.ts` is server-only as well.
+  Client Component fails the build. `src/configs/index.ts` is server-only as well.
 - `SUPABASE_SECRET_KEY` has no `NEXT_PUBLIC_` prefix and is therefore
   never inlined into browser bundles.
 - Code using the admin client **must perform its own authorization check**
@@ -210,7 +210,7 @@ Decisions that go beyond a literal reading of the brief:
    tell a deactivated account (`ACCOUNT_INACTIVE`) apart from an unprovisioned
    one. It grants no access to any other data.
 4. **`service_role` bypasses RLS** by design in Supabase; it is used only from
-   `lib/supabase/admin.ts`.
+   `src/helpers/supabase-admin/index.ts`.
 
 ### Helper functions (migration 2)
 
@@ -416,7 +416,7 @@ project's secret key, using a local CLI:
 npm run bootstrap:admin -- --email admin@school.org --name "Full Name"
 ```
 
-What it does (`scripts/bootstrap-admin.ts` → `lib/auth/provisioning.ts`):
+What it does (`scripts/bootstrap-admin.ts` → `src/functions/provisioning/index.ts`):
 
 1. Refuses to run if any active admin already exists.
 2. Finds the Auth user for the email (e.g. one created in the dashboard under
@@ -441,7 +441,7 @@ Verify: sign in through `POST /api/auth/login`; `GET /api/auth/me` returns
   `service_role`.
 - Public sign-up is disabled; even if it were enabled, an Auth identity without
   a `users` row fails every policy and is rejected by the API.
-- The secret key is used only by `lib/supabase/admin.ts`, which is
+- The secret key is used only by `src/helpers/supabase-admin/index.ts`, which is
   `server-only`; Supabase also rejects secret keys sent from browsers.
 
 Subsequent admins, teachers and students will be created by an existing admin

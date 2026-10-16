@@ -8,10 +8,12 @@ and validation (400 for bad params/query, 422 for bad bodies).
 **Layering**
 
 ```
-app/api/<resource>/…/route.ts        guard, CSRF, parse
-  → lib/<domain>/service.ts          business rules
-  → lib/<domain>/repository.ts       Supabase queries
+src/app/api/<resource>/…/route.ts    guard, CSRF, parse, single-use queries, respond
+  → src/functions/<module>/index.ts  logic shared between routes ({ success, message, data } results)
+  → src/helpers/…                    errors, responses, validation, query wrappers
 ```
+
+Full description: `docs/architecture.md`.
 
 Domains: `academic-years`, `subjects`, `classes`, `teachers`, `students`,
 `enrollments`, `teacher-assignments`, `student-attendance`,
@@ -367,7 +369,7 @@ No delivery (email, SMS, push) exists; notices are read through the API.
 
 ## Account deactivation behaviour
 
-`lib/auth/account-status.ts` calls `public."setAppUserStatus"`. Only the
+`src/functions/account-status/index.ts` calls `public."setAppUserStatus"`. Only the
 secret-key client can execute it. In **one transaction** it:
 
 1. locks the user (and, when deactivating an admin, all active admins);
@@ -392,7 +394,7 @@ again.
 
 ## Error mapping
 
-`lib/api/db-errors.ts` (`mapDbError`) maps on the SQLSTATE or PostgREST code
+`src/helpers/db-error/index.ts` (`mapDbError`) maps on the SQLSTATE or PostgREST code
 and the constraint name. Raw messages, details, hints and constraint names are
 never returned.
 
@@ -414,7 +416,7 @@ never returned.
 | no code | network failure | 503 |
 | anything else | | 500 `INTERNAL_ERROR`, logged with code only |
 
-Repositories go through `lib/db/query.ts` (`many`, `maybeOne`, `one`,
+Every query goes through `src/helpers/db-query/index.ts` (`many`, `maybeOne`, `one`,
 `rpcResult`, `page`). Every Supabase result is checked, so a failed query
 always throws and never yields empty or fabricated data.
 
