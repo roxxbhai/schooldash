@@ -19,6 +19,32 @@ export type Database = {
                   Relationships: [
                     
                   ]
+                },"accountSetupCodes": {
+                  Row: {
+                    "codeHash": string,"createdAt": string,"expiresAt": string,"failedAttempts": number,"id": string,"issuedByUserId": string | null,"userId": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "codeHash": string,"createdAt"?: string,"expiresAt": string,"failedAttempts"?: number,"id"?: string,"issuedByUserId"?: string | null,"userId": string
+                  }
+                  Update: {
+                    "codeHash"?: string,"createdAt"?: string,"expiresAt"?: string,"failedAttempts"?: number,"id"?: string,"issuedByUserId"?: string | null,"userId"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "accountSetupCodes_issuedByUserId_fkey"
+      columns: ["issuedByUserId"]
+isOneToOne: false
+      referencedRelation: "users"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "accountSetupCodes_userId_fkey"
+      columns: ["userId"]
+isOneToOne: true
+      referencedRelation: "users"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"auditLogs": {
                   Row: {
                     "action": string,"actorUserId": string | null,"createdAt": string,"entityId": string | null,"entityType": string,"id": string,"metadata": Json | null,"newData": Json | null,"oldData": Json | null
@@ -249,9 +275,9 @@ isOneToOne: false
                   ]
                 },"students": {
                   Row: {
-                    "address": string | null,"admissionDate": string | null,"admissionNumber": string,"bloodGroup": string | null,"createdAt": string,"dateOfBirth": string | null,"fatherName": string | null,"gender": string | null,"id": string,"motherName": string | null,"role": Database["public"]['Enums']["userRole"],"updatedAt": string,"userId": string
+                    "address": string | null,"admissionDate": string | null,"admissionNumber": string,"bloodGroup": string | null,"createdAt": string,"dateOfBirth": string | null,"fatherName": string | null,"gender": string | null,"id": string,"motherName": string | null,"role": Database["public"]['Enums']["userRole"],"updatedAt": string,"userId": string,"studentSearchText": string | null
                   }
-                  ComputedFields: never
+                  ComputedFields: "studentSearchText"
                   Insert: {
                     "address"?: string | null,"admissionDate"?: string | null,"admissionNumber": string,"bloodGroup"?: string | null,"createdAt"?: string,"dateOfBirth"?: string | null,"fatherName"?: string | null,"gender"?: string | null,"id"?: string,"motherName"?: string | null,"role"?: Database["public"]['Enums']["userRole"],"updatedAt"?: string,"userId": string
                   }
@@ -341,9 +367,9 @@ isOneToOne: false
                   ]
                 },"teachers": {
                   Row: {
-                    "createdAt": string,"dateOfJoining": string | null,"employeeCode": string,"id": string,"qualification": string | null,"role": Database["public"]['Enums']["userRole"],"updatedAt": string,"userId": string
+                    "createdAt": string,"dateOfJoining": string | null,"employeeCode": string,"id": string,"qualification": string | null,"role": Database["public"]['Enums']["userRole"],"updatedAt": string,"userId": string,"teacherSearchText": string | null
                   }
-                  ComputedFields: never
+                  ComputedFields: "teacherSearchText"
                   Insert: {
                     "createdAt"?: string,"dateOfJoining"?: string | null,"employeeCode": string,"id"?: string,"qualification"?: string | null,"role"?: Database["public"]['Enums']["userRole"],"updatedAt"?: string,"userId": string
                   }
@@ -423,11 +449,17 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "createNotice":
+            "consumeAccountSetupCode":
+{ Args: { "codeHash": string,"email": string }; Returns: Json
+                           },
+"createNotice":
 { Args: { "audiences": Json,"body": string,"category": string,"title": string }; Returns: string
                            },
 "findAuthUserIdByEmail":
 { Args: { "email": string }; Returns: string
+                           },
+"issueAccountSetupCode":
+{ Args: { "actorUserId": string,"codeHash": string,"expiresAt": string,"userId": string }; Returns: undefined
                            },
 "provisionAppUser":
 { Args: { "actorUserId"?: string,"authUserId": string,"email": string,"fullName": string,"profile"?: Json,"role": Database["public"]['Enums']["userRole"] }; Returns: string
@@ -443,6 +475,12 @@ isOneToOne: false
                            },
 "setNoticeAudiences":
 { Args: { "audiences": Json,"noticeId": string }; Returns: undefined
+                           },
+"studentSearchText":
+{ Args: { "student": Omit<Database["public"]['Tables']["students"]['Row'], Database["public"]['Tables']["students"]['ComputedFields']> }; Returns: string
+                           },
+"teacherSearchText":
+{ Args: { "teacher": Omit<Database["public"]['Tables']["teachers"]['Row'], Database["public"]['Tables']["teachers"]['ComputedFields']> }; Returns: string
                            },
 "updateStudentProfile":
 { Args: { "profilePatch"?: Json,"studentId": string,"userPatch"?: Json }; Returns: undefined

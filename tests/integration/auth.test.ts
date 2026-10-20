@@ -157,7 +157,7 @@ describe('login and session (real Supabase Auth)', () => {
     const result = await signIn(accounts.student);
     expect(result).toEqual({
       status: 200,
-      body: { data: { id: accounts.student.userId, role: 'STUDENT', isActive: true }, error: null },
+      body: { data: { id: accounts.student.userId, role: 'STUDENT', isActive: true, fullName: 'IT student', email: accounts.student.email }, error: null },
     });
     expect(state.cookies.jar.get(SESSION_COOKIE)).toMatch(/^base64-/);
 

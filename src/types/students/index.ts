@@ -1,6 +1,6 @@
 import type { Tables } from '@/types/database';
 
-export type Student = Omit<Tables<'students'>, 'role'> & {
+export type Student = Omit<Tables<'students'>, 'role' | 'studentSearchText'> & {
   user: Pick<Tables<'users'>, 'fullName' | 'email' | 'phone' | 'isActive'>;
 };
 

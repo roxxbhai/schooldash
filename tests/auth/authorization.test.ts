@@ -20,12 +20,12 @@ const SUBJECT = { maths: id(51), science: id(52) };
 
 const tables: Record<string, Row[]> = {
   users: [
-    { id: USERS.admin, authUserId: AUTH.admin, role: 'admin', isActive: true },
-    { id: USERS.inactiveAdmin, authUserId: AUTH.inactiveAdmin, role: 'admin', isActive: false },
-    { id: USERS.studentA, authUserId: AUTH.studentA, role: 'student', isActive: true },
-    { id: USERS.studentB, authUserId: AUTH.studentB, role: 'student', isActive: true },
-    { id: USERS.teacherA, authUserId: AUTH.teacherA, role: 'teacher', isActive: true },
-    { id: USERS.teacherB, authUserId: AUTH.teacherB, role: 'teacher', isActive: true },
+    { id: USERS.admin, authUserId: AUTH.admin, role: 'admin', isActive: true, fullName: 'admin', email: 'admin@example.com' },
+    { id: USERS.inactiveAdmin, authUserId: AUTH.inactiveAdmin, role: 'admin', isActive: false, fullName: 'inactiveAdmin', email: 'inactiveadmin@example.com' },
+    { id: USERS.studentA, authUserId: AUTH.studentA, role: 'student', isActive: true, fullName: 'studentA', email: 'studenta@example.com' },
+    { id: USERS.studentB, authUserId: AUTH.studentB, role: 'student', isActive: true, fullName: 'studentB', email: 'studentb@example.com' },
+    { id: USERS.teacherA, authUserId: AUTH.teacherA, role: 'teacher', isActive: true, fullName: 'teacherA', email: 'teachera@example.com' },
+    { id: USERS.teacherB, authUserId: AUTH.teacherB, role: 'teacher', isActive: true, fullName: 'teacherB', email: 'teacherb@example.com' },
   ],
   students: [
     { id: STUDENT.a, userId: USERS.studentA },

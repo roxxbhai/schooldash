@@ -27,10 +27,12 @@ const appUserRowSchema = z.object({
   authUserId: z.uuid(),
   role: z.enum(DB_USER_ROLES),
   isActive: z.boolean(),
+  fullName: z.string(),
+  email: z.string(),
 });
 
 export function toSessionProfile(user: AppUser): SessionProfile {
-  return { id: user.id, role: user.role, isActive: user.isActive };
+  return { id: user.id, role: user.role, isActive: user.isActive, fullName: user.fullName, email: user.email };
 }
 
 /** TRUE FOR FAILURES OF THE AUTH SERVICE ITSELF RATHER THAN OF THE SESSION. */
@@ -42,7 +44,7 @@ function isAuthServiceFailure(error: AuthError): boolean {
 async function findAppUserByAuthUserId(client: DbClient, authUserId: string): Promise<AppUserRecord | null> {
   const result = await client
     .from('users')
-    .select('id, authUserId, role, isActive')
+    .select('id, authUserId, role, isActive, fullName, email')
     .eq('authUserId', authUserId)
     .maybeSingle();
   return parseRow('users.findByAuthUserId', result, appUserRowSchema);
@@ -84,6 +86,8 @@ async function resolveAppUser(client: DbClient, authUserId: string): Promise<Fun
       authUserId: record.authUserId,
       role: toAppRole(record.role),
       isActive: true,
+      fullName: record.fullName,
+      email: record.email,
     });
   } catch (error) {
     return functionFailure(error, 'auth.resolveAppUser');

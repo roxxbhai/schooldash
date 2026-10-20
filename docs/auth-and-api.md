@@ -13,6 +13,7 @@
 | `src/helpers/supabase-browser/index.ts` | `createSupabaseBrowserClient()` for Client Components (publishable key only). |
 | `src/helpers/supabase-proxy/index.ts` + `src/proxy.ts` | Session refresh before pages/handlers run (`getClaims()`). |
 | `src/functions/provisioning/index.ts` | `provisionAccount()`: the only secret-key user; creates Auth identities and application accounts. |
+| `src/functions/account-setup/index.ts` | `issueSetupCode`, `completeAccountSetup`: admin-issued one-time setup codes (secret-key client; see below). |
 | `src/functions/session/index.ts` | `getAuthenticatedUser`, `getCurrentAppUser`, `signInWithPassword`, `signOutCurrentSession`, `toSessionProfile`, and the `users`-row lookup. |
 | `src/functions/authorization/index.ts` | Guards: `requireAuthenticatedUser`, `requireRole`, `requireAdmin`, `requireStudentOwnership`, `requireTeacherAssignment`; checks `teachesClass`, `teacherHasAssignment`, `findTeacherIdByUserId`. |
 | `src/helpers/roles/index.ts` | `toAppRole` / `toDbRole`: the only mapping between the API's uppercase roles and the lowercase database enum. |
@@ -36,7 +37,7 @@ All responses use the standard envelope and send
 Returns the session profile of the signed-in user.
 
 ```json
-{ "data": { "id": "<users.id>", "role": "STUDENT", "isActive": true }, "error": null }
+{ "data": { "id": "<users.id>", "role": "STUDENT", "isActive": true, "fullName": "Asha Verma", "email": "asha@example.com" }, "error": null }
 ```
 
 | Status | Code | When |
@@ -96,6 +97,30 @@ which revokes this device's refresh token) and clears its cookies.
   access token, supabase-js retries the refresh with backoff for up to ~30 s
   before giving up, so logout can be slow during a Supabase outage.
 
+### `POST /api/auth/setup`
+
+First-time account setup, and the admin-issued password reset. Public, same-origin only.
+
+```json
+{ "email": "teacher@example.com", "code": "7K2M-Q9TB-4HXD", "password": "at least 12 characters" }
+```
+
+- The code is case-insensitive; spaces and dashes are optional, and the look-alike letters O, I and L are read as 0 and 1.
+- On success the password is set, the person is signed in (session cookies), and the response is `{ isSignedIn, profile }`, where `profile` is the `/api/auth/me` body. If only that last sign-in step fails, `isSignedIn` is `false` and the person signs in normally.
+- Codes are issued by admins only, for active teachers and students only, when an account is created without a password (`POST /api/teachers`, `POST /api/students` return `setupCode`) or with `POST /api/users/{userId}/setup-code`. They are 12 characters (≈60 bits), valid for 7 days, single-use, stored only as a SHA-256 hash, and a new code replaces the old one.
+- The code is consumed atomically before the password is set, so two requests can't both use it. If setting the password fails, the code is restored.
+- Five wrong guesses against an account's code invalidate it.
+
+| Status | Code | When |
+| ------ | ---- | ---- |
+| 200 | — | Password set. |
+| 401 | `INVALID_SETUP_CODE` | Unknown email, wrong, used or expired code. One message for all of them, so responses don't reveal which accounts exist. |
+| 403 | `ACCOUNT_INACTIVE` | Valid code for a deactivated account (the code is kept). |
+| 403 | `CSRF_REJECTED` | Cross-site request. |
+| 422 | `VALIDATION_ERROR` | Malformed email, missing code, password outside 12–72 characters, unknown fields, or a password Supabase Auth rejects as weak (`details` on `password`). |
+| 429 | `RATE_LIMITED` | Supabase Auth rate limit hit. |
+| 503 | `SERVICE_UNAVAILABLE` | Supabase unreachable. |
+
 ## School management endpoints
 
 School endpoints (Phases 3–6: school resources, people, attendance, exams and
@@ -116,7 +141,7 @@ Details never include the submitted values.
 | ------ | ----- |
 | 200 / 201 | `ok()` / `created()` |
 | 400 | `BAD_REQUEST`, `INVALID_JSON`, `VALIDATION_ERROR` (route params, query string) |
-| 401 | `UNAUTHORIZED`, `INVALID_CREDENTIALS` |
+| 401 | `UNAUTHORIZED`, `INVALID_CREDENTIALS`, `INVALID_SETUP_CODE` |
 | 403 | `FORBIDDEN`, `ACCOUNT_NOT_PROVISIONED`, `ACCOUNT_INACTIVE`, `CSRF_REJECTED` |
 | 404 | `NOT_FOUND` |
 | 409 | `CONFLICT` |

@@ -18,7 +18,7 @@ const APP = 'http://localhost:3000';
 const state: { user: AppUser | null } = { user: null };
 
 export function makeUser(role: AppRole, id: string): AppUser {
-  return { id, authUserId: `auth-${id}`, role, isActive: true };
+  return { id, authUserId: `auth-${id}`, role, isActive: true, fullName: `${role} ${id}`, email: `${id}@example.com` };
 }
 
 export function actAs(user: AppUser | null): void {

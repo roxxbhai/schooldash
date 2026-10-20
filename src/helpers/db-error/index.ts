@@ -77,6 +77,10 @@ export function mapDbError(
       return forbidden('You cannot change your own account status.');
     case 'SD002':
       return conflict('At least one active administrator must remain.');
+    case 'SD003':
+      return forbidden('Setup codes can only be issued for teacher and student accounts.');
+    case 'SD004':
+      return conflict('This account is deactivated. Reactivate it before issuing a setup code.');
   }
 
   if (VALIDATION_CODES.has(code)) return validationError(fieldIssue(rule, 'A value is not allowed.'));

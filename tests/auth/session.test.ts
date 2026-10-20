@@ -13,6 +13,8 @@ const userRow = (overrides: Record<string, unknown> = {}) => ({
   authUserId: AUTH_ID,
   role: 'student',
   isActive: true,
+  fullName: 'Asha Verma',
+  email: 'asha@example.com',
   ...overrides,
 });
 
@@ -86,11 +88,13 @@ describe('getCurrentAppUser', () => {
       authUserId: AUTH_ID,
       role: 'TEACHER',
       isActive: true,
+      fullName: 'Asha Verma',
+      email: 'asha@example.com',
     });
     expect(queries).toEqual([
       {
         table: 'users',
-        columns: 'id, authUserId, role, isActive',
+        columns: 'id, authUserId, role, isActive, fullName, email',
         filters: [['authUserId', AUTH_ID]],
       },
     ]);
@@ -142,9 +146,9 @@ describe('getCurrentAppUser', () => {
 });
 
 describe('toSessionProfile', () => {
-  it('exposes only id, role and isActive', () => {
+  it('exposes id, role, isActive, name and email, never the Auth user id', () => {
     expect(
-      toSessionProfile({ id: USER_ID, authUserId: AUTH_ID, role: 'ADMIN', isActive: true }),
-    ).toEqual({ id: USER_ID, role: 'ADMIN', isActive: true });
+      toSessionProfile({ id: USER_ID, authUserId: AUTH_ID, role: 'ADMIN', isActive: true, fullName: 'Asha Verma', email: 'asha@example.com' }),
+    ).toEqual({ id: USER_ID, role: 'ADMIN', isActive: true, fullName: 'Asha Verma', email: 'asha@example.com' });
   });
 });

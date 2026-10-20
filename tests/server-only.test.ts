@@ -17,7 +17,9 @@ const SERVER_ONLY_MODULES = [
   'helpers/logger/index.ts',
   'helpers/api-response/index.ts',
   'helpers/request-validation/index.ts',
+  'functions/account-setup/index.ts',
   'functions/account-status/index.ts',
+  'helpers/account-setup/index.ts',
   'functions/authorization/index.ts',
   'functions/provisioning/index.ts',
   'helpers/roles/index.ts',
@@ -42,6 +44,31 @@ const read = (file: string) => readFileSync(path.join(root, file), 'utf8');
 const rel = (file: string) => path.relative(root, file);
 const isClientModule = (source: string) => /^\s*["']use client["']/.test(source);
 
+/** WHICH SIDE A MODULE DECLARES WITH ITS FIRST IMPORT. */
+function sideOf(file: string): 'server' | 'client' | 'pure' {
+  const firstImport = read(file).match(/^import\s+[^;]+;/m)?.[0];
+  if (firstImport === "import 'server-only';") return 'server';
+  if (firstImport === "import 'client-only';") return 'client';
+  return 'pure';
+}
+
+/** THE src/-RELATIVE FILES A MODULE IMPORTS THROUGH `@/…` OR RELATIVE PATHS (TYPE-ONLY IMPORTS EXCLUDED). */
+function localImports(file: string): string[] {
+  const targets: string[] = [];
+  for (const [, specifier] of read(file).matchAll(/^import\s+(?!type\s)[^;]*?from\s+["']([^"']+)["']/gm)) {
+    const base = specifier.startsWith('@/')
+      ? path.join(root, specifier.slice(2))
+      : specifier.startsWith('.')
+        ? path.resolve(path.dirname(path.join(root, file)), specifier)
+        : null;
+    if (!base) continue;
+    const candidates = [base, `${base}.ts`, `${base}.tsx`, path.join(base, 'index.ts'), path.join(base, 'index.tsx')];
+    const found = candidates.find((candidate) => existsSync(candidate) && candidate.match(/\.(ts|tsx)$/));
+    if (found) targets.push(path.relative(root, found));
+  }
+  return targets;
+}
+
 describe('server-only isolation', () => {
   it.each(SERVER_ONLY_MODULES)('%s imports server-only before anything else', (file) => {
     const firstImport = read(file).match(/^import\s+[^;]+;/m)?.[0];
@@ -54,25 +81,31 @@ describe('server-only isolation', () => {
     expect(() => requireReal('server-only')).toThrow(/Client Component/);
   });
 
-  it('every config, helper, function and domain module is server-only', () => {
-    // THE BROWSER CLIENT AND THE PROXY SESSION HELPER ARE THE ONLY HELPERS ALLOWED OUTSIDE THE SERVER.
+  it('every function and config module declares its side; helpers declare one or stay pure', () => {
+    // SERVER MODULES START WITH `import 'server-only'`, BROWSER MODULES WITH `import 'client-only'`. A HELPER WITH
+    // NEITHER MUST BE PURE (SAFE ON BOTH SIDES). THE BROWSER CLIENT AND PROXY SESSION HELPERS ARE THE KNOWN EXCEPTIONS.
     const modules = sourceFiles()
       .map(rel)
-      .filter((file) => /^(configs|functions|helpers|lib)\/(?!supabase-(browser|proxy)\/)/.test(file) && file.endsWith('.ts'));
+      .filter((file) => /^(configs|functions|helpers|lib)\//.test(file) && file.endsWith('.ts'))
+      .filter((file) => !/^helpers\/supabase-(browser|proxy)\//.test(file));
     for (const file of modules) {
-      expect(read(file).match(/^import\s+[^;]+;/m)?.[0], file).toBe("import 'server-only';");
+      const marker = sideOf(file);
+      if (file.startsWith('configs/')) expect(marker, file).toBe('server');
+      if (file.startsWith('functions/')) expect(marker, file).not.toBe('pure');
+      if (marker !== 'pure') continue;
+      const source = read(file);
+      expect(source, `${file} reads environment variables`).not.toMatch(/process\.env/);
+      expect(source, `${file} imports server APIs`).not.toMatch(/from\s+["'](next\/headers|server-only|client-only)["']/);
+      for (const target of localImports(file)) expect(sideOf(target), `${file} imports ${target}`).toBe('pure');
     }
-    expect(modules.length).toBeGreaterThanOrEqual(SERVER_ONLY_MODULES.length);
+    expect(modules.filter((file) => sideOf(file) === 'server').length).toBeGreaterThanOrEqual(SERVER_ONLY_MODULES.length);
   });
 
-  it('no client module imports server-only modules', () => {
-    const forbidden = /from\s+["'](?:@\/|\.{1,2}\/)[^"']*(?:configs|functions\/|helpers\/(?!supabase-browser)|lib\/)[^"']*["']/;
+  it('no browser module imports a server-only module', () => {
     const offenders = sourceFiles()
-      .filter((file) => {
-        const source = readFileSync(file, 'utf8');
-        return isClientModule(source) && forbidden.test(source);
-      })
-      .map(rel);
+      .map(rel)
+      .filter((file) => isClientModule(read(file)) || sideOf(file) === 'client')
+      .flatMap((file) => localImports(file).filter((target) => sideOf(target) === 'server').map((target) => `${file} -> ${target}`));
     expect(offenders).toEqual([]);
   });
 
@@ -91,12 +124,13 @@ describe('server-only isolation', () => {
     expect(readFileSync(path.join(repoRoot, '.env.example'), 'utf8')).not.toMatch(pattern);
   });
 
-  it('only the provisioning and account-status services import the admin (secret-key) client', () => {
+  it('only the provisioning, account-status and account-setup services import the admin (secret-key) client', () => {
     const importsAdmin = /from\s+["'][^"']*supabase-admin["']/;
     const importers = sourceFiles()
       .filter((file) => importsAdmin.test(readFileSync(file, 'utf8')))
       .map(rel);
-    expect(importers.sort()).toEqual(['functions/account-status/index.ts', 'functions/provisioning/index.ts']);
+    // ACCOUNT SETUP READS THE SERVICE-ROLE-ONLY CODES TABLE AND SETS AUTH PASSWORDS.
+    expect(importers.sort()).toEqual(['functions/account-setup/index.ts', 'functions/account-status/index.ts', 'functions/provisioning/index.ts']);
   });
 
   it('only the admin-guarded people routes import provisioning, and they check requireAdmin before creating an account', () => {

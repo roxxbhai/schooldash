@@ -159,6 +159,8 @@ export async function cleanupTracked(): Promise<void> {
     const studentIds = await column('select id from public.students where "userId" = any($1)', [userIds]);
     const teacherIds = await column('select id from public.teachers where "userId" = any($1)', [userIds]);
 
+    // Setup codes reference the account and the issuing admin.
+    await db.query('delete from public."accountSetupCodes" where "userId" = any($1) or "issuedByUserId" = any($1)', [userIds]);
     // Notices (their audiences cascade) reference classes and the creating user.
     await db.query('delete from public.notices where id = any($1) or "createdByUserId" = any($2)', [ids('notices'), userIds]);
     // Timetable entries reference assignments, classes, subjects and teachers.

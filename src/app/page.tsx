@@ -1,8 +1,7 @@
-'use client';
+import { redirect } from 'next/navigation';
+import { ROUTES } from '@/constants/routes';
 
-import React from "react";
-import { LoginPage } from "@/components/ui/sign-in-page";
-
-export default function Demo() {
-  return <LoginPage />;
+/** THE SIGN-IN PAGE SENDS ANYONE ALREADY SIGNED IN ON TO THEIR OWN HOME PAGE. */
+export default function HomePage() {
+  redirect(ROUTES.signIn);
 }

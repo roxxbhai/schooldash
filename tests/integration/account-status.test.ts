@@ -187,7 +187,7 @@ describe('deactivation lifecycle (real Auth sessions)', () => {
 
     const session = await signIn(harness, student.email, student.password);
     const profile = await call(harness, session, me, 'GET', '/api/auth/me');
-    expect(profile.body.data).toEqual({ id: student.userId, role: 'STUDENT', isActive: true });
+    expect(profile.body.data).toEqual({ id: student.userId, role: 'STUDENT', isActive: true, fullName: 'IT status-student', email: student.email });
   });
 });
 

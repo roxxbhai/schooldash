@@ -75,7 +75,7 @@ function defaultRoutes(): Record<string, Handler> {
     'POST /auth/v1/token': () => json(sessionJson()),
     'POST /auth/v1/logout': () => new Response(null, { status: 204 }),
     'GET /rest/v1/users': () =>
-      json([{ id: USER_ID, authUserId: AUTH_ID, role: 'student', isActive: true }]),
+      json([{ id: USER_ID, authUserId: AUTH_ID, role: 'student', isActive: true, fullName: 'Asha Verma', email: 'asha@example.com' }]),
   };
 }
 
@@ -168,13 +168,13 @@ describe('GET /api/auth/me', () => {
     expect((await me()).status).toBe(401);
   });
 
-  it('returns only id, role and isActive for a valid session', async () => {
+  it('returns only id, role, isActive, name and email for a valid session', async () => {
     state.cookieStore = fakeCookieStore(sessionCookie());
 
     const { status, body } = await read(await me());
     expect(status).toBe(200);
     expect(body).toEqual({
-      data: { id: USER_ID, role: 'STUDENT', isActive: true },
+      data: { id: USER_ID, role: 'STUDENT', isActive: true, fullName: 'Asha Verma', email: 'asha@example.com' },
       error: null,
     });
     expect(supabaseCalls()).toEqual(['GET /auth/v1/user', 'GET /rest/v1/users']);
@@ -202,7 +202,7 @@ describe('GET /api/auth/me', () => {
   it('rejects an inactive application user with 403', async () => {
     state.cookieStore = fakeCookieStore(sessionCookie());
     routes['GET /rest/v1/users'] = () =>
-      json([{ id: USER_ID, authUserId: AUTH_ID, role: 'admin', isActive: false }]);
+      json([{ id: USER_ID, authUserId: AUTH_ID, role: 'admin', isActive: false, fullName: 'Asha Verma', email: 'asha@example.com' }]);
 
     const { status, body } = await read(await me());
     expect(status).toBe(403);
@@ -255,7 +255,7 @@ describe('POST /api/auth/login', () => {
     const { status, body } = await read(await login(postRequest('/api/auth/login', credentials)));
 
     expect(status).toBe(200);
-    expect(body).toEqual({ data: { id: USER_ID, role: 'STUDENT', isActive: true }, error: null });
+    expect(body).toEqual({ data: { id: USER_ID, role: 'STUDENT', isActive: true, fullName: 'Asha Verma', email: 'asha@example.com' }, error: null });
     expect(state.cookieStore.jar.get(SESSION_COOKIE)).toMatch(/^base64-/);
 
     const tokenRequest = requests.find((r) => new URL(r.url).pathname === '/auth/v1/token')!;
@@ -369,7 +369,7 @@ describe('POST /api/auth/login', () => {
 
   it('refuses inactive users and discards their session', async () => {
     routes['GET /rest/v1/users'] = () =>
-      json([{ id: USER_ID, authUserId: AUTH_ID, role: 'teacher', isActive: false }]);
+      json([{ id: USER_ID, authUserId: AUTH_ID, role: 'teacher', isActive: false, fullName: 'Asha Verma', email: 'asha@example.com' }]);
 
     const { status, body } = await read(await login(postRequest('/api/auth/login', credentials)));
     expect(status).toBe(403);

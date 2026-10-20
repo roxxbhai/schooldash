@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { setAccountStatus } from '@/functions/account-status';
 import type { AppUser } from '@/types/auth';
 
-const ADMIN: AppUser = { id: '11111111-1111-4111-8111-111111111111', authUserId: 'a', role: 'ADMIN', isActive: true };
+const ADMIN: AppUser = { id: '11111111-1111-4111-8111-111111111111', authUserId: 'a', role: 'ADMIN', isActive: true, fullName: 'Admin', email: 'admin@example.com' };
 const TARGET = '22222222-2222-4222-8222-222222222222';
 
 function fakeClient(result: { data: unknown; error: unknown }) {

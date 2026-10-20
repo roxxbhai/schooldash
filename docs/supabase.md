@@ -87,6 +87,8 @@ Applied (verified with `npm run db:migrations`):
 | `20261015172701_exams_and_results` | Audit triggers on exams, examSubjects, results; results insert rule (student active). |
 | `20261016090000_timetable_integrity` | `btree_gist`; `timetableEntries.academicYearId` (derived from the class by trigger); class and teacher no-overlap exclusion constraints; column-level UPDATE grants; audit. |
 | `20261016100000_notices_workflow` | Notice lifecycle trigger (draft → published → archived); audiences changeable only on drafts (RLS); column-level INSERT/UPDATE grants; `createNotice` / `setNoticeAudiences` / `publishNotice` (atomic, invoker); audit. |
+| `20261020120000_account_setup_and_search` | `accountSetupCodes` (hashed one-time setup codes, service role only); `issueAccountSetupCode` / `consumeAccountSetupCode` (service role only, invoker, atomic, audited issue); `studentSearchText` / `teacherSearchText` computed fields for `?search=`. |
+| `20261020123000_fix_setup_code_conflict_target` | Replaces `issueAccountSetupCode` with an explicit conflict constraint (the original `on conflict ("userId")` was ambiguous with the parameter name). |
 
 **To change the schema:**
 

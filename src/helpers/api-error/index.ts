@@ -69,6 +69,11 @@ export function invalidCredentials() {
   return new ApiError(401, 'INVALID_CREDENTIALS', 'Invalid email or password.');
 }
 
+/** ONE MESSAGE FOR AN UNKNOWN EMAIL, A WRONG, USED OR EXPIRED CODE, SO NOTHING IS REVEALED. */
+export function invalidSetupCode() {
+  return new ApiError(401, 'INVALID_SETUP_CODE', 'The email or setup code is incorrect, or the code has expired.');
+}
+
 export function forbidden(message = 'You do not have permission to perform this action.') {
   return new ApiError(403, 'FORBIDDEN', message);
 }

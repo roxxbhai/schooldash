@@ -20,7 +20,7 @@ vi.mock('next/server', async (original) => ({
 }));
 vi.mock('@/functions/authorization', async (original) => {
   const real = await original<typeof import('@/functions/authorization')>();
-  const admin = { id: '00000000-0000-4000-8000-0000000000a1', authUserId: 'x', role: 'ADMIN', isActive: true };
+  const admin = { id: '00000000-0000-4000-8000-0000000000a1', authUserId: 'x', role: 'ADMIN', isActive: true, fullName: 'Admin', email: 'admin@example.com' };
   const stub = <T extends (...args: never[]) => unknown>(fn: T) =>
     ((...args: Parameters<T>) => (state.stubGuards ? Promise.resolve({ success: true, message: '', data: admin }) : fn(...args))) as T;
   return {

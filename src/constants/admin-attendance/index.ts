@@ -1,0 +1,32 @@
+import type { StatusTone } from '@/components/status-badge';
+import type { AttendanceRowState, AttendanceStatusOption } from '@/types/admin-attendance';
+
+/** THE FOUR STATUSES, IN THE ORDER THE TOGGLE SHOWS THEM. VALUES ARE THE DATABASE ENUM EXACTLY. */
+export const ATTENDANCE_STATUS_OPTIONS: readonly AttendanceStatusOption[] = [
+  { value: 'present', label: 'Present', tone: 'success' },
+  { value: 'absent', label: 'Absent', tone: 'danger' },
+  { value: 'late', label: 'Late', tone: 'warning' },
+  { value: 'leave', label: 'On leave', tone: 'info' },
+];
+
+/** SELECTED-BUTTON COLOURS PER TONE (SOFT FILL, STRONG TEXT, MATCHING BORDER). */
+export const ATTENDANCE_TONE_SELECTED_CLASSES: Record<StatusTone, string> = {
+  success: 'border-success bg-success-soft text-success',
+  danger: 'border-destructive bg-destructive-soft text-destructive',
+  warning: 'border-warning bg-warning-soft text-warning',
+  info: 'border-info bg-info-soft text-info',
+  neutral: 'border-border bg-muted text-foreground',
+  brand: 'border-primary bg-secondary text-secondary-foreground',
+};
+
+export const ATTENDANCE_ROW_STATE_BADGES: Record<AttendanceRowState, { label: string; tone: StatusTone }> = {
+  saved: { label: 'Saved', tone: 'success' },
+  'not-marked': { label: 'Not marked', tone: 'neutral' },
+  changed: { label: 'Changed', tone: 'warning' },
+};
+
+/** HOW MANY SINGLE-RECORD REQUESTS (POST/PATCH) RUN AT ONCE WHILE SAVING. */
+export const ATTENDANCE_SAVE_CONCURRENCY = 4;
+
+/** THE API'S LIMIT FOR `remarks`. */
+export const ATTENDANCE_REMARKS_MAX_LENGTH = 500;

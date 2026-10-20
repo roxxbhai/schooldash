@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { ADMISSION_NUMBER_SCHEMA, STUDENT_COLUMNS, STUDENT_COLUMNS_FILTERABLE, STUDENT_ERRORS } from '@/constants/students';
+import { issueSetupCode } from '@/functions/account-setup';
 import { requireAdmin, requireRole } from '@/functions/authorization';
 import { provisionAccount } from '@/functions/provisioning';
 import { apiRoute, created, paginated } from '@/helpers/api-response';
@@ -7,7 +8,7 @@ import { assertSameOrigin } from '@/helpers/csrf';
 import { one, page } from '@/helpers/db-query';
 import { unwrapResult } from '@/helpers/function-result';
 import { getPagination, parseJsonBody, parseQuery, uuidSchema } from '@/helpers/request-validation';
-import { emailSchema, fullNameSchema, initialPasswordSchema, isActiveFilterSchema } from '@/helpers/school-validation';
+import { emailSchema, fullNameSchema, initialPasswordSchema, isActiveFilterSchema, searchTermSchema } from '@/helpers/school-validation';
 import { createSupabaseServerClient } from '@/helpers/supabase-server';
 import type { Student } from '@/types/students';
 
@@ -29,14 +30,14 @@ const createStudentSchema = z.strictObject({
   motherName: z.string().trim().min(1).max(200).optional(),
   address: z.string().trim().min(1).max(500).optional(),
 });
-const listStudentsQuerySchema = z.object({ isActive: isActiveFilterSchema, classId: uuidSchema.optional() });
+const listStudentsQuerySchema = z.object({ isActive: isActiveFilterSchema, classId: uuidSchema.optional(), search: searchTermSchema.optional() });
 
-/** ADMINS: ALL STUDENTS. TEACHERS: STUDENTS THEY TEACH (RLS). ?classId= ?isActive= */
+/** ADMINS: ALL STUDENTS. TEACHERS: STUDENTS THEY TEACH (RLS). ?classId= ?isActive= ?search= (ADMISSION NUMBER, NAME OR EMAIL) */
 export const GET = apiRoute(async (request: Request) => {
   const supabase = await createSupabaseServerClient();
   unwrapResult(await requireRole(supabase, ['ADMIN', 'TEACHER']));
   const searchParams = new URL(request.url).searchParams;
-  const { isActive, classId } = parseQuery(searchParams, listStudentsQuerySchema);
+  const { isActive, classId, search } = parseQuery(searchParams, listStudentsQuerySchema);
   const pagination = getPagination(searchParams);
 
   const isActiveFiltered = isActive !== undefined;
@@ -48,11 +49,14 @@ export const GET = apiRoute(async (request: Request) => {
   let query = supabase.from('students').select(columns, { count: 'exact' });
   if (isActiveFiltered) query = query.eq('user.isActive', isActive);
   if (classId) query = query.eq('enrollment.classId', classId);
+  // `studentSearchText` IS A COMPUTED FIELD (MIGRATION 13). `search` IS LIMITED TO
+  // [LETTERS DIGITS SPACE . _ -] BY searchTermSchema, SO IT CANNOT INJECT FILTER SYNTAX.
+  if (search) query = query.ilike('studentSearchText', `%${search}%`);
   const rows = query.order('admissionNumber').range(pagination.from, pagination.to).overrideTypes<Student[], { merge: false }>();
   return paginated(await page<Student>('students.list', rows, pagination, STUDENT_ERRORS));
 });
 
-/** ADMIN ONLY. CREATES THE LOGIN IDENTITY AND THE STUDENT ACCOUNT; THE ADMIN IS RECORDED AS THE ACTOR. */
+/** ADMIN ONLY. CREATES THE LOGIN IDENTITY AND THE STUDENT ACCOUNT; THE ADMIN IS RECORDED AS THE ACTOR. RETURNS A SETUP CODE WHEN NO PASSWORD IS GIVEN. */
 export const POST = apiRoute(async (request: Request) => {
   assertSameOrigin(request);
   const supabase = await createSupabaseServerClient();
@@ -67,5 +71,9 @@ export const POST = apiRoute(async (request: Request) => {
     .eq('userId', account.userId)
     .maybeSingle()
     .overrideTypes<Student, { merge: false }>();
-  return created(await one<Student>('students.getByUser', query, STUDENT_ERRORS));
+  const student = await one<Student>('students.getByUser', query, STUDENT_ERRORS);
+  // WITHOUT AN INITIAL PASSWORD, THE PERSON SETS ONE WITH A ONE-TIME SETUP CODE, SHOWN TO THE ADMIN ONCE.
+  // THE ACCOUNT ALREADY EXISTS, SO A FAILED ISSUE RETURNS `setupCode: null`; THE ADMIN CAN ISSUE ONE LATER.
+  const issued = password ? null : await issueSetupCode(account.userId, { actor });
+  return created({ ...student, setupCode: issued?.success ? issued.data : null });
 });

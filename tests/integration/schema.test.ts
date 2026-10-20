@@ -13,7 +13,7 @@ import { ids } from './helpers/school';
 
 const MIGRATIONS_DIR = path.resolve(__dirname, '../../supabase/migrations');
 const TABLES = [
-  'academicYears', 'auditLogs', 'classes', 'examSubjects', 'exams', 'noticeAudiences',
+  'accountSetupCodes', 'academicYears', 'auditLogs', 'classes', 'examSubjects', 'exams', 'noticeAudiences',
   'notices', 'results', 'studentAttendance', 'studentEnrollments', 'students', 'subjects',
   'teacherAssignments', 'teacherAttendance', 'teachers', 'timetableEntries', 'users',
 ];
@@ -75,7 +75,7 @@ describe('applied schema', () => {
     for (const r of live) expect(r.prosrc.replace(/--[^\n]*/g, '').trim(), r.name).toBe(declared.get(r.name));
   });
 
-  it('has exactly the 17 application tables in public, all with RLS enabled', async () => {
+  it('has exactly the 18 application tables in public, all with RLS enabled', async () => {
     const tables = await rows(`
       select c.relname, c.relrowsecurity from pg_class c
       join pg_namespace n on n.oid = c.relnamespace
