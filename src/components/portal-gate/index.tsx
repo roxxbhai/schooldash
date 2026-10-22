@@ -68,7 +68,7 @@ export async function PortalGate({ role, children }: PortalGateProps) {
 
   return (
     <PortalShell role={role} profile={toSessionProfile(result.data)}>
-      <PortalSessionSync recordId={record.data} />
+      <PortalSessionSync recordId={record.data} fullName={result.data.fullName} />
       {children}
     </PortalShell>
   );

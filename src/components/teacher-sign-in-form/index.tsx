@@ -36,7 +36,7 @@ export function TeacherSignInForm() {
           inputMode='tel'
           autoComplete='tel-national'
           placeholder='98765 43210'
-          className='font-mono'
+          className='tabular-nums'
           value={values.phone}
           onChange={updateField('phone')}
           disabled={isSubmitting}

@@ -105,16 +105,16 @@ export function AttendanceRegister({
                   className={cn('grid gap-3 px-4 py-3 md:items-center md:gap-4', gridClassName, row.errorMessage && 'bg-destructive-soft/60')}
                 >
                   {hasLeading && (
-                    <span className='hidden font-mono text-sm text-muted-foreground tabular-nums md:block'>{row.leading ?? '—'}</span>
+                    <span className='hidden text-sm text-muted-foreground tabular-nums md:block'>{row.leading ?? '—'}</span>
                   )}
 
                   <div className='flex min-w-0 items-start justify-between gap-3'>
                     <div className='min-w-0'>
                       <p className='truncate font-medium text-foreground'>
-                        {hasLeading && <span className='mr-2 font-mono text-sm text-muted-foreground md:hidden'>{row.leading ?? '—'}</span>}
+                        {hasLeading && <span className='mr-2 tabular-nums text-sm text-muted-foreground md:hidden'>{row.leading ?? '—'}</span>}
                         {row.name}
                       </p>
-                      <p className='truncate font-mono text-xs text-muted-foreground'>{row.code}</p>
+                      <p className='truncate tabular-nums text-xs text-muted-foreground'>{row.code}</p>
                       {row.lockedReason && <p className='mt-0.5 text-xs text-muted-foreground'>{row.lockedReason}</p>}
                     </div>
                     <StatusBadge tone={badge.tone} className='shrink-0 md:hidden'>

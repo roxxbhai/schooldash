@@ -16,7 +16,7 @@ export function ProfileFields({ fields }: { fields: readonly ProfileField[] }) {
       {fields.map((field) => (
         <div key={field.label} className={cn('min-w-0', field.isWide && 'sm:col-span-2')}>
           <dt className='text-xs font-medium text-muted-foreground'>{field.label}</dt>
-          <dd className={cn('mt-0.5 text-sm break-words whitespace-pre-line text-foreground', field.isMono && field.value && 'font-mono')}>
+          <dd className={cn('mt-0.5 text-sm break-words whitespace-pre-line text-foreground', field.isMono && field.value && 'tabular-nums')}>
             {field.value || <span className='text-muted-foreground'>Not recorded</span>}
           </dd>
         </div>

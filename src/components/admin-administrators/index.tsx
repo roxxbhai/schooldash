@@ -85,7 +85,7 @@ export function AdminAdministrators() {
             {administrator.fullName}
             {administrator.id === me.data?.id && <span className='ml-1.5 text-xs font-normal text-muted-foreground'>(you)</span>}
           </p>
-          <p className='font-mono text-xs break-all text-muted-foreground'>{administrator.email}</p>
+          <p className='tabular-nums text-xs break-all text-muted-foreground'>{administrator.email}</p>
         </div>
       ),
     },
@@ -103,7 +103,7 @@ export function AdminAdministrators() {
       key: 'added',
       header: 'Added',
       className: 'hidden md:table-cell',
-      cell: (administrator) => <span className='font-mono text-sm'>{formatDate(administrator.createdAt)}</span>,
+      cell: (administrator) => <span className='tabular-nums text-sm'>{formatDate(administrator.createdAt)}</span>,
     },
     {
       key: 'actions',
@@ -216,7 +216,7 @@ export function AdminAdministrators() {
             type='email'
             value={form.email}
             onChange={updateField('email')}
-            className='font-mono'
+            className='tabular-nums'
             autoComplete='off'
             spellCheck={false}
           />

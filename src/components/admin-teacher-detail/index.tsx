@@ -154,7 +154,7 @@ export function AdminTeacherDetail() {
         description={
           <span className='flex flex-wrap items-center gap-3'>
             <AccountStatusBadge isActive={teacher.user.isActive} />
-            <span className='font-mono text-sm'>{teacher.employeeCode}</span>
+            <span className='tabular-nums text-sm'>{teacher.employeeCode}</span>
           </span>
         }
       />
@@ -288,11 +288,11 @@ export function AdminTeacherDetail() {
               <Input {...fieldControlProps('fullName', save.fieldErrors.fullName)} value={form.fullName} onChange={updateField('fullName')} autoComplete='off' />
             </FormField>
             <FormField id='email' label='Email' description="The login email can't be changed.">
-              <Input {...fieldControlProps('email', undefined, true)} value={teacher.user.email} className='font-mono' readOnly disabled />
+              <Input {...fieldControlProps('email', undefined, true)} value={teacher.user.email} className='tabular-nums' readOnly disabled />
             </FormField>
             <div className='grid gap-4 sm:grid-cols-2'>
               <FormField id='employeeCode' label='Employee code' description='Assigned automatically. It cannot be changed.'>
-                <Input {...fieldControlProps('employeeCode', undefined, true)} value={teacher.employeeCode} className='font-mono' readOnly disabled />
+                <Input {...fieldControlProps('employeeCode', undefined, true)} value={teacher.employeeCode} className='tabular-nums' readOnly disabled />
               </FormField>
               <FormField id='phone' label='Mobile number' description='They sign in with this number.' error={save.fieldErrors.phone} isRequired>
                 <Input
@@ -302,7 +302,7 @@ export function AdminTeacherDetail() {
                   placeholder='98765 43210'
                   value={form.phone}
                   onChange={updateField('phone')}
-                  className='font-mono'
+                  className='tabular-nums'
                   autoComplete='off'
                 />
               </FormField>
@@ -322,7 +322,7 @@ export function AdminTeacherDetail() {
                   type='date'
                   value={form.dateOfJoining}
                   onChange={updateField('dateOfJoining')}
-                  className='font-mono'
+                  className='tabular-nums'
                 />
               </FormField>
             </div>

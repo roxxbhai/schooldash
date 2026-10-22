@@ -76,11 +76,11 @@ export function AdminStudents() {
           <Link href={`${ROUTES.admin.students}/${student.id}`} className='font-medium text-foreground underline-offset-3 hover:text-primary hover:underline'>
             {student.user.fullName}
           </Link>
-          <p className='font-mono text-xs text-muted-foreground'>{student.user.email}</p>
+          <p className='tabular-nums text-xs text-muted-foreground'>{student.user.email}</p>
         </div>
       ),
     },
-    { key: 'admission', header: 'Admission no.', cell: (student) => <span className='font-mono text-sm'>{student.admissionNumber}</span> },
+    { key: 'admission', header: 'Admission no.', cell: (student) => <span className='tabular-nums text-sm'>{student.admissionNumber}</span> },
     { key: 'status', header: 'Status', cell: (student) => <AccountStatusBadge isActive={student.user.isActive} /> },
   ];
 
@@ -207,7 +207,7 @@ export function AdminStudents() {
               {...fieldControlProps('admissionNumber', create.fieldErrors.admissionNumber, true)}
               value={form.admissionNumber}
               onChange={updateField('admissionNumber')}
-              className='font-mono'
+              className='tabular-nums'
               autoComplete='off'
               spellCheck={false}
             />
@@ -225,7 +225,7 @@ export function AdminStudents() {
               type='email'
               value={form.email}
               onChange={updateField('email')}
-              className='font-mono'
+              className='tabular-nums'
               autoComplete='off'
               spellCheck={false}
             />
@@ -236,7 +236,7 @@ export function AdminStudents() {
               type='date'
               value={form.admissionDate}
               onChange={updateField('admissionDate')}
-              className='font-mono'
+              className='tabular-nums'
             />
           </FormField>
           <FormField id='dateOfBirth' label='Date of birth' error={create.fieldErrors.dateOfBirth}>
@@ -246,7 +246,7 @@ export function AdminStudents() {
               max={todayInSchool()}
               value={form.dateOfBirth}
               onChange={updateField('dateOfBirth')}
-              className='font-mono'
+              className='tabular-nums'
             />
           </FormField>
           <FormField id='gender' label='Gender' error={create.fieldErrors.gender}>

@@ -54,14 +54,14 @@ export function SetupCodeDialog({ setupCode, personName, onClose, note }: SetupC
         <DialogHeader>
           <DialogTitle className='text-xl font-semibold'>Setup code for {personName}</DialogTitle>
           <DialogDescription className='text-base text-muted-foreground'>
-            Give this code to {personName}. It works once and expires on <span className='font-mono'>{formatDateTime(setupCode?.expiresAt)}</span>.
+            Give this code to {personName}. It works once and expires on <span className='tabular-nums'>{formatDateTime(setupCode?.expiresAt)}</span>.
           </DialogDescription>
         </DialogHeader>
 
         <div className='flex flex-col gap-2'>
           <p
             aria-label='Setup code'
-            className='border bg-surface-muted px-4 py-5 text-center font-mono text-2xl font-semibold tracking-[0.2em] break-all text-foreground select-all sm:text-3xl'
+            className='border bg-surface-muted px-4 py-5 text-center tabular-nums text-2xl font-semibold tracking-[0.2em] break-all text-foreground select-all sm:text-3xl'
           >
             {setupCode?.code}
           </p>
@@ -79,7 +79,7 @@ export function SetupCodeDialog({ setupCode, personName, onClose, note }: SetupC
 
         <ol className='flex list-decimal flex-col gap-1.5 pl-5 text-sm text-foreground'>
           <li>
-            They open <span className='font-mono break-all'>{setupAddress}</span>
+            They open <span className='tabular-nums break-all'>{setupAddress}</span>
           </li>
           <li>They enter their email and this code.</li>
           <li>They choose a password.</li>

@@ -65,13 +65,13 @@ export function AdminExamDetail() {
   const columns: DataTableColumn<ExamSubject>[] = [
     { key: 'class', header: 'Class', cell: (paper) => <span className='font-medium text-foreground'>{classLabel(classById.get(paper.classId))}</span> },
     { key: 'subject', header: 'Subject', cell: (paper) => subjectLabel(subjectById.get(paper.subjectId)) },
-    { key: 'max', header: 'Max marks', align: 'right', cell: (paper) => <span className='font-mono text-sm tabular-nums'>{formatMarks(paper.maxMarks)}</span> },
+    { key: 'max', header: 'Max marks', align: 'right', cell: (paper) => <span className='text-sm tabular-nums'>{formatMarks(paper.maxMarks)}</span> },
     {
       key: 'pass',
       header: 'Pass marks',
       align: 'right',
       className: 'hidden sm:table-cell',
-      cell: (paper) => <span className='font-mono text-sm tabular-nums'>{formatMarks(paper.passMarks)}</span>,
+      cell: (paper) => <span className='text-sm tabular-nums'>{formatMarks(paper.passMarks)}</span>,
     },
     {
       key: 'date',
@@ -79,7 +79,7 @@ export function AdminExamDetail() {
       className: 'hidden md:table-cell',
       cell: (paper) =>
         paper.examDate ? (
-          <span className='font-mono text-sm tabular-nums'>{formatDate(paper.examDate)}</span>
+          <span className='text-sm tabular-nums'>{formatDate(paper.examDate)}</span>
         ) : (
           <span className='text-muted-foreground'>Not set</span>
         ),
@@ -183,7 +183,7 @@ export function AdminExamDetail() {
           <span className='flex flex-wrap items-center gap-x-3 gap-y-1'>
             <span>{year?.name ?? 'Unknown academic year'}</span>
             <span aria-hidden>·</span>
-            {dates ? <span className='font-mono text-sm tabular-nums'>{dates}</span> : <span>Dates not set</span>}
+            {dates ? <span className='text-sm tabular-nums'>{dates}</span> : <span>Dates not set</span>}
           </span>
         }
         actions={

@@ -72,7 +72,7 @@ export function AccountAccessPanel({ userId, fullName, isActive, access, onChang
         <dl className='flex flex-col gap-4'>
           <div>
             <dt className='text-xs font-medium text-muted-foreground'>{isTeacher ? 'Sign-in mobile number' : 'Admission number'}</dt>
-            <dd className='mt-0.5 font-mono text-sm break-all text-foreground'>{isTeacher ? formatPhone(access.phone) : access.admissionNumber}</dd>
+            <dd className='mt-0.5 tabular-nums text-sm break-all text-foreground'>{isTeacher ? formatPhone(access.phone) : access.admissionNumber}</dd>
             {isTeacher && !access.phone && <dd className='mt-0.5 text-xs text-destructive'>Add a mobile number to their profile so they can sign in.</dd>}
           </div>
           <div>

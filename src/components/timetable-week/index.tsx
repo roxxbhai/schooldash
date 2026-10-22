@@ -29,7 +29,7 @@ export function TimetableWeek({ entries, renderPeriod, today }: TimetableWeekPro
                 )}
               >
                 {day.label}
-                {isToday && <span className='font-mono text-2xs uppercase'>Today</span>}
+                {isToday && <span className='tabular-nums text-2xs uppercase'>Today</span>}
               </h3>
               <div className={cn('flex min-h-48 flex-col gap-2 p-2', isToday && 'bg-accent/40')}>
                 {(byDay.get(day.value) ?? []).map((entry) => (
@@ -55,7 +55,7 @@ export function TimetableWeek({ entries, renderPeriod, today }: TimetableWeekPro
               >
                 <span>
                   {day.label}
-                  {isToday && <span className='ml-2 font-mono text-2xs text-secondary-foreground uppercase'>Today</span>}
+                  {isToday && <span className='ml-2 tabular-nums text-2xs text-secondary-foreground uppercase'>Today</span>}
                 </span>
                 <span className='text-xs font-normal text-muted-foreground'>{(byDay.get(day.value) ?? []).length || 'No'} periods</span>
               </h3>

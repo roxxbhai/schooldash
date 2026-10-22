@@ -36,11 +36,11 @@ export function StudentTimetable() {
   function renderPeriod(entry: TimetableEntry) {
     return (
       <div className='border bg-card px-3 py-2'>
-        <p className='font-mono text-xs text-muted-foreground tabular-nums'>
+        <p className='text-xs text-muted-foreground tabular-nums'>
           {formatTime(entry.startTime)}–{formatTime(entry.endTime)}
         </p>
         <p className='mt-0.5 text-sm font-medium text-foreground'>{subjectLabel(subjectById.get(entry.subjectId))}</p>
-        {entry.room && <p className='font-mono text-xs text-muted-foreground'>Room {entry.room}</p>}
+        {entry.room && <p className='tabular-nums text-xs text-muted-foreground'>Room {entry.room}</p>}
       </div>
     );
   }

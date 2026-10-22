@@ -56,11 +56,11 @@ describe('frontend conventions', () => {
     expect(missing).toEqual([]);
   });
 
-  it('loads Geist Sans and Geist Mono from the single fonts module', () => {
+  it('loads Geist Sans (and no monospace face) from the single fonts module', () => {
     const fontUsers = [...uiFiles, ...filesUnder('fonts')].filter((file) => /from\s+["']next\/font\//.test(read(file)));
     expect(fontUsers).toEqual(['fonts/index.ts']);
     const fonts = read('fonts/index.ts');
     expect(fonts).toMatch(/Geist\(/);
-    expect(fonts).toMatch(/Geist_Mono\(/);
+    expect(fonts).not.toMatch(/Geist_Mono\(/);
   });
 });

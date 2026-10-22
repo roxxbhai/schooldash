@@ -54,7 +54,7 @@ export function AccountSetupForm() {
           autoCapitalize='characters'
           spellCheck={false}
           placeholder='XXXX-XXXX-XXXX'
-          className='font-mono tracking-[0.12em] uppercase placeholder:tracking-[0.12em]'
+          className='tabular-nums tracking-[0.12em] uppercase placeholder:tracking-[0.12em]'
           value={values.code}
           onChange={updateField('code')}
           disabled={isSubmitting}

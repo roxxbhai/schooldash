@@ -98,7 +98,7 @@ export function TeacherClasses() {
                     </div>
                     <p className='mt-1.5 text-sm text-muted-foreground'>
                       {studentCount === undefined || studentCount === null ? 'Students: —' : `${pluralize(studentCount, 'student')} enrolled`}
-                      {schoolClass.roomNumber && <span className='font-mono'> · Room {schoolClass.roomNumber}</span>}
+                      {schoolClass.roomNumber && <span className='tabular-nums'> · Room {schoolClass.roomNumber}</span>}
                     </p>
                   </div>
                   <div className='flex shrink-0 flex-wrap gap-2'>

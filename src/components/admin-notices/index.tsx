@@ -94,7 +94,7 @@ export function AdminNotices() {
       className: 'hidden lg:table-cell',
       cell: (notice) => (
         <span className='flex flex-col'>
-          <span className='font-mono text-sm whitespace-nowrap'>{formatDateTime(noticeListDate(notice))}</span>
+          <span className='tabular-nums text-sm whitespace-nowrap'>{formatDateTime(noticeListDate(notice))}</span>
           <span className='text-xs text-muted-foreground'>{notice.status === 'published' ? 'Published' : 'Updated'}</span>
         </span>
       ),

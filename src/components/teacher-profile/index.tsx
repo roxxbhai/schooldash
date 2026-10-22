@@ -68,7 +68,7 @@ export function TeacherProfile() {
       header: 'Date',
       cell: (entry) => (
         <span className='flex flex-col'>
-          <span className='font-mono text-sm text-foreground'>{formatDate(entry.attendanceDate)}</span>
+          <span className='tabular-nums text-sm text-foreground'>{formatDate(entry.attendanceDate)}</span>
           <span className='text-xs text-muted-foreground'>{weekdayLabel(isoWeekday(entry.attendanceDate))}</span>
         </span>
       ),

@@ -1,292 +1,367 @@
 'use client';
 
-import {
-  ArrowRightIcon,
-  CalendarCheckIcon,
-  CalendarClockIcon,
-  FileTextIcon,
-  GraduationCapIcon,
-  MegaphoneIcon,
-  PenLineIcon,
-  SchoolIcon,
-  UserPlusIcon,
-  UsersIcon,
-} from 'lucide-react';
+import { CheckIcon, ChevronRightIcon } from 'lucide-react';
 import Link from 'next/link';
-import { EmptyState } from '@/components/empty-state';
+import { useState } from 'react';
 import { FormAlert } from '@/components/form-alert';
-import { MetricCard } from '@/components/metric-card';
-import { PageHeader } from '@/components/page-header';
-import { Panel } from '@/components/panel';
 import { StatusBadge } from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ROUTES } from '@/constants/routes';
-import { loadOverviewMetrics } from '@/functions/admin-overview';
+import { loadTodayOverview } from '@/functions/admin-overview';
+import { dateBlock, firstName, formatWeekdayDate, greetingFor } from '@/helpers/admin-overview';
 import { cn } from '@/helpers/cn';
-import { formatDate, formatNumber, isoWeekday, pluralize, todayInSchool, weekdayLabel } from '@/helpers/format';
+import { formatNumber, isoWeekday, pluralize, todayInSchool } from '@/helpers/format';
 import { useAsyncResult } from '@/hooks/use-async-result';
 import { useReferenceData } from '@/hooks/use-reference-data';
-import type { OverviewMetrics } from '@/types/admin-overview';
+import type { AttentionItem, DoneItem, ExamSnapshot, TodayOverview, UpcomingItem } from '@/types/admin-overview';
+import { portalSessionStore } from '@/zustand/portal-session';
 
-const QUICK_ACTIONS = [
-  { label: 'Mark student attendance', href: ROUTES.admin.studentAttendance, icon: CalendarCheckIcon },
-  { label: 'Enter marks', href: ROUTES.admin.results, icon: PenLineIcon },
-  { label: 'Add a student', href: ROUTES.admin.students, icon: UserPlusIcon },
-  { label: 'Draft a notice', href: ROUTES.admin.notices, icon: MegaphoneIcon },
-] as const;
-
-interface AttendanceRowProps {
-  label: string;
-  value: number | null;
-  total: number | null;
-  barClassName: string;
+interface SectionProps {
+  title: React.ReactNode;
+  aside?: React.ReactNode;
+  className?: string;
+  children: React.ReactNode;
 }
 
-function AttendanceRow({ label, value, total, barClassName }: AttendanceRowProps) {
-  const share = value !== null && total ? Math.round((value / total) * 100) : 0;
-
+/** A QUIET CARD: A SMALL TITLE ROW, NO DIVIDER UNDER IT. */
+function Section({ title, aside, className, children }: SectionProps) {
   return (
-    <div>
-      <div className='flex items-baseline justify-between text-sm'>
-        <span className='text-muted-foreground'>{label}</span>
-        <span className='font-medium text-foreground tabular-nums'>{formatNumber(value)}</span>
+    <section className={cn('border bg-card shadow-xs', className)}>
+      <div className='flex items-baseline justify-between gap-3 px-5 pt-4 pb-3'>
+        <h2 className='text-[0.9375rem] leading-snug font-semibold tracking-[-0.01em] text-foreground'>{title}</h2>
+        {aside && <div className='shrink-0 text-xs text-muted-foreground'>{aside}</div>}
       </div>
-      <div className='mt-1.5 h-1.5 bg-muted' aria-hidden>
-        <div className={cn('h-full', barClassName)} style={{ width: `${share}%` }} />
-      </div>
-    </div>
+      {children}
+    </section>
   );
 }
 
-function AttendanceToday({ metrics }: { metrics: OverviewMetrics }) {
-  const students = metrics.studentAttendance;
-  const teachers = metrics.teacherAttendance;
-  const hasStudentRecords = (students.marked ?? 0) > 0;
-
+function AttentionRow({ item, isPrimary }: { item: AttentionItem; isPrimary: boolean }) {
   return (
-    <div className='grid gap-6 md:grid-cols-2'>
-      <div>
-        <div className='flex items-baseline justify-between'>
-          <h3 className='text-base font-medium text-foreground'>Students</h3>
-          <span className='text-sm text-muted-foreground'>{students.marked === null ? '—' : `${pluralize(students.marked, 'record')} marked`}</span>
-        </div>
-        {hasStudentRecords ? (
-          <div className='mt-4 flex flex-col gap-3'>
-            <AttendanceRow label='Present' value={students.present} total={students.marked} barClassName='bg-success' />
-            <AttendanceRow label='Late' value={students.late} total={students.marked} barClassName='bg-brand-gold' />
-            <AttendanceRow label='Absent' value={students.absent} total={students.marked} barClassName='bg-destructive' />
-            <AttendanceRow label='On leave' value={students.leave} total={students.marked} barClassName='bg-info' />
-          </div>
-        ) : (
-          <p className='mt-4 text-sm text-muted-foreground'>No student attendance has been marked today yet.</p>
-        )}
+    <li className='flex items-center gap-3 border-t px-5 py-3'>
+      <span aria-hidden className={cn('size-1.5 shrink-0', item.tone === 'warning' ? 'bg-warning' : 'bg-info')} />
+      <div className='min-w-0 flex-1'>
+        <p className='text-sm leading-snug font-medium text-foreground'>
+          <span className='sr-only'>{item.tone === 'warning' ? 'Needs action: ' : 'To review: '}</span>
+          {item.title}
+        </p>
+        <p className='mt-0.5 truncate text-xs text-muted-foreground'>{item.detail}</p>
       </div>
-      <div>
-        <div className='flex items-baseline justify-between'>
-          <h3 className='text-base font-medium text-foreground'>Teachers</h3>
-          <span className='text-sm text-muted-foreground'>{teachers.marked === null ? '—' : `${pluralize(teachers.marked, 'record')} marked`}</span>
-        </div>
-        {(teachers.marked ?? 0) > 0 ? (
-          <div className='mt-4 flex flex-col gap-3'>
-            <AttendanceRow label='Present' value={teachers.present} total={teachers.marked} barClassName='bg-success' />
-            <AttendanceRow label='Absent' value={teachers.absent} total={teachers.marked} barClassName='bg-destructive' />
-          </div>
-        ) : (
-          <p className='mt-4 text-sm text-muted-foreground'>No teacher attendance has been marked today yet.</p>
-        )}
-      </div>
-    </div>
+      <Button asChild size='sm' variant={isPrimary ? 'default' : 'outline'} className='shrink-0'>
+        <Link href={item.href}>{item.actionLabel}</Link>
+      </Button>
+    </li>
   );
 }
 
-/** THE ADMIN HOME: REAL COUNTS FOR TODAY AND THE CURRENT YEAR, AND SHORTCUTS TO DAILY TASKS. NOTHING HERE IS ESTIMATED OR SAMPLE DATA. */
-export function AdminOverview() {
-  const { classes, currentAcademicYear, isReady, errorMessage: referenceError } = useReferenceData();
+function DoneRow({ item }: { item: DoneItem }) {
+  return (
+    <li className='flex items-center gap-3 border-t px-5 py-2.5'>
+      <CheckIcon aria-hidden className='size-3.5 shrink-0 text-success' strokeWidth={2.5} />
+      <div className='min-w-0 flex-1'>
+        <p className='text-sm leading-snug text-muted-foreground'>{item.title}</p>
+        <p className='truncate text-xs text-muted-foreground/80'>{item.detail}</p>
+      </div>
+    </li>
+  );
+}
 
-  const today = todayInSchool();
-  const dayOfWeek = isoWeekday(today);
-  const currentYearId = currentAcademicYear?.id ?? null;
-  const classesThisYear = currentYearId ? classes.filter((schoolClass) => schoolClass.academicYearId === currentYearId).length : null;
+function AttentionSection({ overview, isLoading }: { overview: TodayOverview | null; isLoading: boolean }) {
+  const [isDoneOpen, setIsDoneOpen] = useState(false);
 
-  function load() {
-    return loadOverviewMetrics({ today, dayOfWeek, currentAcademicYearId: currentYearId });
+  const attention = overview?.attention ?? [];
+  const done = overview?.done ?? [];
+  const firstWarningId = attention.find((item) => item.tone === 'warning')?.id;
+
+  function toggleDone() {
+    setIsDoneOpen(!isDoneOpen);
   }
 
-  const overview = useAsyncResult(isReady ? `overview|${today}|${currentYearId}` : null, load);
+  return (
+    <Section title='Needs your attention' aside={overview && (attention.length > 0 ? `${attention.length} open` : 'All clear')}>
+      {isLoading ? (
+        <ul aria-hidden>
+          {[0, 1, 2].map((row) => (
+            <li key={row} className='flex items-center gap-3 border-t px-5 py-3.5'>
+              <Skeleton className='h-9 flex-1' />
+              <Skeleton className='h-8 w-24' />
+            </li>
+          ))}
+        </ul>
+      ) : attention.length === 0 ? (
+        <div className='border-t px-5 py-8 text-center'>
+          <p className='text-[0.9375rem] font-medium text-foreground'>You&apos;re all caught up</p>
+          <p className='mt-0.5 text-sm text-muted-foreground'>Nothing needs you right now.</p>
+        </div>
+      ) : (
+        <ul>
+          {attention.map((item) => (
+            <AttentionRow key={item.id} item={item} isPrimary={item.id === firstWarningId} />
+          ))}
+        </ul>
+      )}
 
-  const metrics = overview.data;
+      {done.length > 0 && (
+        <>
+          <button
+            type='button'
+            onClick={toggleDone}
+            aria-expanded={isDoneOpen}
+            className='flex w-full items-center gap-1.5 border-t px-5 py-2.5 text-left text-xs text-muted-foreground transition-colors hover:text-foreground'
+          >
+            <ChevronRightIcon aria-hidden className={cn('size-3 transition-transform duration-200', isDoneOpen && 'rotate-90')} />
+            {pluralize(done.length, 'thing')} done
+          </button>
+          {/* HEIGHT EASES OPEN AND SHUT; A CSS TRANSITION REVERSES FROM WHERE IT IS IF CLICKED AGAIN MID-WAY. */}
+          <div className={cn('grid transition-[grid-template-rows] duration-300', isDoneOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]')}>
+            <ul className='overflow-hidden' inert={!isDoneOpen}>
+              {done.map((item) => (
+                <DoneRow key={item.id} item={item} />
+              ))}
+            </ul>
+          </div>
+        </>
+      )}
+    </Section>
+  );
+}
+
+function UpcomingSection({ items, isLoading }: { items: UpcomingItem[]; isLoading: boolean }) {
+  return (
+    <Section title='Coming up'>
+      {isLoading ? (
+        <div className='flex flex-col gap-3 px-5 pb-5' aria-hidden>
+          <Skeleton className='h-10 w-full' />
+          <Skeleton className='h-10 w-full' />
+        </div>
+      ) : items.length === 0 ? (
+        <p className='px-5 pb-5 text-sm text-muted-foreground'>
+          Nothing scheduled.{' '}
+          <Link href={ROUTES.admin.exams} className='font-medium text-primary underline-offset-3 hover:underline'>
+            Plan an exam
+          </Link>
+        </p>
+      ) : (
+        <ol className='px-2 pb-2'>
+          {items.map((item) => {
+            const block = dateBlock(item.date);
+            return (
+              <li key={item.id} className='border-t first:border-t-0'>
+                <Link href={item.href} className='grid grid-cols-[2.75rem_minmax(0,1fr)] items-start gap-3 px-3 py-2.5 transition-colors hover:bg-surface-muted'>
+                  <span className='pt-0.5 text-center leading-none'>
+                    <span className='block text-2xs font-semibold tracking-[0.06em] text-muted-foreground uppercase'>{block.month}</span>
+                    <span className='mt-1 block text-lg font-semibold tracking-[-0.02em] text-foreground tabular-nums'>{block.day}</span>
+                  </span>
+                  <span className='min-w-0'>
+                    <span className='flex flex-wrap items-center gap-x-2 gap-y-1'>
+                      <span className='text-sm font-medium text-foreground'>{item.title}</span>
+                      {item.tag && <StatusBadge tone={item.tag.tone}>{item.tag.label}</StatusBadge>}
+                    </span>
+                    <span className='mt-0.5 block truncate text-xs text-muted-foreground'>{item.detail}</span>
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
+        </ol>
+      )}
+    </Section>
+  );
+}
+
+function SnapshotSection({ snapshot }: { snapshot: ExamSnapshot }) {
+  const belowPass = snapshot.resultCount - snapshot.passedCount;
+  const hasFlaggedSubject = snapshot.subjects.some((subject) => subject.belowPassCount > 0);
+
+  return (
+    <Section
+      className='xl:col-span-2'
+      title={
+        <>
+          {snapshot.examName} results
+          {snapshot.classScope && <span className='font-normal text-muted-foreground'> · {snapshot.classScope}</span>}
+        </>
+      }
+      aside={
+        <Link
+          href={`${ROUTES.admin.reportCards}?examId=${encodeURIComponent(snapshot.examId)}`}
+          className='font-medium text-primary underline-offset-3 hover:underline'
+        >
+          Report cards
+        </Link>
+      }
+    >
+      <div className='grid gap-6 px-5 pt-1 pb-5 lg:grid-cols-[11rem_minmax(0,1fr)_14rem] lg:gap-10'>
+        <div>
+          <p className='text-[2.5rem] leading-none font-semibold tracking-[-0.03em] text-foreground tabular-nums'>
+            {snapshot.averagePercent}
+            <span className='ml-0.5 text-xl font-medium tracking-normal text-muted-foreground'>%</span>
+          </p>
+          <p className='mt-2 text-xs text-muted-foreground'>
+            {snapshot.classScope ? 'Class average' : 'Average'} across {pluralize(snapshot.subjects.length, 'subject')}
+          </p>
+          <p className='mt-4 text-sm text-foreground'>
+            <span className='font-medium tabular-nums'>
+              {formatNumber(snapshot.passedCount)} of {formatNumber(snapshot.resultCount)}
+            </span>{' '}
+            papers passed
+          </p>
+          {belowPass > 0 && <p className='mt-0.5 text-xs text-warning'>{pluralize(belowPass, 'paper')} below the pass mark</p>}
+        </div>
+
+        <div>
+          <ul className='flex flex-col gap-2.5'>
+            {snapshot.subjects.map((subject) => (
+              <li key={subject.subjectId} className='grid grid-cols-[minmax(0,7.5rem)_minmax(0,1fr)_2.75rem] items-center gap-3 text-xs'>
+                <span className='truncate text-muted-foreground' title={subject.label}>
+                  {subject.label}
+                </span>
+                <span aria-hidden className='relative h-1.5 bg-muted'>
+                  <span
+                    className={cn(
+                      'absolute inset-y-0 left-0 bg-primary',
+                      subject.belowPassCount > 0 && 'after:absolute after:inset-y-0 after:right-0 after:w-1 after:bg-warning',
+                    )}
+                    style={{ width: `${Math.min(100, subject.averagePercent)}%` }}
+                  />
+                </span>
+                <span className='text-right font-medium text-foreground tabular-nums'>
+                  {subject.averagePercent}%
+                  {subject.belowPassCount > 0 && <span className='sr-only'>, {pluralize(subject.belowPassCount, 'student')} below the pass mark</span>}
+                </span>
+              </li>
+            ))}
+          </ul>
+          {hasFlaggedSubject && (
+            <p className='mt-3 flex items-center gap-1.5 text-2xs text-muted-foreground' aria-hidden>
+              <span className='h-1.5 w-1 bg-warning' />
+              Some students below the pass mark
+            </p>
+          )}
+        </div>
+
+        <div>
+          <p className='text-2xs font-semibold tracking-[0.06em] text-muted-foreground uppercase'>{snapshot.classScope ? 'Top of the class' : 'Top students'}</p>
+          <ol className='mt-1.5'>
+            {snapshot.topStudents.map((student) => (
+              <li key={student.studentId} className='border-t first:border-t-0'>
+                <Link
+                  href={`${ROUTES.admin.students}/${encodeURIComponent(student.studentId)}`}
+                  className='flex items-baseline justify-between gap-3 py-1.5 text-sm text-foreground hover:text-primary'
+                >
+                  <span className='min-w-0 truncate'>
+                    {student.name}
+                    {!snapshot.classScope && <span className='text-xs text-muted-foreground'> · {student.classLabel}</span>}
+                  </span>
+                  <span className='font-medium tabular-nums'>{student.averagePercent}%</span>
+                </Link>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </div>
+    </Section>
+  );
+}
+
+function YearCountsStrip({ overview }: { overview: TodayOverview }) {
+  const counts = overview.counts;
+  const entries = [
+    { value: counts.students, singular: 'student', href: ROUTES.admin.students },
+    { value: counts.teachers, singular: 'teacher', href: ROUTES.admin.teachers },
+    { value: counts.classes, singular: 'class', plural: 'classes', href: ROUTES.admin.classes },
+    { value: counts.subjects, singular: 'subject', href: ROUTES.admin.subjects },
+    { value: counts.exams, singular: 'exam', href: ROUTES.admin.exams },
+    { value: counts.liveNotices, singular: 'notice', plural: 'notices', suffix: ' live', href: ROUTES.admin.notices },
+  ];
+
+  return (
+    <nav aria-label='This year' className='flex flex-wrap gap-x-6 gap-y-2 border bg-card px-5 py-3.5 text-sm shadow-xs xl:col-span-2'>
+      {entries.map((entry) => (
+        <Link key={entry.href} href={entry.href} className='text-muted-foreground transition-colors hover:text-primary'>
+          <span className='font-semibold text-foreground tabular-nums'>{entry.value === null ? '—' : formatNumber(entry.value)}</span>{' '}
+          {entry.value === 1 ? entry.singular : (entry.plural ?? `${entry.singular}s`)}
+          {entry.suffix}
+        </Link>
+      ))}
+    </nav>
+  );
+}
+
+/**
+ * THE ADMIN HOME, "TODAY": WHAT NEEDS AN ADMIN NOW (EACH WITH THE ONE ACTION
+ * THAT RESOLVES IT), WHAT'S ALREADY DONE, WHAT'S COMING UP AND HOW THE LATEST
+ * EXAM WENT. EVERY FIGURE IS REAL; NOTHING IS ESTIMATED OR SAMPLE DATA.
+ */
+export function AdminOverview() {
+  const fullName = portalSessionStore((state) => state.fullName);
+
+  const { classes, subjects, currentAcademicYear, classById, subjectById, teacherById, isReady, errorMessage: referenceError } = useReferenceData();
+
+  const today = todayInSchool();
+  const yearId = currentAcademicYear?.id ?? null;
+  const yearClasses = yearId ? classes.filter((schoolClass) => schoolClass.academicYearId === yearId) : [];
+  const name = firstName(fullName);
+
+  function load() {
+    return loadTodayOverview({
+      today,
+      dayOfWeek: isoWeekday(today),
+      year: currentAcademicYear,
+      classes: yearClasses,
+      subjects,
+      classById,
+      subjectById,
+      teacherById,
+    });
+  }
+
+  const overview = useAsyncResult(isReady ? `today|${today}|${yearId}|${yearClasses.length}|${subjects.length}` : null, load);
+
+  const data = overview.data;
   const isLoading = !isReady || overview.isInitialLoading;
-  const upcomingExams = (metrics?.exams ?? [])
-    .filter((exam) => !exam.endDate || exam.endDate >= today)
-    .sort((first, second) => (first.startDate ?? '9999').localeCompare(second.startDate ?? '9999'))
-    .slice(0, 4);
+  const openCount = data?.attention.length ?? 0;
 
   return (
     <>
-      <PageHeader
-        title='Dashboard'
-        description={currentAcademicYear ? `Academic year ${currentAcademicYear.name}.` : 'Today at the school, at a glance.'}
-        actions={
-          isReady &&
-          !currentAcademicYear && (
-            <p role='status' className='border border-info/20 bg-info-soft px-3 py-2 text-xs text-foreground'>
-              <span className='font-medium'>No current academic year</span>
-              <span aria-hidden className='mx-1.5 text-muted-foreground'>·</span>
-              <Link href={ROUTES.admin.academicYears} className='font-medium text-primary underline underline-offset-3'>
-                Set one up
-              </Link>
+      <header className='mb-7'>
+        <p className='text-2xs font-semibold tracking-[0.06em] text-muted-foreground uppercase' suppressHydrationWarning>
+          {formatWeekdayDate()}
+        </p>
+        <h1 className='mt-1.5 text-[1.875rem] leading-[1.1] font-semibold tracking-[-0.022em] text-foreground' suppressHydrationWarning>
+          {greetingFor()}
+          {name && `, ${name}`}
+        </h1>
+        <div className='mt-2 min-h-6 text-[0.9375rem] text-muted-foreground' aria-live='polite'>
+          {isLoading ? (
+            <Skeleton className='h-5 w-64' />
+          ) : !data ? null : openCount === 0 ? (
+            <p>
+              <span className='font-medium text-foreground'>You&apos;re all caught up.</span> Nothing needs you right now.
             </p>
-          )
-        }
-      />
+          ) : (
+            <p>
+              <span className='font-medium text-foreground'>
+                {openCount} {openCount === 1 ? 'thing needs' : 'things need'} your attention.
+              </span>{' '}
+              {data.done.length > 0 && `${pluralize(data.done.length, 'thing')} already done.`}
+            </p>
+          )}
+        </div>
+      </header>
 
       {(referenceError || overview.errorMessage) && (
-        <FormAlert tone='error' title="Some figures couldn't be loaded" className='mb-6'>
+        <FormAlert tone='error' title="Some of today's figures couldn't be loaded" className='mb-6'>
           {referenceError ?? overview.errorMessage}
         </FormAlert>
       )}
 
-      <div className='grid gap-4 sm:grid-cols-2 xl:grid-cols-4'>
-        <MetricCard
-          label='Active students'
-          value={metrics ? formatNumber(metrics.activeStudents) : null}
-          icon={GraduationCapIcon}
-          href={ROUTES.admin.students}
-          isLoading={isLoading}
-        />
-        <MetricCard
-          label='Active teachers'
-          value={metrics ? formatNumber(metrics.activeTeachers) : null}
-          icon={UsersIcon}
-          tone='info'
-          href={ROUTES.admin.teachers}
-          isLoading={isLoading}
-        />
-        <MetricCard
-          label='Classes this year'
-          value={classesThisYear === null ? null : formatNumber(classesThisYear)}
-          detail={isReady ? (currentAcademicYear?.name ?? 'No current academic year') : undefined}
-          icon={SchoolIcon}
-          tone='success'
-          href={ROUTES.admin.classes}
-          isLoading={!isReady}
-        />
-        <MetricCard
-          label='Published notices'
-          value={metrics ? formatNumber(metrics.publishedNotices) : null}
-          detail={metrics && metrics.draftNotices !== null ? `${pluralize(metrics.draftNotices, 'draft')} waiting` : undefined}
-          icon={MegaphoneIcon}
-          tone='warning'
-          href={ROUTES.admin.notices}
-          isLoading={isLoading}
-        />
-      </div>
-
-      <div className='mt-6 grid gap-6 xl:grid-cols-3'>
-        <Panel
-          title='Attendance today'
-          description={formatDate(today)}
-          className='xl:col-span-2'
-          actions={
-            <Button asChild variant='outline' size='sm'>
-              <Link href={ROUTES.admin.studentAttendance}>
-                Mark attendance
-                <ArrowRightIcon aria-hidden />
-              </Link>
-            </Button>
-          }
-        >
-          {isLoading || !metrics ? <Skeleton className='h-36 w-full' /> : <AttendanceToday metrics={metrics} />}
-        </Panel>
-
-        <Panel title='Quick actions'>
-          <ul className='-my-1 flex flex-col'>
-            {QUICK_ACTIONS.map((action) => {
-              const Icon = action.icon;
-              return (
-                <li key={action.href}>
-                  <Link
-                    href={action.href}
-                    className='group flex items-center gap-3 border-b py-3 text-base text-foreground transition-colors last:border-b-0 hover:text-primary'
-                  >
-                    <span aria-hidden className='flex size-8 items-center justify-center bg-secondary text-primary'>
-                      <Icon className='size-4' />
-                    </span>
-                    <span className='flex-1'>{action.label}</span>
-                    <ArrowRightIcon aria-hidden className='size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5' />
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </Panel>
-      </div>
-
-      <div className='mt-6 grid gap-6 xl:grid-cols-3'>
-        <Panel
-          title='Upcoming exams'
-          description={currentAcademicYear ? `In ${currentAcademicYear.name}` : undefined}
-          className='xl:col-span-2'
-          bodyClassName='p-0'
-          actions={
-            <Button asChild variant='ghost' size='sm'>
-              <Link href={ROUTES.admin.exams}>All exams</Link>
-            </Button>
-          }
-        >
-          {isLoading ? (
-            <div className='p-5'>
-              <Skeleton className='h-24 w-full' />
-            </div>
-          ) : upcomingExams.length === 0 ? (
-            <EmptyState
-              icon={FileTextIcon}
-              title='No upcoming exams'
-              description={currentAcademicYear ? 'Exams you create for the current year will appear here.' : 'Set a current academic year first.'}
-            />
-          ) : (
-            <ul>
-              {upcomingExams.map((exam) => (
-                <li key={exam.id} className='flex items-center justify-between gap-4 border-b px-5 py-3.5 last:border-b-0'>
-                  <Link href={`${ROUTES.admin.exams}/${exam.id}`} className='font-medium text-foreground hover:text-primary hover:underline'>
-                    {exam.name}
-                  </Link>
-                  <span className='font-mono text-sm text-muted-foreground'>
-                    {exam.startDate ? `${formatDate(exam.startDate)} – ${formatDate(exam.endDate)}` : 'Dates not set'}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Panel>
-
-        <Panel title='Timetable today'>
-          {isLoading ? (
-            <Skeleton className='h-16 w-full' />
-          ) : (
-            <div className='flex items-start gap-3'>
-              <span aria-hidden className='flex size-10 shrink-0 items-center justify-center bg-secondary text-primary'>
-                <CalendarClockIcon className='size-5' />
-              </span>
-              {metrics?.periodsToday === null || metrics?.periodsToday === undefined ? (
-                <p className='text-sm text-muted-foreground'>Set a current academic year to see today&apos;s periods.</p>
-              ) : (
-                <div>
-                  <p className='text-3xl font-semibold tracking-tight tabular-nums'>{formatNumber(metrics.periodsToday)}</p>
-                  <p className='text-sm text-muted-foreground'>
-                    {metrics.periodsToday === 1 ? 'period' : 'periods'} scheduled for {weekdayLabel(dayOfWeek)} across all classes.
-                  </p>
-                  {metrics.periodsToday === 0 && (
-                    <StatusBadge tone='neutral' className='mt-2'>
-                      No periods today
-                    </StatusBadge>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-        </Panel>
+      <div className='grid grid-cols-[minmax(0,1fr)] items-start gap-5 xl:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]'>
+        <AttentionSection overview={data} isLoading={isLoading} />
+        <UpcomingSection items={data?.upcoming ?? []} isLoading={isLoading} />
+        {data?.snapshot && <SnapshotSection snapshot={data.snapshot} />}
+        {data && <YearCountsStrip overview={data} />}
       </div>
     </>
   );

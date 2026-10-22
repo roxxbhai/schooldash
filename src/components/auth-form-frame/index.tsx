@@ -20,7 +20,7 @@ export function AuthFormFrame({ back, eyebrow, title, description, children, foo
             <BackLink href={back.href} label={back.label} />
           </div>
         )}
-        {eyebrow && <p className='mb-2 font-mono text-2xs tracking-[0.14em] text-muted-foreground uppercase'>{eyebrow}</p>}
+        {eyebrow && <p className='mb-2 tabular-nums text-2xs tracking-[0.14em] text-muted-foreground uppercase'>{eyebrow}</p>}
         <h1 className='text-4xl font-semibold tracking-tight text-foreground'>{title}</h1>
         <div className='mt-2 text-base text-muted-foreground'>{description}</div>
         <div className='mt-8'>{children}</div>

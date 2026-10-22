@@ -61,11 +61,11 @@ export function AdminTeachers() {
           <Link href={`${ROUTES.admin.teachers}/${teacher.id}`} className='font-medium text-foreground underline-offset-3 hover:text-primary hover:underline'>
             {teacher.user.fullName}
           </Link>
-          <p className='font-mono text-xs text-muted-foreground'>{formatPhone(teacher.user.phone)}</p>
+          <p className='tabular-nums text-xs text-muted-foreground'>{formatPhone(teacher.user.phone)}</p>
         </div>
       ),
     },
-    { key: 'code', header: 'Employee code', cell: (teacher) => <span className='font-mono text-sm'>{teacher.employeeCode}</span> },
+    { key: 'code', header: 'Employee code', cell: (teacher) => <span className='tabular-nums text-sm'>{teacher.employeeCode}</span> },
     {
       key: 'qualification',
       header: 'Qualification',
@@ -76,7 +76,7 @@ export function AdminTeachers() {
       key: 'joined',
       header: 'Joined',
       className: 'hidden lg:table-cell',
-      cell: (teacher) => <span className='font-mono text-sm'>{formatDate(teacher.dateOfJoining)}</span>,
+      cell: (teacher) => <span className='tabular-nums text-sm'>{formatDate(teacher.dateOfJoining)}</span>,
     },
     { key: 'status', header: 'Status', cell: (teacher) => <AccountStatusBadge isActive={teacher.user.isActive} /> },
   ];
@@ -185,7 +185,7 @@ export function AdminTeachers() {
             placeholder='98765 43210'
             value={form.phone}
             onChange={updateField('phone')}
-            className='font-mono'
+            className='tabular-nums'
             autoComplete='off'
           />
         </FormField>
@@ -195,7 +195,7 @@ export function AdminTeachers() {
             type='email'
             value={form.email}
             onChange={updateField('email')}
-            className='font-mono'
+            className='tabular-nums'
             autoComplete='off'
             spellCheck={false}
           />
@@ -215,7 +215,7 @@ export function AdminTeachers() {
               type='date'
               value={form.dateOfJoining}
               onChange={updateField('dateOfJoining')}
-              className='font-mono'
+              className='tabular-nums'
             />
           </FormField>
         </div>

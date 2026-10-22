@@ -67,7 +67,7 @@ export function NoticeFeed({ basePath }: NoticeFeedProps) {
                     <span className='mt-1 line-clamp-2 block text-sm text-muted-foreground'>{notice.body}</span>
                   </span>
                   <span className='flex shrink-0 items-center gap-2'>
-                    <span className='font-mono text-xs text-muted-foreground'>{formatDate(notice.publishedAt)}</span>
+                    <span className='tabular-nums text-xs text-muted-foreground'>{formatDate(notice.publishedAt)}</span>
                     <ChevronRightIcon aria-hidden className='size-4 text-muted-foreground' />
                   </span>
                 </Link>

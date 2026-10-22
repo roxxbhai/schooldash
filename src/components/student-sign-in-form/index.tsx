@@ -30,7 +30,7 @@ export function StudentSignInForm() {
           autoComplete='username'
           autoCapitalize='characters'
           spellCheck={false}
-          className='font-mono'
+          className='tabular-nums'
           value={values.admissionNumber}
           onChange={updateField('admissionNumber')}
           disabled={isSubmitting}

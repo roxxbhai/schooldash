@@ -203,11 +203,11 @@ export function AdminTimetable() {
         aria-label={`Edit ${subject}, ${isClassView ? '' : `class ${schoolClass}, `}${weekdayLabel(entry.dayOfWeek)} ${periodTimeRange(entry)}`}
         className='flex w-full flex-col gap-0.5 border border-l-2 border-l-primary bg-card px-2.5 py-2 text-left transition-colors outline-none hover:bg-secondary focus-visible:ring-2 focus-visible:ring-ring/50'
       >
-        <span className='font-mono text-xs text-muted-foreground'>{periodTimeRange(entry)}</span>
+        <span className='tabular-nums text-xs text-muted-foreground'>{periodTimeRange(entry)}</span>
         <span className='line-clamp-2 text-sm font-medium text-foreground'>{subject}</span>
         {!isClassView && <span className='text-xs text-foreground'>Class {schoolClass}</span>}
         {isClassView && <span className={cn('truncate text-xs', teacher ? 'text-muted-foreground' : 'text-warning')}>{teacher ?? 'No teacher'}</span>}
-        {entry.room && <span className='truncate font-mono text-xs text-muted-foreground'>Room {entry.room}</span>}
+        {entry.room && <span className='truncate tabular-nums text-xs text-muted-foreground'>Room {entry.room}</span>}
       </button>
     );
   }
@@ -381,7 +381,7 @@ export function AdminTimetable() {
               type='time'
               value={form.startTime}
               onChange={(event) => setField('startTime', event.target.value)}
-              className='font-mono'
+              className='tabular-nums'
             />
           </FormField>
           <FormField id='endTime' label='Ends' error={save.fieldErrors.endTime} isRequired>
@@ -390,7 +390,7 @@ export function AdminTimetable() {
               type='time'
               value={form.endTime}
               onChange={(event) => setField('endTime', event.target.value)}
-              className='font-mono'
+              className='tabular-nums'
             />
           </FormField>
         </div>
@@ -419,7 +419,7 @@ export function AdminTimetable() {
             {...fieldControlProps('room', save.fieldErrors.room, true)}
             value={form.room}
             onChange={(event) => setField('room', event.target.value)}
-            className='font-mono'
+            className='tabular-nums'
             autoComplete='off'
           />
         </FormField>
@@ -442,7 +442,7 @@ export function AdminTimetable() {
           deleting ? (
             <>
               {subjectLabel(subjectById.get(deleting.subjectId))} for class {classLabel(classById.get(deleting.classId))} on {weekdayLabel(deleting.dayOfWeek)},{' '}
-              <span className='font-mono'>{periodTimeRange(deleting)}</span>, will be removed from the weekly timetable.
+              <span className='tabular-nums'>{periodTimeRange(deleting)}</span>, will be removed from the weekly timetable.
             </>
           ) : (
             ''

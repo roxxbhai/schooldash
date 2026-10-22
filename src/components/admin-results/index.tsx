@@ -137,7 +137,7 @@ export function AdminResults({ role = 'ADMIN', canEnterPaper }: AdminResultsProp
       key: 'roll',
       header: 'Roll',
       className: 'w-16',
-      cell: ({ row }) => <span className='font-mono text-sm tabular-nums'>{row.enrollment.rollNumber ?? '—'}</span>,
+      cell: ({ row }) => <span className='text-sm tabular-nums'>{row.enrollment.rollNumber ?? '—'}</span>,
     },
     {
       key: 'student',
@@ -145,7 +145,7 @@ export function AdminResults({ role = 'ADMIN', canEnterPaper }: AdminResultsProp
       cell: ({ row }) => (
         <div className='min-w-40'>
           <p className='font-medium text-foreground'>{row.student?.user.fullName ?? 'Unknown student'}</p>
-          <p className='font-mono text-xs text-muted-foreground'>
+          <p className='tabular-nums text-xs text-muted-foreground'>
             {row.student?.admissionNumber ?? '—'}
             {row.student && !row.student.user.isActive && <span className='ml-2 font-sans'>{MARKS_MESSAGES.inactive}</span>}
           </p>
@@ -170,7 +170,7 @@ export function AdminResults({ role = 'ADMIN', canEnterPaper }: AdminResultsProp
               value={line.draft.marks}
               onChange={(event) => updateDraft(line.row, 'marks', event.target.value)}
               disabled={isSaving || isRowLocked(line.row)}
-              className='w-24 text-right font-mono tabular-nums'
+              className='w-24 text-right tabular-nums'
             />
             {line.error && (
               <p id={`row-${studentId}-error`} className='max-w-64 text-xs text-destructive'>
@@ -280,10 +280,10 @@ export function AdminResults({ role = 'ADMIN', canEnterPaper }: AdminResultsProp
         description={
           <span className='flex flex-wrap gap-x-4 gap-y-1'>
             <span>
-              Max marks <span className='font-mono text-foreground tabular-nums'>{formatMarks(paper.maxMarks)}</span>
+              Max marks <span className='text-foreground tabular-nums'>{formatMarks(paper.maxMarks)}</span>
             </span>
             <span>
-              Pass marks <span className='font-mono text-foreground tabular-nums'>{formatMarks(paper.passMarks)}</span>
+              Pass marks <span className='text-foreground tabular-nums'>{formatMarks(paper.passMarks)}</span>
             </span>
             {lines && (
               <span className='tabular-nums'>
@@ -385,7 +385,7 @@ export function AdminResults({ role = 'ADMIN', canEnterPaper }: AdminResultsProp
           <p className='text-sm text-muted-foreground sm:col-span-2 xl:col-span-4'>
             {exam.name}
             {current.yearId && ` · ${academicYearById.get(current.yearId)?.name ?? ''}`}
-            {examDatesLabel(exam) && <span className='font-mono tabular-nums'> · {examDatesLabel(exam)}</span>}
+            {examDatesLabel(exam) && <span className='tabular-nums'> · {examDatesLabel(exam)}</span>}
           </p>
         )}
       </div>

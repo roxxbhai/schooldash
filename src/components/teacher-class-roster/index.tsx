@@ -50,7 +50,7 @@ export function TeacherClassRoster() {
   );
 
   const columns: DataTableColumn<RosterRow>[] = [
-    { key: 'roll', header: 'Roll', className: 'w-16', cell: (row) => <span className='font-mono text-sm tabular-nums'>{row.enrollment.rollNumber ?? '—'}</span> },
+    { key: 'roll', header: 'Roll', className: 'w-16', cell: (row) => <span className='text-sm tabular-nums'>{row.enrollment.rollNumber ?? '—'}</span> },
     {
       key: 'name',
       header: 'Student',
@@ -63,7 +63,7 @@ export function TeacherClassRoster() {
         </span>
       ),
     },
-    { key: 'admission', header: 'Admission number', cell: (row) => <span className='font-mono text-sm'>{row.student?.admissionNumber ?? '—'}</span> },
+    { key: 'admission', header: 'Admission number', cell: (row) => <span className='tabular-nums text-sm'>{row.student?.admissionNumber ?? '—'}</span> },
   ];
 
   if (isReady && !schoolClass) {

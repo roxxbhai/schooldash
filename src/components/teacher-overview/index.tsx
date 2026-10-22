@@ -87,14 +87,14 @@ export function TeacherOverview() {
             <ol className='divide-y'>
               {data.periodsToday.map((period) => (
                 <li key={period.id} className='flex items-center gap-4 px-5 py-3'>
-                  <span className='w-28 shrink-0 font-mono text-sm text-foreground tabular-nums'>
+                  <span className='w-28 shrink-0 text-sm text-foreground tabular-nums'>
                     {formatTime(period.startTime)}–{formatTime(period.endTime)}
                   </span>
                   <span className='min-w-0 flex-1'>
                     <span className='block font-medium text-foreground'>{subjectLabel(subjectById.get(period.subjectId))}</span>
                     <span className='block text-sm text-muted-foreground'>{classLabel(classById.get(period.classId))}</span>
                   </span>
-                  {period.room && <span className='shrink-0 font-mono text-xs text-muted-foreground'>Room {period.room}</span>}
+                  {period.room && <span className='shrink-0 tabular-nums text-xs text-muted-foreground'>Room {period.room}</span>}
                 </li>
               ))}
             </ol>
@@ -164,7 +164,7 @@ export function TeacherOverview() {
                 <li key={paper.id} className='px-5 py-3'>
                   <div className='flex items-baseline justify-between gap-3'>
                     <span className='font-medium text-foreground'>{subjectLabel(subjectById.get(paper.subjectId))}</span>
-                    <span className='shrink-0 font-mono text-xs text-muted-foreground'>{formatDate(paper.examDate)}</span>
+                    <span className='shrink-0 tabular-nums text-xs text-muted-foreground'>{formatDate(paper.examDate)}</span>
                   </div>
                   <p className='text-sm text-muted-foreground'>
                     {exam?.name ?? 'Exam'} · {classLabel(classById.get(paper.classId))} · out of {paper.maxMarks}
@@ -188,7 +188,7 @@ export function TeacherOverview() {
                     <Link href={`${ROUTES.teacher.notices}/${notice.id}`} className='font-medium text-foreground underline-offset-3 hover:text-primary hover:underline'>
                       {notice.title}
                     </Link>
-                    <span className='shrink-0 font-mono text-xs text-muted-foreground'>{formatDate(notice.publishedAt)}</span>
+                    <span className='shrink-0 tabular-nums text-xs text-muted-foreground'>{formatDate(notice.publishedAt)}</span>
                   </div>
                   <p className='mt-0.5 line-clamp-2 text-sm text-muted-foreground'>{notice.body}</p>
                 </li>

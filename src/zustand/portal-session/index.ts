@@ -7,6 +7,8 @@ import type { PortalSessionStore } from '@/types/portal-session';
  */
 export const portalSessionStore = create<PortalSessionStore>((set) => ({
   recordId: null,
+  fullName: null,
 
   setRecordId: (recordId) => set({ recordId }),
+  setFullName: (fullName) => set({ fullName }),
 }));

@@ -89,9 +89,10 @@
 }
 
 @theme inline {
-  /* TYPE: GEIST SANS IS THE PRIMARY FACE; GEIST MONO FOR IDS, CODES, DATES AND TIMES. */
+  /* TYPE: GEIST SANS IS THE ONLY FACE. */
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  /* NO MONOSPACE FACE: ANYTHING THAT ASKS FOR ONE (kbd, code, font-mono) GETS GEIST SANS. */
+  --font-mono: var(--font-sans);
 
   --text-2xs: 0.6875rem;
   --text-2xs--line-height: 1rem;
@@ -234,11 +235,6 @@
   body {
     @apply bg-background font-sans text-base text-foreground antialiased;
     font-feature-settings: 'cv11', 'ss01';
-  }
-
-  /* THE ADMIN PORTAL USES GEIST SANS ONLY: MONO TEXT FALLS BACK TO THE SANS FACE (BODY-LEVEL SO DIALOGS AND MENUS FOLLOW). */
-  body:has([data-portal='ADMIN']) {
-    --font-geist-mono: var(--font-geist-sans);
   }
 
   /* POINTER CURSOR ON EVERYTHING CLICKABLE (TAILWIND 4 NO LONGER SETS IT ON BUTTONS). */

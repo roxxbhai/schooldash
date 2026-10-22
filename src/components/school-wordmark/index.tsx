@@ -33,7 +33,7 @@ export function SchoolWordmark({ tone = 'default', size = 'md', className }: Sch
         </span>
         <span
           className={cn(
-            'font-mono whitespace-nowrap uppercase',
+            'tabular-nums whitespace-nowrap uppercase',
             size === 'lg' ? 'mt-1 text-xs tracking-[0.14em]' : 'text-2xs tracking-[0.08em]',
             isInverse ? 'text-white/75' : 'text-muted-foreground',
           )}

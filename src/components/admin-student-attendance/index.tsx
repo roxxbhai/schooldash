@@ -214,7 +214,7 @@ export function AdminStudentAttendance({ role = 'ADMIN' }: { role?: 'ADMIN' | 'T
             disabled={isSaving}
             aria-invalid={isDateValid ? undefined : true}
             aria-describedby={isDateValid ? 'attendance-date-description' : 'attendance-date-error'}
-            className='font-mono'
+            className='tabular-nums'
           />
         </FormField>
       </div>
@@ -226,7 +226,7 @@ export function AdminStudentAttendance({ role = 'ADMIN' }: { role?: 'ADMIN' | 'T
           <div className='mb-3 flex flex-wrap items-baseline justify-between gap-2'>
             <h2 className='text-xl font-semibold tracking-tight text-foreground'>
               {classLabel(selectedClass)}
-              <span className='ml-2 font-mono text-base font-normal text-muted-foreground'>{formatDate(attendanceDate)}</span>
+              <span className='ml-2 tabular-nums text-base font-normal text-muted-foreground'>{formatDate(attendanceDate)}</span>
             </h2>
             {rows && <p className='text-sm text-muted-foreground'>{pluralize(rows.length, 'student')} enrolled</p>}
           </div>

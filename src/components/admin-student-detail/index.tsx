@@ -184,7 +184,7 @@ export function AdminStudentDetail() {
         description={
           <span className='flex flex-wrap items-center gap-3'>
             <AccountStatusBadge isActive={student.user.isActive} />
-            <span className='font-mono text-sm'>{student.admissionNumber}</span>
+            <span className='tabular-nums text-sm'>{student.admissionNumber}</span>
           </span>
         }
       />
@@ -276,11 +276,11 @@ export function AdminStudentDetail() {
                     <dl className='flex gap-5 text-muted-foreground'>
                       <div className='flex gap-1.5'>
                         <dt>Roll no.</dt>
-                        <dd className='font-mono text-foreground'>{enrollment.rollNumber ?? '—'}</dd>
+                        <dd className='tabular-nums text-foreground'>{enrollment.rollNumber ?? '—'}</dd>
                       </div>
                       <div className='flex gap-1.5'>
                         <dt>Enrolled</dt>
-                        <dd className='font-mono text-foreground'>{formatDate(enrollment.enrolledOn)}</dd>
+                        <dd className='tabular-nums text-foreground'>{formatDate(enrollment.enrolledOn)}</dd>
                       </div>
                     </dl>
                   </li>
@@ -333,7 +333,7 @@ export function AdminStudentDetail() {
                               <div className='min-w-0'>
                                 <span className='font-medium text-foreground'>{exam.name}</span>
                                 {exam.startDate && (
-                                  <span className='ml-2 font-mono text-xs text-muted-foreground'>
+                                  <span className='ml-2 tabular-nums text-xs text-muted-foreground'>
                                     {formatDate(exam.startDate)}
                                     {exam.endDate && exam.endDate !== exam.startDate && ` – ${formatDate(exam.endDate)}`}
                                   </span>
@@ -386,13 +386,13 @@ export function AdminStudentDetail() {
                 {...fieldControlProps('admissionNumber', save.fieldErrors.admissionNumber)}
                 value={form.admissionNumber}
                 onChange={updateField('admissionNumber')}
-                className='font-mono'
+                className='tabular-nums'
                 autoComplete='off'
                 spellCheck={false}
               />
             </FormField>
             <FormField id='email' label='Email' description="The login email can't be changed.">
-              <Input {...fieldControlProps('email', undefined, true)} value={student.user.email} className='font-mono' readOnly disabled />
+              <Input {...fieldControlProps('email', undefined, true)} value={student.user.email} className='tabular-nums' readOnly disabled />
             </FormField>
             <FormField id='phone' label='Phone' error={save.fieldErrors.phone}>
               <Input
@@ -400,7 +400,7 @@ export function AdminStudentDetail() {
                 type='tel'
                 value={form.phone}
                 onChange={updateField('phone')}
-                className='font-mono'
+                className='tabular-nums'
                 autoComplete='off'
               />
             </FormField>
@@ -410,7 +410,7 @@ export function AdminStudentDetail() {
                 type='date'
                 value={form.admissionDate}
                 onChange={updateField('admissionDate')}
-                className='font-mono'
+                className='tabular-nums'
               />
             </FormField>
             <FormField id='dateOfBirth' label='Date of birth' error={save.fieldErrors.dateOfBirth}>
@@ -419,7 +419,7 @@ export function AdminStudentDetail() {
                 type='date'
                 value={form.dateOfBirth}
                 onChange={updateField('dateOfBirth')}
-                className='font-mono'
+                className='tabular-nums'
               />
             </FormField>
             <FormField id='gender' label='Gender' error={save.fieldErrors.gender}>

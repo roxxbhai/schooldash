@@ -81,7 +81,7 @@ export function NoticeReader({ listPath }: NoticeReaderProps) {
         <header className='border-b px-6 py-5'>
           {notice.data.category && <StatusBadge tone='neutral'>{notice.data.category}</StatusBadge>}
           <h1 className='mt-2 text-3xl font-semibold tracking-tight text-foreground'>{notice.data.title}</h1>
-          <p className='mt-1.5 font-mono text-xs text-muted-foreground'>Published {formatDateTime(notice.data.publishedAt)}</p>
+          <p className='mt-1.5 tabular-nums text-xs text-muted-foreground'>Published {formatDateTime(notice.data.publishedAt)}</p>
         </header>
         <div className='px-6 py-5 text-base break-words whitespace-pre-wrap text-foreground'>{notice.data.body}</div>
       </article>

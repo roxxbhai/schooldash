@@ -96,7 +96,7 @@ export function AdminEnrollments() {
       key: 'roll',
       header: 'Roll no.',
       className: 'w-24',
-      cell: (row) => <span className='font-mono text-sm'>{row.enrollment.rollNumber ?? '—'}</span>,
+      cell: (row) => <span className='tabular-nums text-sm'>{row.enrollment.rollNumber ?? '—'}</span>,
     },
     {
       key: 'student',
@@ -116,13 +116,13 @@ export function AdminEnrollments() {
     {
       key: 'admission',
       header: 'Admission no.',
-      cell: (row) => <span className='font-mono text-sm'>{row.student?.admissionNumber ?? '—'}</span>,
+      cell: (row) => <span className='tabular-nums text-sm'>{row.student?.admissionNumber ?? '—'}</span>,
     },
     {
       key: 'enrolled',
       header: 'Enrolled on',
       className: 'hidden sm:table-cell',
-      cell: (row) => <span className='font-mono text-sm'>{formatDate(row.enrollment.enrolledOn)}</span>,
+      cell: (row) => <span className='tabular-nums text-sm'>{formatDate(row.enrollment.enrolledOn)}</span>,
     },
     {
       key: 'actions',
@@ -326,7 +326,7 @@ export function AdminEnrollments() {
               value={enrollForm.rollNumber}
               onChange={(event) => setEnrollField('rollNumber', event.target.value)}
               inputMode='numeric'
-              className='font-mono'
+              className='tabular-nums'
               autoComplete='off'
             />
           </FormField>
@@ -349,7 +349,7 @@ export function AdminEnrollments() {
             value={editForm.rollNumber}
             onChange={(event) => setEditField('rollNumber', event.target.value)}
             inputMode='numeric'
-            className='font-mono'
+            className='tabular-nums'
             autoComplete='off'
           />
         </FormField>

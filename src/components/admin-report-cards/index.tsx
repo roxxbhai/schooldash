@@ -77,7 +77,7 @@ export function AdminReportCards() {
       cell: (subject) => (
         <span className='flex flex-col'>
           <span className='font-medium text-foreground'>{subject.subjectName ?? 'Unknown subject'}</span>
-          {subject.subjectCode && <span className='font-mono text-xs text-muted-foreground'>{subject.subjectCode}</span>}
+          {subject.subjectCode && <span className='tabular-nums text-xs text-muted-foreground'>{subject.subjectCode}</span>}
         </span>
       ),
     },
@@ -86,17 +86,17 @@ export function AdminReportCards() {
       header: 'Exam date',
       cell: (subject) =>
         subject.examDate ? (
-          <span className='font-mono text-sm tabular-nums'>{formatDate(subject.examDate)}</span>
+          <span className='text-sm tabular-nums'>{formatDate(subject.examDate)}</span>
         ) : (
           <span className='text-muted-foreground'>—</span>
         ),
     },
-    { key: 'max', header: 'Max', align: 'right', cell: (subject) => <span className='font-mono text-sm tabular-nums'>{formatMarks(subject.maxMarks)}</span> },
+    { key: 'max', header: 'Max', align: 'right', cell: (subject) => <span className='text-sm tabular-nums'>{formatMarks(subject.maxMarks)}</span> },
     {
       key: 'pass',
       header: 'Pass',
       align: 'right',
-      cell: (subject) => <span className='font-mono text-sm tabular-nums'>{formatMarks(subject.passMarks)}</span>,
+      cell: (subject) => <span className='text-sm tabular-nums'>{formatMarks(subject.passMarks)}</span>,
     },
     {
       key: 'obtained',
@@ -104,7 +104,7 @@ export function AdminReportCards() {
       align: 'right',
       cell: (subject) =>
         subject.status === 'entered' && subject.marksObtained !== null ? (
-          <span className='font-mono text-sm font-semibold text-foreground tabular-nums'>{formatMarks(subject.marksObtained)}</span>
+          <span className='text-sm font-semibold text-foreground tabular-nums'>{formatMarks(subject.marksObtained)}</span>
         ) : (
           <span className='text-sm text-muted-foreground'>Not entered</span>
         ),
@@ -165,7 +165,7 @@ export function AdminReportCards() {
             <p className='text-xs font-medium text-muted-foreground uppercase'>Report card</p>
             <h2 className='mt-1 text-2xl font-semibold tracking-tight text-foreground'>{card.student.fullName ?? 'Unknown student'}</h2>
             <p className='mt-1 text-sm text-muted-foreground'>
-              Admission number <span className='font-mono text-foreground'>{card.student.admissionNumber}</span>
+              Admission number <span className='tabular-nums text-foreground'>{card.student.admissionNumber}</span>
             </p>
           </div>
           <dl className='grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm sm:justify-self-end'>
@@ -176,7 +176,7 @@ export function AdminReportCards() {
             <dt className='text-muted-foreground'>Academic year</dt>
             <dd className='text-foreground'>{cardYear?.name ?? '—'}</dd>
             <dt className='text-muted-foreground'>Dates</dt>
-            <dd className='font-mono text-foreground tabular-nums'>{cardDates ?? <span className='font-sans text-muted-foreground'>Not set</span>}</dd>
+            <dd className='text-foreground tabular-nums'>{cardDates ?? <span className='font-sans text-muted-foreground'>Not set</span>}</dd>
           </dl>
         </header>
 
@@ -197,7 +197,7 @@ export function AdminReportCards() {
           <dl className='mt-5 grid gap-4 border bg-surface-muted p-4 sm:grid-cols-2 print:bg-transparent'>
             <div>
               <dt className='text-sm text-muted-foreground'>Subjects with marks</dt>
-              <dd className='mt-0.5 font-mono text-lg font-semibold text-foreground tabular-nums'>
+              <dd className='mt-0.5 text-lg font-semibold text-foreground tabular-nums'>
                 {summary.subjectsWithMarks} of {summary.subjectsConfigured}
               </dd>
             </div>
@@ -205,7 +205,7 @@ export function AdminReportCards() {
               <dt className='text-sm text-muted-foreground'>Total</dt>
               <dd className='mt-0.5'>
                 {isTotalShown ? (
-                  <span className='font-mono text-lg font-semibold text-foreground tabular-nums'>
+                  <span className='text-lg font-semibold text-foreground tabular-nums'>
                     {formatMarks(summary.totalMarksObtained)} / {formatMarks(summary.totalMaxMarks)}
                   </span>
                 ) : (

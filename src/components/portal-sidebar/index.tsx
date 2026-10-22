@@ -54,7 +54,7 @@ function SidebarContent({ role, profile, isCollapsed }: SidebarContentProps) {
       <nav aria-label={portal.navigationLabel} className='scrollbar-hidden flex-1 overflow-x-hidden overflow-y-auto px-3 py-4'>
         {portal.sections.map((section) => (
           <div key={section.label} className='mb-5 last:mb-0'>
-            <p className={cn('px-2 pb-1.5 font-mono text-2xs text-sidebar-foreground/60 uppercase', COLLAPSIBLE_LABEL)}>{section.label}</p>
+            <p className={cn('px-2 pb-1.5 tabular-nums text-2xs text-sidebar-foreground/60 uppercase', COLLAPSIBLE_LABEL)}>{section.label}</p>
             <ul className='flex flex-col gap-px'>
               {section.items.map((item) => {
                 const isActive = item === activeItem;
@@ -94,7 +94,7 @@ function SidebarContent({ role, profile, isCollapsed }: SidebarContentProps) {
           </span>
           <div className={cn('min-w-0', COLLAPSIBLE_LABEL)}>
             <p className='truncate text-sm font-medium text-white'>{profile.fullName}</p>
-            <p className='truncate font-mono text-2xs text-sidebar-foreground/70'>{profile.email}</p>
+            <p className='truncate tabular-nums text-2xs text-sidebar-foreground/70'>{profile.email}</p>
           </div>
         </div>
         <SignOutButton role={role} variant='sidebar' tooltip={isCollapsed ? 'Sign out' : undefined} className='mt-1 w-full' />

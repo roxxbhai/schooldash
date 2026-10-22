@@ -134,7 +134,7 @@ export function StudentPicker({
           className={cn('w-full justify-between px-3 font-normal', !selected && 'text-muted-foreground', className)}
         >
           <span className='truncate'>{triggerText()}</span>
-          {selected && <span className='ml-auto font-mono text-xs text-muted-foreground'>{selected.admissionNumber}</span>}
+          {selected && <span className='ml-auto tabular-nums text-xs text-muted-foreground'>{selected.admissionNumber}</span>}
           <ChevronsUpDownIcon className='text-muted-foreground' aria-hidden />
         </Button>
       </PopoverTrigger>
@@ -154,7 +154,7 @@ export function StudentPicker({
                   className={cn(isSearching && 'opacity-60')}
                 >
                   <span className='min-w-0 flex-1 truncate'>{student.user.fullName}</span>
-                  <span className='font-mono text-xs text-muted-foreground'>{student.admissionNumber}</span>
+                  <span className='tabular-nums text-xs text-muted-foreground'>{student.admissionNumber}</span>
                 </CommandItem>
               ))}
           </CommandList>

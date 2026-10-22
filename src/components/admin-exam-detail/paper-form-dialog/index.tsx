@@ -130,7 +130,7 @@ export function PaperFormDialog({ isOpen, onOpenChange, exam, paper, defaultClas
             inputMode='decimal'
             value={form.maxMarks}
             onChange={(event) => setField('maxMarks', event.target.value)}
-            className='font-mono tabular-nums'
+            className='tabular-nums'
             autoComplete='off'
           />
         </FormField>
@@ -140,7 +140,7 @@ export function PaperFormDialog({ isOpen, onOpenChange, exam, paper, defaultClas
             inputMode='decimal'
             value={form.passMarks}
             onChange={(event) => setField('passMarks', event.target.value)}
-            className='font-mono tabular-nums'
+            className='tabular-nums'
             autoComplete='off'
           />
         </FormField>
@@ -153,7 +153,7 @@ export function PaperFormDialog({ isOpen, onOpenChange, exam, paper, defaultClas
           max={dateWindow.max}
           value={form.examDate}
           onChange={(event) => setField('examDate', event.target.value)}
-          className='font-mono'
+          className='tabular-nums'
         />
       </FormField>
     </FormDialog>

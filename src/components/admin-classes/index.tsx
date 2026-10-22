@@ -57,7 +57,7 @@ export function AdminClasses() {
       cell: (schoolClass) =>
         schoolClass.classTeacherId ? teacherLabel(teacherById.get(schoolClass.classTeacherId)) : <span className='text-muted-foreground'>Not assigned</span>,
     },
-    { key: 'room', header: 'Room', className: 'hidden sm:table-cell', cell: (schoolClass) => <span className='font-mono text-sm'>{schoolClass.roomNumber ?? '—'}</span> },
+    { key: 'room', header: 'Room', className: 'hidden sm:table-cell', cell: (schoolClass) => <span className='tabular-nums text-sm'>{schoolClass.roomNumber ?? '—'}</span> },
     {
       key: 'year',
       header: 'Academic year',
@@ -250,7 +250,7 @@ export function AdminClasses() {
             {...fieldControlProps('roomNumber', save.fieldErrors.roomNumber, true)}
             value={form.roomNumber}
             onChange={(event) => setField('roomNumber', event.target.value)}
-            className='font-mono'
+            className='tabular-nums'
             autoComplete='off'
           />
         </FormField>

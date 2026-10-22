@@ -72,7 +72,7 @@ export function StudentAttendanceHistory() {
       header: 'Date',
       cell: (record) => (
         <span className='flex flex-col'>
-          <span className='font-mono text-sm text-foreground'>{formatDate(record.attendanceDate)}</span>
+          <span className='tabular-nums text-sm text-foreground'>{formatDate(record.attendanceDate)}</span>
           <span className='text-xs text-muted-foreground'>{weekdayLabel(isoWeekday(record.attendanceDate))}</span>
         </span>
       ),
@@ -113,10 +113,10 @@ export function StudentAttendanceHistory() {
 
       <div className='mb-4 grid gap-3 sm:grid-cols-3 lg:max-w-3xl'>
         <FormField id='attendance-from' label='From'>
-          <Input {...fieldControlProps('attendance-from', undefined)} type='date' value={rangeFrom} max={rangeTo} onChange={handleFromChange} className='font-mono' />
+          <Input {...fieldControlProps('attendance-from', undefined)} type='date' value={rangeFrom} max={rangeTo} onChange={handleFromChange} className='tabular-nums' />
         </FormField>
         <FormField id='attendance-to' label='To'>
-          <Input {...fieldControlProps('attendance-to', undefined)} type='date' value={rangeTo} min={rangeFrom} onChange={handleToChange} className='font-mono' />
+          <Input {...fieldControlProps('attendance-to', undefined)} type='date' value={rangeTo} min={rangeFrom} onChange={handleToChange} className='tabular-nums' />
         </FormField>
         <FormField id='attendance-status' label='Status'>
           <OptionSelect

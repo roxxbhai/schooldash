@@ -84,11 +84,11 @@ export function StudentOverview() {
             <ol className='divide-y'>
               {data.periodsToday.map((period) => (
                 <li key={period.id} className='flex items-center gap-4 px-5 py-3'>
-                  <span className='w-28 shrink-0 font-mono text-sm text-foreground tabular-nums'>
+                  <span className='w-28 shrink-0 text-sm text-foreground tabular-nums'>
                     {formatTime(period.startTime)}–{formatTime(period.endTime)}
                   </span>
                   <span className='min-w-0 flex-1 font-medium text-foreground'>{subjectLabel(subjectById.get(period.subjectId))}</span>
-                  {period.room && <span className='shrink-0 font-mono text-xs text-muted-foreground'>Room {period.room}</span>}
+                  {period.room && <span className='shrink-0 tabular-nums text-xs text-muted-foreground'>Room {period.room}</span>}
                 </li>
               ))}
             </ol>
@@ -135,7 +135,7 @@ export function StudentOverview() {
                   <li key={subject.examSubjectId} className='flex items-center justify-between gap-3 px-5 py-3'>
                     <span className='font-medium text-foreground'>{subject.subjectName ?? subjectLabel(subjectById.get(subject.subjectId))}</span>
                     {subject.status === 'entered' ? (
-                      <span className='font-mono text-sm text-foreground tabular-nums'>
+                      <span className='text-sm text-foreground tabular-nums'>
                         {formatMarks(subject.marksObtained)} <span className='text-muted-foreground'>/ {formatMarks(subject.maxMarks)}</span>
                       </span>
                     ) : (
@@ -148,7 +148,7 @@ export function StudentOverview() {
                 {reportCard.summary.complete && reportCard.summary.totalMarksObtained !== null ? (
                   <>
                     Total{' '}
-                    <span className='font-mono font-medium text-foreground tabular-nums'>
+                    <span className='font-medium text-foreground tabular-nums'>
                       {formatMarks(reportCard.summary.totalMarksObtained)} / {formatMarks(reportCard.summary.totalMaxMarks)}
                     </span>
                   </>
@@ -172,7 +172,7 @@ export function StudentOverview() {
                   <Link href={`${ROUTES.student.notices}/${notice.id}`} className='font-medium text-foreground underline-offset-3 hover:text-primary hover:underline'>
                     {notice.title}
                   </Link>
-                  <p className='font-mono text-xs text-muted-foreground'>{formatDate(notice.publishedAt)}</p>
+                  <p className='tabular-nums text-xs text-muted-foreground'>{formatDate(notice.publishedAt)}</p>
                   <p className='mt-1 line-clamp-2 text-sm text-muted-foreground'>{notice.body}</p>
                 </li>
               ))}

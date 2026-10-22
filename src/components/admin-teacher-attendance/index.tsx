@@ -134,7 +134,7 @@ export function AdminTeacherAttendance() {
             disabled={isSaving}
             aria-invalid={isDateValid ? undefined : true}
             aria-describedby={isDateValid ? 'attendance-date-description' : 'attendance-date-error'}
-            className='font-mono'
+            className='tabular-nums'
           />
         </FormField>
       </div>
@@ -142,7 +142,7 @@ export function AdminTeacherAttendance() {
       {isDateValid && (
         <>
           <div className='mb-3 flex flex-wrap items-baseline justify-between gap-2'>
-            <h2 className='font-mono text-xl font-semibold tracking-tight text-foreground'>{formatDate(attendanceDate)}</h2>
+            <h2 className='tabular-nums text-xl font-semibold tracking-tight text-foreground'>{formatDate(attendanceDate)}</h2>
             {rows && <p className='text-sm text-muted-foreground'>{pluralize(rows.length, 'teacher')}</p>}
           </div>
 

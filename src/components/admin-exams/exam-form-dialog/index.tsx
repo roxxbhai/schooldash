@@ -110,7 +110,7 @@ export function ExamFormDialog({ isOpen, onOpenChange, exam, defaultYearId, onSa
             max={year?.endDate}
             value={form.startDate}
             onChange={(event) => setField('startDate', event.target.value)}
-            className='font-mono'
+            className='tabular-nums'
           />
         </FormField>
         <FormField id='endDate' label='Last day' description='Optional.' error={save.fieldErrors.endDate}>
@@ -121,7 +121,7 @@ export function ExamFormDialog({ isOpen, onOpenChange, exam, defaultYearId, onSa
             max={year?.endDate}
             value={form.endDate}
             onChange={(event) => setField('endDate', event.target.value)}
-            className='font-mono'
+            className='tabular-nums'
           />
         </FormField>
       </div>

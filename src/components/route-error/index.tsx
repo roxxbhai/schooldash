@@ -21,7 +21,7 @@ export function RouteError({ retry, digest }: RouteErrorProps) {
       <p className='mt-2 text-base text-muted-foreground'>
         Nothing was changed. Try again, and if it keeps happening, note the time and the reference below for whoever looks after the portal.
       </p>
-      {digest && <p className='mt-3 font-mono text-xs text-muted-foreground'>Reference: {digest}</p>}
+      {digest && <p className='mt-3 tabular-nums text-xs text-muted-foreground'>Reference: {digest}</p>}
       <Button className='mt-6' onClick={retry}>
         <RefreshCwIcon aria-hidden />
         Try again

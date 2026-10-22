@@ -89,18 +89,18 @@ export function ReportCardBrowser({ studentId }: ReportCardBrowserProps) {
       cell: (subject) => (
         <span className='flex flex-col'>
           <span className='font-medium text-foreground'>{subject.subjectName ?? '—'}</span>
-          {subject.subjectCode && <span className='font-mono text-xs text-muted-foreground'>{subject.subjectCode}</span>}
+          {subject.subjectCode && <span className='tabular-nums text-xs text-muted-foreground'>{subject.subjectCode}</span>}
         </span>
       ),
     },
-    { key: 'date', header: 'Exam date', className: 'hidden sm:table-cell', cell: (subject) => <span className='font-mono text-sm'>{formatDate(subject.examDate)}</span> },
+    { key: 'date', header: 'Exam date', className: 'hidden sm:table-cell', cell: (subject) => <span className='tabular-nums text-sm'>{formatDate(subject.examDate)}</span> },
     {
       key: 'marks',
       header: 'Marks',
       align: 'right',
       cell: (subject) =>
         subject.status === 'entered' ? (
-          <span className='font-mono text-sm text-foreground tabular-nums'>
+          <span className='text-sm text-foreground tabular-nums'>
             {formatMarks(subject.marksObtained)} <span className='text-muted-foreground'>/ {formatMarks(subject.maxMarks)}</span>
           </span>
         ) : (
@@ -112,7 +112,7 @@ export function ReportCardBrowser({ studentId }: ReportCardBrowserProps) {
       header: 'Pass marks',
       align: 'right',
       className: 'hidden md:table-cell',
-      cell: (subject) => <span className='font-mono text-sm text-muted-foreground'>{subject.passMarks === null ? '—' : formatMarks(subject.passMarks)}</span>,
+      cell: (subject) => <span className='tabular-nums text-sm text-muted-foreground'>{subject.passMarks === null ? '—' : formatMarks(subject.passMarks)}</span>,
     },
     { key: 'remarks', header: 'Remarks', className: 'hidden lg:table-cell', cell: (subject) => <span className='text-sm text-muted-foreground'>{subject.remarks ?? '—'}</span> },
   ];
@@ -177,7 +177,7 @@ export function ReportCardBrowser({ studentId }: ReportCardBrowserProps) {
                     ) : reportCard.summary.complete && reportCard.summary.totalMarksObtained !== null ? (
                       <span className='text-foreground'>
                         Total{' '}
-                        <span className='font-mono font-semibold tabular-nums'>
+                        <span className='font-semibold tabular-nums'>
                           {formatMarks(reportCard.summary.totalMarksObtained)} / {formatMarks(reportCard.summary.totalMaxMarks)}
                         </span>
                       </span>

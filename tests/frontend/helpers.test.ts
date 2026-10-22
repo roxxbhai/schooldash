@@ -155,7 +155,7 @@ describe('reference labels and navigation', () => {
   });
 
   it('highlights the list for its detail pages, and the dashboard only on an exact match', () => {
-    expect(findActiveNavigationItem('/admin', PORTALS.ADMIN)?.label).toBe('Dashboard');
+    expect(findActiveNavigationItem('/admin', PORTALS.ADMIN)?.label).toBe('Today');
     expect(findActiveNavigationItem('/admin/students/123', PORTALS.ADMIN)?.label).toBe('Students');
     expect(findActiveNavigationItem('/admin/teacher-attendance', PORTALS.ADMIN)?.label).toBe('Teacher attendance');
     expect(findActiveNavigationItem('/elsewhere', PORTALS.ADMIN)).toBeNull();

@@ -103,7 +103,7 @@ export function TeacherStudent() {
       <PageHeader
         title={student.user.fullName}
         description={
-          <span className='font-mono text-sm'>
+          <span className='tabular-nums text-sm'>
             {student.admissionNumber}
             {schoolClass && <span className='font-sans'> · Class {classLabel(schoolClass)}</span>}
             {currentEnrollment?.rollNumber ? <span className='font-sans'> · Roll number {currentEnrollment.rollNumber}</span> : null}

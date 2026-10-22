@@ -7,7 +7,7 @@ import {
   ClipboardListIcon,
   FileTextIcon,
   GraduationCapIcon,
-  LayoutDashboardIcon,
+  HouseIcon,
   LinkIcon,
   MegaphoneIcon,
   PenLineIcon,
@@ -23,7 +23,7 @@ import type { NavigationItem, NavigationSection } from '@/types/portal-shell';
 export const ADMIN_NAVIGATION: readonly NavigationSection[] = [
   {
     label: 'Overview',
-    items: [{ label: 'Dashboard', href: ROUTES.admin.overview, icon: LayoutDashboardIcon, description: 'Today at the school, at a glance.' }],
+    items: [{ label: 'Today', href: ROUTES.admin.overview, icon: HouseIcon, description: 'What needs you today, and what is coming up.' }],
   },
   {
     label: 'Academic',

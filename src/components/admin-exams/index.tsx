@@ -51,7 +51,7 @@ export function AdminExams() {
       header: 'Dates',
       cell: (exam) => {
         const label = examDatesLabel(exam);
-        return label ? <span className='font-mono text-sm tabular-nums'>{label}</span> : <span className='text-muted-foreground'>Dates not set</span>;
+        return label ? <span className='text-sm tabular-nums'>{label}</span> : <span className='text-muted-foreground'>Dates not set</span>;
       },
     },
     {

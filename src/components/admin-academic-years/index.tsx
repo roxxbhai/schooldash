@@ -65,8 +65,8 @@ export function AdminAcademicYears() {
         </span>
       ),
     },
-    { key: 'start', header: 'Starts', cell: (year) => <span className='font-mono text-sm'>{formatDate(year.startDate)}</span> },
-    { key: 'end', header: 'Ends', cell: (year) => <span className='font-mono text-sm'>{formatDate(year.endDate)}</span> },
+    { key: 'start', header: 'Starts', cell: (year) => <span className='tabular-nums text-sm'>{formatDate(year.startDate)}</span> },
+    { key: 'end', header: 'Ends', cell: (year) => <span className='tabular-nums text-sm'>{formatDate(year.endDate)}</span> },
     {
       key: 'actions',
       header: <span className='sr-only'>Actions</span>,

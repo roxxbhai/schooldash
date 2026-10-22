@@ -289,11 +289,11 @@ export function AdminNoticeDetail() {
           <Panel title='Dates'>
             <dl className='grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm'>
               <dt className='text-muted-foreground'>Created</dt>
-              <dd className='font-mono'>{formatDateTime(notice.createdAt)}</dd>
+              <dd className='tabular-nums'>{formatDateTime(notice.createdAt)}</dd>
               <dt className='text-muted-foreground'>Last updated</dt>
-              <dd className='font-mono'>{formatDateTime(notice.updatedAt)}</dd>
+              <dd className='tabular-nums'>{formatDateTime(notice.updatedAt)}</dd>
               <dt className='text-muted-foreground'>Published</dt>
-              <dd className='font-mono'>{notice.publishedAt ? formatDateTime(notice.publishedAt) : '—'}</dd>
+              <dd className='tabular-nums'>{notice.publishedAt ? formatDateTime(notice.publishedAt) : '—'}</dd>
             </dl>
           </Panel>
         </div>

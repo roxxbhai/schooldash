@@ -38,12 +38,12 @@ export function AttendanceToolbar({ counts, pendingCount, isSaving, isDisabled, 
         {ATTENDANCE_STATUS_OPTIONS.map((option) => (
           <li key={option.value} className='flex items-center gap-1.5'>
             <StatusBadge tone={option.tone}>{option.label}</StatusBadge>
-            <span className='font-mono tabular-nums'>{formatNumber(counts[option.value])}</span>
+            <span className='tabular-nums'>{formatNumber(counts[option.value])}</span>
           </li>
         ))}
         <li className='flex items-center gap-1.5'>
           <StatusBadge tone='neutral'>Not marked</StatusBadge>
-          <span className='font-mono tabular-nums'>{formatNumber(counts.notMarked)}</span>
+          <span className='tabular-nums'>{formatNumber(counts.notMarked)}</span>
         </li>
       </ul>
 

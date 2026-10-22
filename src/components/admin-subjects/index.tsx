@@ -45,7 +45,7 @@ export function AdminSubjects() {
   });
 
   const columns: DataTableColumn<Subject>[] = [
-    { key: 'code', header: 'Code', className: 'w-36', cell: (subject) => <span className='font-mono text-sm font-medium'>{subject.code}</span> },
+    { key: 'code', header: 'Code', className: 'w-36', cell: (subject) => <span className='tabular-nums text-sm font-medium'>{subject.code}</span> },
     { key: 'name', header: 'Subject', cell: (subject) => <span className='font-medium text-foreground'>{subject.name}</span> },
     {
       key: 'description',
@@ -153,7 +153,7 @@ export function AdminSubjects() {
       >
         {editing && (
           <FormField id='code' label='Code' description='Assigned automatically. It cannot be changed.'>
-            <Input {...fieldControlProps('code', undefined, true)} value={editing.code} className='font-mono' readOnly disabled />
+            <Input {...fieldControlProps('code', undefined, true)} value={editing.code} className='tabular-nums' readOnly disabled />
           </FormField>
         )}
         <FormField id='name' label='Name' description='Letters, numbers and spaces only. Saved in capitals.' error={save.fieldErrors.name} isRequired>
