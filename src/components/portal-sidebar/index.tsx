@@ -97,7 +97,7 @@ function SidebarContent({ role, profile, isCollapsed }: SidebarContentProps) {
             <p className='truncate font-mono text-2xs text-sidebar-foreground/70'>{profile.email}</p>
           </div>
         </div>
-        <SignOutButton role={role} variant='sidebar' className='mt-1 w-full' />
+        <SignOutButton role={role} variant='sidebar' tooltip={isCollapsed ? 'Sign out' : undefined} className='mt-1 w-full' />
       </div>
     </div>
   );
@@ -132,7 +132,7 @@ export function PortalSidebar({ role, profile }: PortalSidebarProps) {
             onClick={toggleSidebar}
             aria-label={toggleLabel}
             aria-expanded={!isSidebarCollapsed}
-            className='absolute top-4 right-3.5 flex size-8 items-center justify-center text-sidebar-foreground transition-colors outline-none hover:bg-sidebar-accent hover:text-white focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-inset'
+            className='absolute top-4 right-3.5 flex size-8 items-center justify-center text-sidebar-foreground transition-colors outline-none hover:bg-sidebar-accent/60 hover:text-white focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-inset'
           >
             {isSidebarCollapsed ? <PanelLeftOpenIcon aria-hidden className='size-4' /> : <PanelLeftCloseIcon aria-hidden className='size-4' />}
           </button>

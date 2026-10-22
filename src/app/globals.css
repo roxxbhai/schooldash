@@ -61,6 +61,7 @@
   --warning: #a14a07;
   --warning-soft: #fdf3e3;
   --destructive: #b42318;
+  --destructive-hover: #912018;
   --destructive-soft: #fdecec;
   --info: #0a5fb4;
   --info-soft: #e9f0fb;
@@ -137,6 +138,7 @@
   --color-warning: var(--warning);
   --color-warning-soft: var(--warning-soft);
   --color-destructive: var(--destructive);
+  --color-destructive-hover: var(--destructive-hover);
   --color-destructive-soft: var(--destructive-soft);
   --color-info: var(--info);
   --color-info-soft: var(--info-soft);

@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { FormAlert } from '@/components/form-alert';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/helpers/cn';
 
 interface ConfirmDialogProps {
   isOpen: boolean;
@@ -62,7 +63,7 @@ export function ConfirmDialog({
           <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
           <Button
             variant={tone === 'destructive' ? 'destructive' : 'default'}
-            className={tone === 'destructive' ? 'bg-destructive text-white hover:bg-destructive/90' : undefined}
+            className={cn(tone === 'destructive' && 'bg-destructive text-white hover:bg-destructive-hover', isPending && 'disabled:opacity-100')}
             onClick={onConfirm}
             disabled={isPending}
           >
