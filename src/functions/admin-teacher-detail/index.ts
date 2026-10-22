@@ -22,11 +22,10 @@ export async function loadTeacher(id: string, signal: AbortSignal): Promise<ApiR
 /** BLANK TEXT CLEARS A FIELD (THE SERVER STORES NULL); A BLANK DATE IS SENT AS NULL. */
 export async function updateTeacher(id: string, form: TeacherProfileForm): Promise<ApiResult<Teacher>> {
   try {
-    const { fullName, phone, employeeCode, qualification, dateOfJoining } = form;
+    const { fullName, phone, qualification, dateOfJoining } = form;
     return await updateRecord<Teacher>(API_PATHS.teachers, id, {
       fullName,
       phone,
-      employeeCode,
       qualification,
       dateOfJoining: dateOfJoining || null,
     });

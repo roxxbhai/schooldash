@@ -21,16 +21,7 @@ import * as saBulk from '@/app/api/student-attendance/bulk/route';
 import * as saOne from '@/app/api/student-attendance/[id]/route';
 import * as ta from '@/app/api/teacher-attendance/route';
 import * as taOne from '@/app/api/teacher-attendance/[id]/route';
-import {
-  ensureItAdmin,
-  ensureItTeacher,
-  provisionTestAccount,
-  teardown,
-  runId,
-  testCode,
-  track,
-  type TestAccount,
-} from './helpers/actors';
+import { ensureItAdmin, ensureItTeacher, provisionTestAccount, runId, teardown, testCode, testSubjectName, track, type TestAccount } from './helpers/actors';
 import { connect } from './helpers/db';
 import { APP, anonymous, call, signIn, type ApiResult } from './helpers/http';
 
@@ -66,7 +57,7 @@ beforeAll(async () => {
   acc.t1 = itTeacher;
   tid.t1 = (await db.query('select id from public.teachers where "userId" = $1', [itTeacher.userId])).rows[0].id;
   for (const n of ['t2', 't3'] as const) {
-    acc[n] = await provisionTestAccount(`att-${n}`, { role: 'TEACHER', profile: { employeeCode: testCode(`att-${n}`) } });
+    acc[n] = await provisionTestAccount(`att-${n}`, { role: 'TEACHER', profile: {} });
     tid[n] = (await db.query('select id from public.teachers where "userId" = $1', [acc[n].userId])).rows[0].id;
   }
   for (const n of ['s1', 's2', 's3', 's4', 's5'] as const) {
@@ -81,11 +72,11 @@ beforeAll(async () => {
     [`IT ${runId} attendance`],
   );
   track('academicYears', yearId);
-  classA = await one('insert into public.classes ("academicYearId", name, section) values ($1, \'AT\', \'A\') returning id', [yearId]);
-  classB = await one('insert into public.classes ("academicYearId", name, section) values ($1, \'AT\', \'B\') returning id', [yearId]);
+  classA = await one('insert into public.classes ("academicYearId", name, section) values ($1, \'8\', \'A\') returning id', [yearId]);
+  classB = await one('insert into public.classes ("academicYearId", name, section) values ($1, \'8\', \'B\') returning id', [yearId]);
   track('classes', classA);
   track('classes', classB);
-  const subjectId = await one('insert into public.subjects (code, name) values ($1, \'Att\') returning id', [testCode('att-sub')]);
+  const subjectId = await one('insert into public.subjects (code, name) values ($1, $2) returning id', [testCode('att-sub'), testSubjectName('att')]);
   track('subjects', subjectId);
   track('teacherAssignments', await one('insert into public."teacherAssignments" ("teacherId", "classId", "subjectId") values ($1, $2, $3) returning id', [tid.t1, classA, subjectId]));
   track('teacherAssignments', await one('insert into public."teacherAssignments" ("teacherId", "classId", "subjectId") values ($1, $2, $3) returning id', [tid.t2, classB, subjectId]));

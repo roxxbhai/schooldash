@@ -27,7 +27,7 @@ import * as single from '@/app/api/notices/[id]/route';
 import * as audiencesRoute from '@/app/api/notices/[id]/audiences/route';
 import * as publishRoute from '@/app/api/notices/[id]/publish/route';
 import * as archiveRoute from '@/app/api/notices/[id]/archive/route';
-import { ensureItAdmin, provisionTestAccount, runId, teardown, testCode, track, type TestAccount } from './helpers/actors';
+import { ensureItAdmin, provisionTestAccount, runId, teardown, testCode, testSubjectName, track, type TestAccount } from './helpers/actors';
 import { connect } from './helpers/db';
 import { anonymous, call, signIn } from './helpers/http';
 
@@ -74,17 +74,17 @@ const dataApi = async (account: TestAccount) => {
 beforeAll(async () => {
   db = await connect();
   itAdmin = await ensureItAdmin();
-  for (const n of ['t1', 't2', 'tClass'] as const) acc[n] = await provisionTestAccount(`nt-${n}`, { role: 'TEACHER', profile: { employeeCode: testCode(`nt-${n}`) } });
+  for (const n of ['t1', 't2', 'tClass'] as const) acc[n] = await provisionTestAccount(`nt-${n}`, { role: 'TEACHER', profile: {} });
   for (const n of ['s1', 's2', 'sOff'] as const) acc[n] = await provisionTestAccount(`nt-${n}`, { role: 'STUDENT', profile: { admissionNumber: testCode(`nt-${n}`) } });
 
   const one = async (sql: string, params: unknown[]) => (await db.query(sql, params)).rows[0].id as string;
   const year = await one('insert into public."academicYears" (name, "startDate", "endDate") values ($1, \'2023-04-01\', \'2024-03-31\') returning id', [T('year')]);
   track('academicYears', year);
   const teacherId = async (a: TestAccount) => (await db.query('select id from public.teachers where "userId" = $1', [a.userId])).rows[0].id as string;
-  f.classA = await one('insert into public.classes ("academicYearId", name, section, "classTeacherId") values ($1, \'NT\', \'A\', $2) returning id', [year, await teacherId(acc.tClass)]);
-  f.classB = await one('insert into public.classes ("academicYearId", name, section) values ($1, \'NT\', \'B\') returning id', [year]);
+  f.classA = await one('insert into public.classes ("academicYearId", name, section, "classTeacherId") values ($1, \'2\', \'A\', $2) returning id', [year, await teacherId(acc.tClass)]);
+  f.classB = await one('insert into public.classes ("academicYearId", name, section) values ($1, \'2\', \'B\') returning id', [year]);
   [f.classA, f.classB].forEach((id) => track('classes', id));
-  const subject = await one('insert into public.subjects (code, name) values ($1, \'NT\') returning id', [testCode('nt-sub')]);
+  const subject = await one('insert into public.subjects (code, name) values ($1, $2) returning id', [testCode('nt-sub'), testSubjectName('nt')]);
   track('subjects', subject);
   track('teacherAssignments', await one('insert into public."teacherAssignments" ("teacherId", "classId", "subjectId") values ($1, $2, $3) returning id', [await teacherId(acc.t1), f.classA, subject]));
   track('teacherAssignments', await one('insert into public."teacherAssignments" ("teacherId", "classId", "subjectId") values ($1, $2, $3) returning id', [await teacherId(acc.t2), f.classB, subject]));
@@ -206,13 +206,12 @@ describe('validation (422) — nothing is written', () => {
 });
 
 describe('audience visibility (real RLS)', () => {
-  const n = {} as Record<'students' | 'teachers' | 'classA' | 'classB' | 'admins', string>;
+  const n = {} as Record<'students' | 'teachers' | 'classA' | 'classB', string>;
   beforeAll(async () => {
     n.students = await published('to students', [{ role: 'STUDENT' }]);
     n.teachers = await published('to teachers', [{ role: 'TEACHER' }]);
     n.classA = await published('to class A', [{ classId: f.classA }]);
     n.classB = await published('to class B', [{ classId: f.classB }]);
-    n.admins = await published('to admins', [{ role: 'ADMIN' }]);
   });
 
   const visible = async (who: Who) => {
@@ -237,7 +236,11 @@ describe('audience visibility (real RLS)', () => {
     expect((await get(ses.s1, n.teachers)).status).toBe(404);
     expect((await get(ses.t1, n.students)).status).toBe(404);
     expect((await get(ses.t2, n.classA)).status).toBe(404);
-    expect((await get(ses.s2, n.admins)).status).toBe(404);
+  });
+
+  it('cannot be addressed to admins, who already see every notice (422)', async () => {
+    const result = await create(ses.admin, { title: T('to admins'), body: 'b', audiences: [{ role: 'ADMIN' }] });
+    expect(result.status).toBe(422);
   });
 
   it('recipients get the notice without audience details; admins with them', async () => {

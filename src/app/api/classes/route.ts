@@ -38,7 +38,7 @@ export const GET = apiRoute(async (request: Request) => {
 
   let query = supabase.from('classes').select(CLASS_COLUMNS, { count: 'exact' });
   if (academicYearId) query = query.eq('academicYearId', academicYearId);
-  const rows = query.order('name').order('section').order('id').range(pagination.from, pagination.to);
+  const rows = query.order('grade').order('section').order('id').range(pagination.from, pagination.to);
   return paginated(await page<SchoolClass>('classes.list', rows, pagination, CLASS_ERRORS));
 });
 

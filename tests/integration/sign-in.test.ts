@@ -57,7 +57,7 @@ async function trackAccount(email: string) {
 }
 
 async function createTeacher(account: { email: string; phone: string }, label: string) {
-  const result = await post(adminSession, teachers.POST, '/api/teachers', { email: account.email, phone: account.phone, fullName: `IT ${label}`, employeeCode: testCode(label) });
+  const result = await post(adminSession, teachers.POST, '/api/teachers', { email: account.email, phone: account.phone, fullName: `IT ${label}` });
   await trackAccount(account.email);
   expect(result.status).toBe(201);
   return result.body.data as { id: string; userId: string };
@@ -94,12 +94,11 @@ describe('teacher phone numbers', () => {
       email: testEmail('si-dup'),
       phone: typed(teacher.phone),
       fullName: 'IT Dup',
-      employeeCode: testCode('SI-D'),
     });
     expect([duplicate.status, duplicate.body.error?.message]).toEqual([409, 'Another teacher already uses this phone number.']);
     expect((await db.query('select count(*)::int n from public.users where email = $1', [testEmail('si-dup')])).rows[0].n).toBe(0);
 
-    const missing = await post(adminSession, teachers.POST, '/api/teachers', { email: testEmail('si-np'), fullName: 'X', employeeCode: testCode('SI-NP') });
+    const missing = await post(adminSession, teachers.POST, '/api/teachers', { email: testEmail('si-np'), fullName: 'X' });
     expect(missing.status).toBe(422);
     const patchToTaken = await api(adminSession, teacherOne.PATCH, 'PATCH', `/api/teachers/${teacher.id}`, { params: { id: teacher.id }, body: { phone: raceTeacher.phone } });
     expect(patchToTaken.status).toBe(409);

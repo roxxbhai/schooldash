@@ -73,7 +73,6 @@ export function AdminTeacherDetail() {
     setForm({
       fullName: current.user.fullName,
       phone: current.user.phone ?? '',
-      employeeCode: current.employeeCode,
       qualification: current.qualification ?? '',
       dateOfJoining: current.dateOfJoining ?? '',
     });
@@ -292,15 +291,8 @@ export function AdminTeacherDetail() {
               <Input {...fieldControlProps('email', undefined, true)} value={teacher.user.email} className='font-mono' readOnly disabled />
             </FormField>
             <div className='grid gap-4 sm:grid-cols-2'>
-              <FormField id='employeeCode' label='Employee code' error={save.fieldErrors.employeeCode} isRequired>
-                <Input
-                  {...fieldControlProps('employeeCode', save.fieldErrors.employeeCode)}
-                  value={form.employeeCode}
-                  onChange={updateField('employeeCode')}
-                  className='font-mono'
-                  autoComplete='off'
-                  spellCheck={false}
-                />
+              <FormField id='employeeCode' label='Employee code' description='Assigned automatically. It cannot be changed.'>
+                <Input {...fieldControlProps('employeeCode', undefined, true)} value={teacher.employeeCode} className='font-mono' readOnly disabled />
               </FormField>
               <FormField id='phone' label='Mobile number' description='They sign in with this number.' error={save.fieldErrors.phone} isRequired>
                 <Input

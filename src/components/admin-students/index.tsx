@@ -23,6 +23,7 @@ import { ACCOUNT_STATUS_OPTIONS } from '@/constants/people';
 import { ROUTES } from '@/constants/routes';
 import { createStudent } from '@/functions/admin-students';
 import { toSearchTerm } from '@/helpers/api-client';
+import { todayInSchool } from '@/helpers/format';
 import { fieldControlProps, withoutKey, zodFieldErrors } from '@/helpers/forms';
 import { classOptions } from '@/helpers/reference-labels';
 import { useApiQuery } from '@/hooks/use-api-query';
@@ -99,7 +100,7 @@ export function AdminStudents() {
   }
 
   function openCreate() {
-    setForm(EMPTY_STUDENT_FORM);
+    setForm({ ...EMPTY_STUDENT_FORM, admissionDate: todayInSchool() });
     create.reset();
     setIsFormOpen(true);
   }
@@ -242,6 +243,7 @@ export function AdminStudents() {
             <Input
               {...fieldControlProps('dateOfBirth', create.fieldErrors.dateOfBirth)}
               type='date'
+              max={todayInSchool()}
               value={form.dateOfBirth}
               onChange={updateField('dateOfBirth')}
               className='font-mono'

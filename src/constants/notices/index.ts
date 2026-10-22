@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { APP_ROLES } from '@/constants/auth';
 import { uuidSchema } from '@/helpers/request-validation';
 import type { DbErrorContext } from '@/types/supabase';
 
@@ -27,8 +26,11 @@ export const NOTICE_ERRORS: DbErrorContext = {
 export const NOTICE_TITLE_SCHEMA = z.string().trim().min(1).max(200);
 export const NOTICE_BODY_SCHEMA = z.string().trim().min(1).max(10_000);
 
+/** ROLES A NOTICE CAN BE ADDRESSED TO. NOT ADMINS: THEY ALREADY SEE EVERY NOTICE. */
+export const NOTICE_AUDIENCE_ROLES = ['STUDENT', 'TEACHER'] as const;
+
 /** A ROLE (`{ role: 'STUDENT' }`) OR A CLASS (`{ classId }`), NEVER BOTH. */
-export const AUDIENCE_SCHEMA = z.union([z.strictObject({ role: z.enum(APP_ROLES) }), z.strictObject({ classId: uuidSchema })]);
+export const AUDIENCE_SCHEMA = z.union([z.strictObject({ role: z.enum(NOTICE_AUDIENCE_ROLES) }), z.strictObject({ classId: uuidSchema })]);
 
 /** UP TO 50 AUDIENCES, NO DUPLICATES (OVERLAPPING ONES, E.G. STUDENT + ONE CLASS, ARE ALLOWED). */
 export const AUDIENCES_SCHEMA = z

@@ -177,6 +177,48 @@
   --animate-duration-panel: 180ms;
 }
 
+/*
+ * SCROLLBARS. `scrollbar-hidden` HIDES THE BAR BUT KEEPS SCROLLING (SIDEBAR);
+ * `scrollbar-subtle` IS A SLIM, QUIET BAR THAT DARKENS ON HOVER (DIALOGS, LISTS).
+ * (NAMED TO AVOID TAILWIND 4.3'S OWN scrollbar-none / scrollbar-thin.)
+ * THE STANDARD PROPERTIES COVER CHROME 121+, FIREFOX AND SAFARI 18.2+; THE
+ * -webkit- RULES COVER OLDER WEBKIT BROWSERS.
+ */
+@utility scrollbar-hidden {
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@utility scrollbar-subtle {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+
+  &:hover {
+    scrollbar-color: var(--muted-foreground) transparent;
+  }
+
+  &::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: var(--border-strong);
+    border-radius: 9999px;
+  }
+
+  &:hover::-webkit-scrollbar-thumb {
+    background: var(--muted-foreground);
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

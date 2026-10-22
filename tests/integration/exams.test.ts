@@ -20,7 +20,7 @@ import * as exams from '@/app/api/exams/route';
 import * as exam from '@/app/api/exams/[id]/route';
 import * as papers from '@/app/api/exam-subjects/route';
 import * as paper from '@/app/api/exam-subjects/[id]/route';
-import { ensureItAdmin, provisionTestAccount, runId, teardown, testCode, track, type TestAccount } from './helpers/actors';
+import { ensureItAdmin, provisionTestAccount, runId, teardown, testCode, testSubjectName, track, type TestAccount } from './helpers/actors';
 import { connect } from './helpers/db';
 import { APP, anonymous, call, signIn } from './helpers/http';
 
@@ -50,8 +50,8 @@ const asUser = async (account: TestAccount) => {
 beforeAll(async () => {
   db = await connect();
   itAdmin = await ensureItAdmin();
-  teacher = await provisionTestAccount('ex-t', { role: 'TEACHER', profile: { employeeCode: testCode('ex-t') } });
-  otherTeacher = await provisionTestAccount('ex-t2', { role: 'TEACHER', profile: { employeeCode: testCode('ex-t2') } });
+  teacher = await provisionTestAccount('ex-t', { role: 'TEACHER', profile: {} });
+  otherTeacher = await provisionTestAccount('ex-t2', { role: 'TEACHER', profile: {} });
   student = await provisionTestAccount('ex-s', { role: 'STUDENT', profile: { admissionNumber: testCode('ex-s') } });
   const deactivated = await provisionTestAccount('ex-a2', { role: 'ADMIN' });
 
@@ -59,12 +59,12 @@ beforeAll(async () => {
   f.yearId = await one('insert into public."academicYears" (name, "startDate", "endDate") values ($1, \'2023-04-01\', \'2024-03-31\') returning id', [`IT ${runId} exams`]);
   f.otherYearId = await one('insert into public."academicYears" (name, "startDate", "endDate") values ($1, \'2022-04-01\', \'2023-03-31\') returning id', [`IT ${runId} exams old`]);
   [f.yearId, f.otherYearId].forEach((id) => track('academicYears', id));
-  f.classA = await one('insert into public.classes ("academicYearId", name, section) values ($1, \'EX\', \'A\') returning id', [f.yearId]);
-  f.classB = await one('insert into public.classes ("academicYearId", name, section) values ($1, \'EX\', \'B\') returning id', [f.yearId]);
-  f.classOtherYear = await one('insert into public.classes ("academicYearId", name, section) values ($1, \'EX\', \'A\') returning id', [f.otherYearId]);
+  f.classA = await one('insert into public.classes ("academicYearId", name, section) values ($1, \'1\', \'A\') returning id', [f.yearId]);
+  f.classB = await one('insert into public.classes ("academicYearId", name, section) values ($1, \'1\', \'B\') returning id', [f.yearId]);
+  f.classOtherYear = await one('insert into public.classes ("academicYearId", name, section) values ($1, \'1\', \'A\') returning id', [f.otherYearId]);
   [f.classA, f.classB, f.classOtherYear].forEach((id) => track('classes', id));
-  f.maths = await one('insert into public.subjects (code, name) values ($1, \'Ex Maths\') returning id', [testCode('ex-math')]);
-  f.science = await one('insert into public.subjects (code, name) values ($1, \'Ex Science\') returning id', [testCode('ex-sci')]);
+  f.maths = await one('insert into public.subjects (code, name) values ($1, $2) returning id', [testCode('ex-math'), testSubjectName('ex maths')]);
+  f.science = await one('insert into public.subjects (code, name) values ($1, $2) returning id', [testCode('ex-sci'), testSubjectName('ex science')]);
   [f.maths, f.science].forEach((id) => track('subjects', id));
   const teacherId = (await db.query('select id from public.teachers where "userId" = $1', [teacher.userId])).rows[0].id;
   const otherTeacherId = (await db.query('select id from public.teachers where "userId" = $1', [otherTeacher.userId])).rows[0].id;

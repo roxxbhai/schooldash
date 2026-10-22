@@ -65,8 +65,8 @@ async function auditActions(entityId: string) {
 beforeAll(async () => {
   db = await connect();
   itAdmin = await ensureItAdmin();
-  teacher = await provisionTestAccount('res-teacher', { role: 'TEACHER', profile: { employeeCode: testCode('emp-a') } });
-  inactiveTeacher = await provisionTestAccount('res-teacher-x', { role: 'TEACHER', profile: { employeeCode: testCode('emp-x') } });
+  teacher = await provisionTestAccount('res-teacher', { role: 'TEACHER', profile: {} });
+  inactiveTeacher = await provisionTestAccount('res-teacher-x', { role: 'TEACHER', profile: {} });
   student = await provisionTestAccount('res-student', { role: 'STUDENT', profile: { admissionNumber: testCode('adm') } });
 
   const teacherRow = async (userId: string) =>
@@ -197,22 +197,39 @@ describe('switching the current academic year (real function, rolled back)', () 
 
 describe('subjects', () => {
   let subjectId: string;
-  const code = testCode('sub');
+  let code: string;
+  const name = `IT ${runId} SCIENCE`.toUpperCase();
 
-  it('admin creates a subject; the code is normalized to upper case; audited', async () => {
+  it('admin creates a subject; the code is generated and the name normalized; audited', async () => {
     const result = await api(adminSession, subjects.POST, 'POST', '/api/subjects', {
-      body: { code: code.toLowerCase(), name: 'Integration Science', description: 'IT' },
+      body: { name: `  it ${runId}   science `, description: 'IT' },
     });
     expect(result.status).toBe(201);
-    expect(result.body.data).toMatchObject({ code, name: 'Integration Science' });
+    expect(result.body.data).toMatchObject({ code: expect.stringMatching(/^SUB\d{4,}$/), name });
     subjectId = result.body.data.id;
+    code = result.body.data.code;
     track('subjects', subjectId);
     expect(await auditActions(subjectId)).toEqual([{ action: 'subjects.insert', actorUserId: itAdmin.userId }]);
   });
 
-  it('rejects a duplicate code regardless of case (409)', async () => {
-    const dup = await api(adminSession, subjects.POST, 'POST', '/api/subjects', { body: { code, name: 'Dup' } });
-    expect([dup.status, dup.body.error?.message]).toEqual([409, 'A subject with this code already exists.']);
+  it('gives the next subject the next code', async () => {
+    const next = await api(adminSession, subjects.POST, 'POST', '/api/subjects', { body: { name: `IT ${runId} NEXT` } });
+    expect(next.status).toBe(201);
+    track('subjects', next.body.data.id);
+    expect(Number(next.body.data.code.slice(3))).toBe(Number(code.slice(3)) + 1);
+  });
+
+  it('rejects a duplicate name regardless of case and spacing (409)', async () => {
+    const dup = await api(adminSession, subjects.POST, 'POST', '/api/subjects', { body: { name: ` it  ${runId} science` } });
+    expect([dup.status, dup.body.error?.message]).toEqual([409, 'A subject with this name already exists.']);
+  });
+
+  it('rejects special characters and any client-supplied code (422)', async () => {
+    const special = await api(adminSession, subjects.POST, 'POST', '/api/subjects', { body: { name: 'Maths & Science' } });
+    expect([special.status, special.body.error?.details?.[0]?.path]).toEqual([422, 'name']);
+    expect((await api(adminSession, subjects.POST, 'POST', '/api/subjects', { body: { code: 'SUB0999', name: `IT ${runId} CODE` } })).status).toBe(422);
+    const patched = await api(adminSession, subject.PATCH, 'PATCH', `/api/subjects/${subjectId}`, { params: { id: subjectId }, body: { code: 'SUB0999' } });
+    expect(patched.status).toBe(422);
   });
 
   it('searches and reads for any active user', async () => {
@@ -228,6 +245,7 @@ describe('subjects', () => {
       body: { description: '' },
     });
     expect(updated.body.data.description).toBeNull();
+    expect(updated.body.data.code).toBe(code);
     const forbidden = await api(teacherSession, subject.PATCH, 'PATCH', `/api/subjects/${subjectId}`, {
       params: { id: subjectId },
       body: { name: 'Hijack' },
@@ -304,6 +322,25 @@ describe('classes', () => {
       body: { academicYearId: MISSING },
     });
     expect(moved.status).toBe(422);
+  });
+
+  it('accepts only classes 1-12 and sections A-Z (422)', async () => {
+    for (const [name, section] of [['13', 'A'], ['0', 'A'], ['Nursery', 'A'], ['10', 'a'], ['10', 'AB']]) {
+      const bad = await api(adminSession, classes.POST, 'POST', '/api/classes', { body: { academicYearId: yearId, name, section } });
+      expect([bad.status, bad.body.error?.details?.[0]?.path], `${name}-${section}`).toEqual([422, name === '10' ? 'section' : 'name']);
+    }
+    const patched = await api(adminSession, klass.PATCH, 'PATCH', `/api/classes/${otherClassId}`, { params: { id: otherClassId }, body: { name: '13' } });
+    expect(patched.status).toBe(422);
+  });
+
+  it('lists classes in grade order (2 before 9 before 10), then by section', async () => {
+    for (const name of ['9', '2']) {
+      const made = await api(adminSession, classes.POST, 'POST', '/api/classes', { body: { academicYearId: yearId, name, section: 'C' } });
+      expect(made.status).toBe(201);
+      track('classes', made.body.data.id);
+    }
+    const list = await api(adminSession, classes.GET, 'GET', `/api/classes?academicYearId=${yearId}`);
+    expect(list.body.data.items.map((c: { name: string; section: string }) => `${c.name}-${c.section}`)).toEqual(['2-C', '9-C', '10-A', '10-B']);
   });
 
   it('teachers see only the classes they teach', async () => {

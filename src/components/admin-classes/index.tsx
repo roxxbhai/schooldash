@@ -11,8 +11,9 @@ import { PageHeader } from '@/components/page-header';
 import { PaginationBar } from '@/components/pagination-bar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { CLASS_FORM_SCHEMA, EMPTY_CLASS_FORM, type ClassForm } from '@/constants/admin-classes';
+import { CLASS_FORM_SCHEMA, CLASS_GRADE_OPTIONS, CLASS_SECTION_OPTIONS, EMPTY_CLASS_FORM, type ClassForm } from '@/constants/admin-classes';
 import { API_PATHS } from '@/constants/api-client';
+import { CLASS_SECTIONS } from '@/constants/classes';
 import { createClass, updateClass } from '@/functions/admin-classes';
 import { refreshReferenceData } from '@/functions/reference-data';
 import { fieldControlProps, withoutKey, zodFieldErrors } from '@/helpers/forms';
@@ -34,7 +35,7 @@ export function AdminClasses() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [form, setForm] = useState<ClassForm>(EMPTY_CLASS_FORM);
 
-  const { academicYears, teachers, academicYearById, teacherById, currentAcademicYear, isReady } = useReferenceData();
+  const { academicYears, classes, teachers, academicYearById, teacherById, currentAcademicYear, isReady } = useReferenceData();
 
   const selectedYearId = yearChoice === ALL_YEARS ? null : (yearChoice ?? currentAcademicYear?.id ?? null);
   const list = useApiQuery<PaginatedList<SchoolClass>>(isReady ? API_PATHS.classes : null, { page, limit: 50, academicYearId: selectedYearId });
@@ -104,6 +105,29 @@ export function AdminClasses() {
   function setField<K extends keyof ClassForm>(field: K, value: ClassForm[K]) {
     setForm((current) => ({ ...current, [field]: value }));
     save.setFieldErrors((errors) => withoutKey(errors, field));
+  }
+
+  /** THE FIRST SECTION (A, B, …) THAT CLASS `grade` DOESN'T HAVE YET IN THE YEAR. */
+  function freeSection(academicYearId: string, grade: string): string {
+    if (!academicYearId || !grade) return '';
+    const usedSections = new Set(
+      classes.filter((schoolClass) => schoolClass.academicYearId === academicYearId && schoolClass.name === grade).map((schoolClass) => schoolClass.section),
+    );
+    return CLASS_SECTIONS.find((section) => !usedSections.has(section)) ?? '';
+  }
+
+  /** ON CREATE, A SUGGESTED (OR EMPTY) SECTION FOLLOWS THE YEAR AND CLASS; A CHOSEN ONE IS KEPT. */
+  function setPlacementField(field: 'academicYearId' | 'name', value: string) {
+    if (editing) {
+      setField(field, value);
+      return;
+    }
+    setForm((current) => {
+      const next = { ...current, [field]: value };
+      const isSuggestedSection = current.section === '' || current.section === freeSection(current.academicYearId, current.name);
+      return isSuggestedSection ? { ...next, section: freeSection(next.academicYearId, next.name) } : next;
+    });
+    save.setFieldErrors((errors) => withoutKey(withoutKey(errors, field), 'section'));
   }
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -179,27 +203,35 @@ export function AdminClasses() {
           <OptionSelect
             {...fieldControlProps('academicYearId', save.fieldErrors.academicYearId, Boolean(editing))}
             value={form.academicYearId || null}
-            onValueChange={(value) => setField('academicYearId', value ?? '')}
+            onValueChange={(value) => setPlacementField('academicYearId', value ?? '')}
             options={academicYearOptions(academicYears)}
             placeholder='Choose a year'
             isDisabled={Boolean(editing)}
           />
         </FormField>
         <div className='grid gap-4 sm:grid-cols-2'>
-          <FormField id='name' label='Class' description='For example 10 or Nursery.' error={save.fieldErrors.name} isRequired>
-            <Input
-              {...fieldControlProps('name', save.fieldErrors.name, true)}
-              value={form.name}
-              onChange={(event) => setField('name', event.target.value)}
-              autoComplete='off'
+          <FormField id='name' label='Class' error={save.fieldErrors.name} isRequired>
+            <OptionSelect
+              {...fieldControlProps('name', save.fieldErrors.name)}
+              value={form.name || null}
+              onValueChange={(value) => setPlacementField('name', value ?? '')}
+              options={CLASS_GRADE_OPTIONS}
+              placeholder='Choose a class'
             />
           </FormField>
-          <FormField id='section' label='Section' description='For example A.' error={save.fieldErrors.section} isRequired>
-            <Input
-              {...fieldControlProps('section', save.fieldErrors.section, true)}
-              value={form.section}
-              onChange={(event) => setField('section', event.target.value)}
-              autoComplete='off'
+          <FormField
+            id='section'
+            label='Section'
+            description={editing ? undefined : 'The next free section is suggested.'}
+            error={save.fieldErrors.section}
+            isRequired
+          >
+            <OptionSelect
+              {...fieldControlProps('section', save.fieldErrors.section, !editing)}
+              value={form.section || null}
+              onValueChange={(value) => setField('section', value ?? '')}
+              options={CLASS_SECTION_OPTIONS}
+              placeholder='Choose a section'
             />
           </FormField>
         </div>

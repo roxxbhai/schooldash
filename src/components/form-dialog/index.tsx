@@ -43,7 +43,7 @@ export function FormDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className={cn('max-h-[calc(100dvh-2rem)] overflow-y-auto', size === 'lg' ? 'sm:max-w-2xl' : 'sm:max-w-lg')}>
+      <DialogContent className={cn('scrollbar-subtle max-h-[calc(100dvh-2rem)] overflow-y-auto', size === 'lg' ? 'sm:max-w-2xl' : 'sm:max-w-lg')}>
         <form noValidate onSubmit={onSubmit} aria-busy={isSubmitting} className='flex flex-col gap-5'>
           <DialogHeader>
             <DialogTitle className='text-xl font-semibold'>{title}</DialogTitle>

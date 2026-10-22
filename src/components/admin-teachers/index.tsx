@@ -21,7 +21,7 @@ import { ROUTES } from '@/constants/routes';
 import { createTeacher } from '@/functions/admin-teachers';
 import { refreshReferenceData } from '@/functions/reference-data';
 import { toSearchTerm } from '@/helpers/api-client';
-import { formatDate } from '@/helpers/format';
+import { formatDate, todayInSchool } from '@/helpers/format';
 import { formatPhone } from '@/helpers/phone';
 import { fieldControlProps, withoutKey, zodFieldErrors } from '@/helpers/forms';
 import { useApiQuery } from '@/hooks/use-api-query';
@@ -42,7 +42,7 @@ export function AdminTeachers() {
   const list = useApiQuery<PaginatedList<Teacher>>(API_PATHS.teachers, { page, limit: 20, search: debouncedSearch, isActive: statusFilter });
 
   const create = useMutation((values: TeacherForm) => createTeacher(values), {
-    successMessage: (teacher) => `Added ${teacher.user.fullName}. They can now sign up on the teacher sign-up page with ${formatPhone(teacher.user.phone)}.`,
+    successMessage: (teacher) => `Added ${teacher.user.fullName} as ${teacher.employeeCode}. They can now sign up on the teacher sign-up page with ${formatPhone(teacher.user.phone)}.`,
     onSuccess: () => {
       setIsFormOpen(false);
       list.reload();
@@ -92,7 +92,7 @@ export function AdminTeachers() {
   }
 
   function openCreate() {
-    setForm(EMPTY_TEACHER_FORM);
+    setForm({ ...EMPTY_TEACHER_FORM, dateOfJoining: todayInSchool() });
     create.reset();
     setIsFormOpen(true);
   }
@@ -168,7 +168,7 @@ export function AdminTeachers() {
         isOpen={isFormOpen}
         onOpenChange={setIsFormOpen}
         title='New teacher'
-        description='This creates their login. They then sign up on the teacher sign-up page with this mobile number and choose their own password.'
+        description='This creates their login and assigns the next employee code automatically. They then sign up on the teacher sign-up page with this mobile number and choose their own password.'
         submitLabel='Add teacher'
         isSubmitting={create.isPending}
         formError={create.formError}
@@ -201,17 +201,15 @@ export function AdminTeachers() {
           />
         </FormField>
         <div className='grid gap-4 sm:grid-cols-2'>
-          <FormField id='employeeCode' label='Employee code' error={create.fieldErrors.employeeCode} isRequired>
+          <FormField id='qualification' label='Qualification' description='Optional. For example M.Sc., B.Ed.' error={create.fieldErrors.qualification}>
             <Input
-              {...fieldControlProps('employeeCode', create.fieldErrors.employeeCode)}
-              value={form.employeeCode}
-              onChange={updateField('employeeCode')}
-              className='font-mono'
+              {...fieldControlProps('qualification', create.fieldErrors.qualification, true)}
+              value={form.qualification}
+              onChange={updateField('qualification')}
               autoComplete='off'
-              spellCheck={false}
             />
           </FormField>
-          <FormField id='dateOfJoining' label='Date of joining' description='Optional.' error={create.fieldErrors.dateOfJoining}>
+          <FormField id='dateOfJoining' label='Date of joining' description='Today by default. Optional.' error={create.fieldErrors.dateOfJoining}>
             <Input
               {...fieldControlProps('dateOfJoining', create.fieldErrors.dateOfJoining, true)}
               type='date'
@@ -221,14 +219,6 @@ export function AdminTeachers() {
             />
           </FormField>
         </div>
-        <FormField id='qualification' label='Qualification' description='Optional. For example M.Sc., B.Ed.' error={create.fieldErrors.qualification}>
-          <Input
-            {...fieldControlProps('qualification', create.fieldErrors.qualification, true)}
-            value={form.qualification}
-            onChange={updateField('qualification')}
-            autoComplete='off'
-          />
-        </FormField>
       </FormDialog>
 
     </>

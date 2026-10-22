@@ -21,6 +21,8 @@ export const IT_ADMIN_EMAIL = 'schooldash-it-admin@example.com';
 export const runId = `${Date.now().toString(36)}${randomBytes(2).toString('hex')}`;
 export const testEmail = (label: string) => `it-${runId}-${label}@example.com`;
 export const testCode = (label: string) => `IT-${runId}-${label}`.toUpperCase();
+/** SUBJECT NAMES ARE UNIQUE, UPPER-CASE LETTERS/DIGITS/SPACES (MIGRATION 18); `label` MUST BE ALPHANUMERIC. */
+export const testSubjectName = (label: string) => `IT ${runId} ${label}`.toUpperCase();
 export const testPassword = () => `It-${randomBytes(18).toString('base64url')}`;
 /** A RANDOM MOBILE NUMBER (TEACHER NUMBERS ARE UNIQUE). STARTS WITH 6 SO IT IS UNLIKELY TO BE A REAL TEACHER'S. */
 export const testPhone = () => `6${randomBytes(5).readUIntBE(0, 5).toString().padStart(9, '0').slice(-9)}`;
@@ -49,7 +51,7 @@ async function setStatus(userId: string, isActive: boolean) {
  */
 async function ensurePersistent(
   email: string,
-  input: { fullName: string; role: 'ADMIN' } | { fullName: string; role: 'TEACHER'; phone: string; profile: { employeeCode: string } },
+  input: { fullName: string; role: 'ADMIN' } | { fullName: string; role: 'TEACHER'; phone: string; profile: Record<string, never> },
 ): Promise<TestAccount> {
   const password = testPassword();
   const found = await admin().rpc('findAuthUserIdByEmail', { email });
@@ -82,7 +84,7 @@ export const ensureItTeacher = () =>
     fullName: 'Integration Test Teacher',
     role: 'TEACHER',
     phone: '6000000001',
-    profile: { employeeCode: 'IT-PERSISTENT-TEACHER' },
+    profile: {},
   });
 
 /** Deactivates a persistent identity and invalidates this run's password. */

@@ -51,7 +51,7 @@ function SidebarContent({ role, profile, isCollapsed }: SidebarContentProps) {
         <span className={cn('truncate text-base leading-5 font-semibold tracking-tight text-white', COLLAPSIBLE_LABEL)}>{SCHOOL.name}</span>
       </div>
 
-      <nav aria-label={portal.navigationLabel} className='flex-1 overflow-x-hidden overflow-y-auto px-3 py-4'>
+      <nav aria-label={portal.navigationLabel} className='scrollbar-hidden flex-1 overflow-x-hidden overflow-y-auto px-3 py-4'>
         {portal.sections.map((section) => (
           <div key={section.label} className='mb-5 last:mb-0'>
             <p className={cn('px-2 pb-1.5 font-mono text-2xs text-sidebar-foreground/60 uppercase', COLLAPSIBLE_LABEL)}>{section.label}</p>

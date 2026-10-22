@@ -113,7 +113,7 @@ describe('POST /api/admins: administrators add administrators', () => {
 
   it('teachers and students are created without any setup code', async () => {
     const createdTeacher = await api(adminSession, teachers.POST, 'POST', '/api/teachers', {
-      body: { email: teacher.email, phone: teacher.phone, fullName: 'IT Setup Teacher', employeeCode: testCode('SETUP-T') },
+      body: { email: teacher.email, phone: teacher.phone, fullName: 'IT Setup Teacher' },
     });
     await trackAccount(teacher.email);
     expect(createdTeacher.status).toBe(201);
@@ -132,7 +132,7 @@ describe('POST /api/admins: administrators add administrators', () => {
     for (const userId of [teacher.userId, student.userId]) expect(await storedCode(userId)).toBeUndefined();
     // NO INITIAL PASSWORDS FOR TEACHERS OR STUDENTS ANY MORE.
     const withPassword = await api(adminSession, teachers.POST, 'POST', '/api/teachers', {
-      body: { email: testEmail('x2'), phone: testPhone(), fullName: 'X', employeeCode: testCode('X2'), password: testPassword() },
+      body: { email: testEmail('x2'), phone: testPhone(), fullName: 'X', password: testPassword() },
     });
     expect(withPassword.status).toBe(422);
   });

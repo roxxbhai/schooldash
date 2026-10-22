@@ -25,7 +25,7 @@ import * as notice from '@/app/api/notices/[id]/route';
 import * as noticeAudiences from '@/app/api/notices/[id]/audiences/route';
 import * as noticePublish from '@/app/api/notices/[id]/publish/route';
 import * as noticeArchive from '@/app/api/notices/[id]/archive/route';
-import { ensureItAdmin, provisionTestAccount, runId, teardown, testCode, track, type TestAccount } from './helpers/actors';
+import { ensureItAdmin, provisionTestAccount, runId, teardown, testCode, testSubjectName, track, type TestAccount } from './helpers/actors';
 import { connect } from './helpers/db';
 import { APP, anonymous, call, signIn, type ApiResult } from './helpers/http';
 
@@ -101,8 +101,8 @@ async function raw(e: Endpoint, body: string, contentType: string) {
 beforeAll(async () => {
   db = await connect();
   itAdmin = await ensureItAdmin();
-  const t = await provisionTestAccount('m6-teacher', { role: 'TEACHER', profile: { employeeCode: testCode('m6-t') } });
-  const t2 = await provisionTestAccount('m6-teacher2', { role: 'TEACHER', profile: { employeeCode: testCode('m6-t2') } });
+  const t = await provisionTestAccount('m6-teacher', { role: 'TEACHER', profile: {} });
+  const t2 = await provisionTestAccount('m6-teacher2', { role: 'TEACHER', profile: {} });
   const s = await provisionTestAccount('m6-student', { role: 'STUDENT', profile: { admissionNumber: testCode('m6-s') } });
   const s2 = await provisionTestAccount('m6-student2', { role: 'STUDENT', profile: { admissionNumber: testCode('m6-s2') } });
   const a2 = await provisionTestAccount('m6-admin2', { role: 'ADMIN' });
@@ -112,9 +112,9 @@ beforeAll(async () => {
   const studentId = await id('select id from public.students where "userId" = $1', [s.userId]);
   const year = await id('insert into public."academicYears" (name, "startDate", "endDate") values ($1, \'2093-04-01\', \'2094-03-31\') returning id', [`IT ${runId} m6`]);
   track('academicYears', year);
-  f.classA = await id('insert into public.classes ("academicYearId", name, section) values ($1, \'M6\', \'A\') returning id', [year]);
+  f.classA = await id('insert into public.classes ("academicYearId", name, section) values ($1, \'3\', \'A\') returning id', [year]);
   track('classes', f.classA);
-  f.subjectId = await id('insert into public.subjects (code, name) values ($1, \'M6\') returning id', [testCode('m6-sub')]);
+  f.subjectId = await id('insert into public.subjects (code, name) values ($1, $2) returning id', [testCode('m6-sub'), testSubjectName('m6')]);
   track('subjects', f.subjectId);
   track('teacherAssignments', await id('insert into public."teacherAssignments" ("teacherId", "classId", "subjectId") values ($1, $2, $3) returning id', [f.teacherId, f.classA, f.subjectId]));
   track('studentEnrollments', await id('insert into public."studentEnrollments" ("studentId", "classId", "academicYearId") values ($1, $2, $3) returning id', [studentId, f.classA, year]));

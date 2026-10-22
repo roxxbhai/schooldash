@@ -45,13 +45,12 @@ import * as noticeOne from '@/app/api/notices/[id]/route';
 import * as publish from '@/app/api/notices/[id]/publish/route';
 import * as deactivate from '@/app/api/users/[id]/deactivate/route';
 import * as reactivate from '@/app/api/users/[id]/reactivate/route';
-import { ensureItAdmin, provisionTestAccount, runId, teardown, testCode, testEmail, testPassword, testPhone, track, type TestAccount } from './helpers/actors';
+import { ensureItAdmin, provisionTestAccount, runId, teardown, testCode, testEmail, testPassword, testPhone, testSubjectName, track, type TestAccount } from './helpers/actors';
 import { connect } from './helpers/db';
 import { anonymous, call, signIn, signInAsStudent, signUpAsTeacher } from './helpers/http';
 
 const harness = { state };
 /** Subject codes are limited to 20 characters. */
-const subjectCode = (suffix: string) => `W${runId}${suffix}`.toUpperCase();
 let db: pg.Client;
 let itAdmin: TestAccount;
 let admin: CookieStore;
@@ -97,17 +96,17 @@ describe('a school year built end to end through the API', () => {
   it('1. year, subject, teacher, class, student, enrollment and assignment', async () => {
     w.yearId = (await create(years.POST, '/api/academic-years', { name: `IT ${runId} wf`, startDate: '2025-04-01', endDate: '2026-03-31' })).id;
     track('academicYears', w.yearId);
-    w.subjectId = (await create(subjects.POST, '/api/subjects', { code: subjectCode('S'), name: 'Workflow' })).id;
+    w.subjectId = (await create(subjects.POST, '/api/subjects', { name: testSubjectName('workflow') })).id;
     track('subjects', w.subjectId);
 
     // TEACHERS ARE ADDED WITH THEIR MOBILE NUMBER AND SIGN UP THEMSELVES (STEP BELOW).
     const teacherLogin = { email: testEmail('wf-teacher'), phone: testPhone(), password: testPassword() };
-    const teacher = await create(teachers.POST, '/api/teachers', { email: teacherLogin.email, phone: teacherLogin.phone, fullName: 'IT wf teacher', employeeCode: testCode('wf-t') });
+    const teacher = await create(teachers.POST, '/api/teachers', { email: teacherLogin.email, phone: teacherLogin.phone, fullName: 'IT wf teacher' });
     await trackUser(teacher.userId);
     w.teacher = { id: teacher.id, userId: teacher.userId, ...teacherLogin };
 
-    w.classId = (await create(classes.POST, '/api/classes', { academicYearId: w.yearId, name: 'WF', section: 'A', classTeacherId: w.teacher.id })).id;
-    w.otherClassId = (await create(classes.POST, '/api/classes', { academicYearId: w.yearId, name: 'WF', section: 'B' })).id;
+    w.classId = (await create(classes.POST, '/api/classes', { academicYearId: w.yearId, name: '11', section: 'A', classTeacherId: w.teacher.id })).id;
+    w.otherClassId = (await create(classes.POST, '/api/classes', { academicYearId: w.yearId, name: '11', section: 'B' })).id;
     track('classes', w.classId);
     track('classes', w.otherClassId);
 
@@ -243,7 +242,8 @@ describe('concurrent duplicates and client retries', () => {
   });
 
   it('a retried create (same request twice) never makes a duplicate', async () => {
-    const body = { code: subjectCode('R'), name: 'Retry' };
+    // SUBJECT NAMES ARE UNIQUE, SO A REPEATED CREATE IS A 409, NOT A SECOND SUBJECT.
+    const body = { name: testSubjectName('retry') };
     const first = await post(admin, subjects.POST, '/api/subjects', body);
     track('subjects', first.body.data?.id);
     const retry = await post(admin, subjects.POST, '/api/subjects', body);

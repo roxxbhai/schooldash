@@ -36,7 +36,7 @@ export function AdminSubjects() {
   const list = useApiQuery<PaginatedList<Subject>>(API_PATHS.subjects, { page, limit: 20, search: debouncedSearch });
 
   const save = useMutation((values: SubjectForm) => (editing ? updateSubject(editing.id, values) : createSubject(values)), {
-    successMessage: (subject) => (editing ? `Saved ${subject.name}.` : `Added ${subject.name}.`),
+    successMessage: (subject) => (editing ? `Saved ${subject.name}.` : `Added ${subject.name} as ${subject.code}.`),
     onSuccess: () => {
       setIsFormOpen(false);
       list.reload();
@@ -80,7 +80,7 @@ export function AdminSubjects() {
 
   function openEdit(subject: Subject) {
     setEditing(subject);
-    setForm({ code: subject.code, name: subject.name, description: subject.description ?? '' });
+    setForm({ name: subject.name, description: subject.description ?? '' });
     save.reset();
     setIsFormOpen(true);
   }
@@ -106,7 +106,7 @@ export function AdminSubjects() {
     <>
       <PageHeader
         title='Subjects'
-        description='Subjects are shared by every class and year. Codes are stored in capitals and must be unique.'
+        description='Subjects are shared by every class and year. Each subject gets the next code automatically.'
         actions={
           <Button onClick={openCreate}>
             <PlusIcon aria-hidden />
@@ -151,21 +151,20 @@ export function AdminSubjects() {
         formError={save.formError}
         onSubmit={handleSubmit}
       >
-        <div className='grid gap-4 sm:grid-cols-[10rem_1fr]'>
-          <FormField id='code' label='Code' error={save.fieldErrors.code} isRequired>
-            <Input
-              {...fieldControlProps('code', save.fieldErrors.code)}
-              value={form.code}
-              onChange={updateField('code')}
-              className='font-mono uppercase'
-              autoComplete='off'
-              spellCheck={false}
-            />
+        {editing && (
+          <FormField id='code' label='Code' description='Assigned automatically. It cannot be changed.'>
+            <Input {...fieldControlProps('code', undefined, true)} value={editing.code} className='font-mono' readOnly disabled />
           </FormField>
-          <FormField id='name' label='Name' error={save.fieldErrors.name} isRequired>
-            <Input {...fieldControlProps('name', save.fieldErrors.name)} value={form.name} onChange={updateField('name')} autoComplete='off' />
-          </FormField>
-        </div>
+        )}
+        <FormField id='name' label='Name' description='Letters, numbers and spaces only. Saved in capitals.' error={save.fieldErrors.name} isRequired>
+          <Input
+            {...fieldControlProps('name', save.fieldErrors.name, true)}
+            value={form.name}
+            onChange={updateField('name')}
+            className='uppercase'
+            autoComplete='off'
+          />
+        </FormField>
         <FormField id='description' label='Description' description='Optional.' error={save.fieldErrors.description}>
           <Textarea
             {...fieldControlProps('description', save.fieldErrors.description, true)}

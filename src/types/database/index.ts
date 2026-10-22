@@ -67,14 +67,14 @@ isOneToOne: false
                   ]
                 },"classes": {
                   Row: {
-                    "academicYearId": string,"classTeacherId": string | null,"createdAt": string,"id": string,"name": string,"roomNumber": string | null,"section": string,"updatedAt": string
+                    "academicYearId": string,"classTeacherId": string | null,"createdAt": string,"grade": number | null,"id": string,"name": string,"roomNumber": string | null,"section": string,"updatedAt": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "academicYearId": string,"classTeacherId"?: string | null,"createdAt"?: string,"id"?: string,"name": string,"roomNumber"?: string | null,"section": string,"updatedAt"?: string
+                    "academicYearId": string,"classTeacherId"?: string | null,"createdAt"?: string,"grade"?: never,"id"?: string,"name": string,"roomNumber"?: string | null,"section": string,"updatedAt"?: string
                   }
                   Update: {
-                    "academicYearId"?: string,"classTeacherId"?: string | null,"createdAt"?: string,"id"?: string,"name"?: string,"roomNumber"?: string | null,"section"?: string,"updatedAt"?: string
+                    "academicYearId"?: string,"classTeacherId"?: string | null,"createdAt"?: string,"grade"?: never,"id"?: string,"name"?: string,"roomNumber"?: string | null,"section"?: string,"updatedAt"?: string
                   }
                   Relationships: [
                     {
@@ -299,7 +299,7 @@ isOneToOne: false
                   }
                   ComputedFields: never
                   Insert: {
-                    "code": string,"createdAt"?: string,"description"?: string | null,"id"?: string,"name": string,"updatedAt"?: string
+                    "code"?: string,"createdAt"?: string,"description"?: string | null,"id"?: string,"name": string,"updatedAt"?: string
                   }
                   Update: {
                     "code"?: string,"createdAt"?: string,"description"?: string | null,"id"?: string,"name"?: string,"updatedAt"?: string

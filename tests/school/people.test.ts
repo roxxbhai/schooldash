@@ -45,17 +45,26 @@ beforeEach(() => {
 describe('teachers', () => {
   it('creates through provisioning with the role fixed to TEACHER and the admin as actor', async () => {
     db.respondTo('teachers.select', { data: { id: 't' } });
-    const result = await callRoute(teachers.POST, { body: { email: 'T@Example.com', fullName: 'T', phone: '+91 98765-43210', employeeCode: 'E1' } });
+    const result = await callRoute(teachers.POST, { body: { email: 'T@Example.com', fullName: 'T', phone: '+91 98765-43210', qualification: 'B.Ed' } });
     expect(result.status).toBe(201);
     expect(provisionAccount).toHaveBeenCalledWith(
-      expect.objectContaining({ role: 'TEACHER', email: 't@example.com', phone: '9876543210', profile: expect.objectContaining({ employeeCode: 'E1' }) }),
+      { role: 'TEACHER', email: 't@example.com', fullName: 'T', phone: '9876543210', profile: { qualification: 'B.Ed' } },
       { actorUserId: admin.id },
     );
   });
 
+  it('never accepts an employee code from the client (the database generates it)', async () => {
+    const created = await callRoute(teachers.POST, { body: { email: 't@x.co', fullName: 'T', phone: '9876543210', employeeCode: 'E1' } });
+    expect(created.status).toBe(422);
+    expect(provisionAccount).not.toHaveBeenCalled();
+    const updated = await callRoute(teacher.PATCH, { method: 'PATCH', params: { id: ID(20) }, body: { employeeCode: 'E1' } });
+    expect(updated.status).toBe(422);
+    expect(db.callsTo('updateTeacherProfile')).toHaveLength(0);
+  });
+
   it('rejects client-supplied role, status or ids in the body', async () => {
     for (const extra of [{ role: 'ADMIN' }, { isActive: false }, { userId: ID(9) }]) {
-      const result = await callRoute(teachers.POST, { body: { email: 't@x.co', fullName: 'T', phone: '9876543210', employeeCode: 'E', ...extra } });
+      const result = await callRoute(teachers.POST, { body: { email: 't@x.co', fullName: 'T', phone: '9876543210', ...extra } });
       expect(result.status).toBe(422);
     }
     expect(provisionAccount).not.toHaveBeenCalled();

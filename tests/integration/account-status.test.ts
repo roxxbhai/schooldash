@@ -52,7 +52,7 @@ async function auditCount(entityId: string, action: string) {
 beforeAll(async () => {
   itAdmin = await ensureItAdmin();
   student = await provisionTestAccount('status-student', { role: 'STUDENT', profile: { admissionNumber: studentAdmissionNumber } });
-  teacher = await provisionTestAccount('status-teacher', { role: 'TEACHER', profile: { employeeCode: `ITT-${Date.now()}` } });
+  teacher = await provisionTestAccount('status-teacher', { role: 'TEACHER', profile: {} });
   adminSession = await signIn(harness, itAdmin.email, itAdmin.password);
   teacherSession = await signIn(harness, teacher.email, teacher.password);
 });
@@ -230,13 +230,13 @@ describe('database error mapping against real errors', () => {
   }
 
   it('maps a real unique violation to 409', async () => {
-    const mapped = await realError('insert into public.subjects (code, name) values (\'IT-DUP\', \'a\'), (\'IT-DUP\', \'b\')', []);
+    const mapped = await realError('insert into public.subjects (code, name) values (\'IT-DUP\', \'IT DUP A\'), (\'IT-DUP\', \'IT DUP B\')', []);
     expect((mapped as ApiError).status).toBe(409);
   });
 
   it('maps a real missing reference to 422 and a referenced delete to 409', async () => {
     const missing = await realError(
-      'insert into public.classes ("academicYearId", name, section) values (\'00000000-0000-4000-8000-000000000000\', \'X\', \'Y\')',
+      'insert into public.classes ("academicYearId", name, section) values (\'00000000-0000-4000-8000-000000000000\', \'1\', \'Y\')',
       [],
     );
     expect((missing as ApiError).status).toBe(422);
@@ -246,7 +246,7 @@ describe('database error mapping against real errors', () => {
       [],
       [
         'insert into public."academicYears" (name, "startDate", "endDate") values (\'IT-REF\', \'2098-01-01\', \'2098-12-31\')',
-        'insert into public.classes ("academicYearId", name, section) select id, \'R\', \'R\' from public."academicYears" where name = \'IT-REF\'',
+        'insert into public.classes ("academicYearId", name, section) select id, \'1\', \'R\' from public."academicYears" where name = \'IT-REF\'',
       ],
     );
     expect([(referenced as ApiError).status, (referenced as ApiError).code]).toEqual([409, 'CONFLICT']);

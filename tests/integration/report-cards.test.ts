@@ -16,7 +16,7 @@ vi.mock('next/server', async (original) => ({
 }));
 
 import { GET as reportCard } from '@/app/api/students/[id]/report-cards/[examId]/route';
-import { ensureItAdmin, provisionTestAccount, runId, teardown, testCode, track, type TestAccount } from './helpers/actors';
+import { ensureItAdmin, provisionTestAccount, runId, teardown, testCode, testSubjectName, track, type TestAccount } from './helpers/actors';
 import { connect } from './helpers/db';
 import { anonymous, call, signIn } from './helpers/http';
 
@@ -36,7 +36,7 @@ const card = (as: CookieStore, studentId: string, examId: string) =>
 beforeAll(async () => {
   db = await connect();
   itAdmin = await ensureItAdmin();
-  for (const n of ['t1', 't2'] as const) acc[n] = await provisionTestAccount(`rc-${n}`, { role: 'TEACHER', profile: { employeeCode: testCode(`rc-${n}`) } });
+  for (const n of ['t1', 't2'] as const) acc[n] = await provisionTestAccount(`rc-${n}`, { role: 'TEACHER', profile: {} });
   for (const n of ['s1', 's2', 's3'] as const) {
     acc[n] = await provisionTestAccount(`rc-${n}`, { role: 'STUDENT', profile: { admissionNumber: testCode(`rc-${n}`) } });
     sid[n] = (await db.query('select id from public.students where "userId" = $1', [acc[n].userId])).rows[0].id;
@@ -48,11 +48,11 @@ beforeAll(async () => {
   const oldYear = await one('insert into public."academicYears" (name, "startDate", "endDate") values ($1, \'2022-04-01\', \'2023-03-31\') returning id', [`IT ${runId} rc old`]);
   const emptyYear = await one('insert into public."academicYears" (name, "startDate", "endDate") values ($1, \'2021-04-01\', \'2022-03-31\') returning id', [`IT ${runId} rc empty`]);
   [year, oldYear, emptyYear].forEach((id) => track('academicYears', id));
-  f.classA = await one('insert into public.classes ("academicYearId", name, section) values ($1, \'RC\', \'A\') returning id', [year]);
-  f.classB = await one('insert into public.classes ("academicYearId", name, section) values ($1, \'RC\', \'B\') returning id', [year]);
-  f.oldClass = await one('insert into public.classes ("academicYearId", name, section) values ($1, \'RC\', \'Z\') returning id', [oldYear]);
+  f.classA = await one('insert into public.classes ("academicYearId", name, section) values ($1, \'5\', \'A\') returning id', [year]);
+  f.classB = await one('insert into public.classes ("academicYearId", name, section) values ($1, \'5\', \'B\') returning id', [year]);
+  f.oldClass = await one('insert into public.classes ("academicYearId", name, section) values ($1, \'5\', \'Z\') returning id', [oldYear]);
   [f.classA, f.classB, f.oldClass].forEach((id) => track('classes', id));
-  const subj = async (code: string) => { const id = await one('insert into public.subjects (code, name) values ($1, $2) returning id', [testCode(code), code]); track('subjects', id); return id; };
+  const subj = async (code: string) => { const id = await one('insert into public.subjects (code, name) values ($1, $2) returning id', [testCode(code), testSubjectName(code.replace('-', ' '))]); track('subjects', id); return id; };
   const eng = await subj('rc-eng');
   const math = await subj('rc-math');
   const sci = await subj('rc-sci');
@@ -110,7 +110,7 @@ describe('report-card data', () => {
     const data = result.body.data;
     expect(data.student).toMatchObject({ id: sid.s1, admissionNumber: testCode('rc-s1'), fullName: 'IT rc-s1' });
     expect(data.exam).toMatchObject({ id: f.exam, name: 'Term 1' });
-    expect(data.class).toMatchObject({ id: f.classA, name: 'RC', section: 'A' });
+    expect(data.class).toMatchObject({ id: f.classA, name: '5', section: 'A' });
     expect(data.scope).toBe('allSubjects');
     expect(data.subjects.map((s: { subjectCode: string; marksObtained: number; maxMarks: number; passMarks: number | null }) => [s.subjectCode, s.marksObtained, s.maxMarks, s.passMarks])).toEqual([
       [testCode('rc-eng'), 30.5, 33.33, 10],

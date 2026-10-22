@@ -2,7 +2,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import type pg from 'pg';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { SQLSTATE, affected, beginSeeded, connect, expectSqlError, rollback } from './helpers/db';
+import { SQLSTATE, actAs, affected, beginSeeded, connect, expectSqlError, rollback } from './helpers/db';
 import { ids } from './helpers/school';
 
 /**
@@ -185,12 +185,57 @@ describe('constraints reject invalid data', () => {
   beforeEach(async () => beginSeeded(db));
   afterEach(async () => rollback(db));
 
-  it('accepts valid inserts and reads them back', async () => {
+  it('accepts valid inserts and reads them back, with subject names normalized', async () => {
     const { rows: [row] } = await db.query(
-      'insert into public."subjects" (code, name) values (\'IT-HIST\', \'History\') returning id, code',
+      'insert into public."subjects" (code, name) values (\'IT-HIST\', E\'  history \\t of   art \') returning id, code',
     );
     expect(row.code).toBe('IT-HIST');
-    expect((await db.query('select name from public."subjects" where id = $1', [row.id])).rows).toEqual([{ name: 'History' }]);
+    expect((await db.query('select name from public."subjects" where id = $1', [row.id])).rows).toEqual([{ name: 'HISTORY OF ART' }]);
+    await db.query('update public."subjects" set name = \' modern   history\' where id = $1', [row.id]);
+    expect((await db.query('select name from public."subjects" where id = $1', [row.id])).rows).toEqual([{ name: 'MODERN HISTORY' }]);
+  });
+
+  it('allows only letters, digits and spaces in subject names, and keeps them unique (migration 18)', async () => {
+    for (const name of ['Maths & Science', 'ENG-10', 'C++', '   ']) {
+      await expectSqlError(db, 'insert into public."subjects" (code, name) values (\'IT-BAD\', $1)', [name], SQLSTATE.checkViolation);
+    }
+    await expectSqlError(db, 'insert into public."subjects" (code, name) values (\'IT-DUP\', \' it fixture   maths\')', [], SQLSTATE.uniqueViolation);
+  });
+
+  it('generates the next subject code after the highest SUB code (migration 18)', async () => {
+    const insert = async (name: string) => (await db.query('insert into public."subjects" (name) values ($1) returning code', [name])).rows[0].code;
+    // ROLLED BACK: SET REAL CODES ASIDE SO ONLY THE FIXTURE CODES COUNT.
+    await db.query('update public."subjects" set code = \'IT-\' || id where code ~ \'^SUB[0-9]+$\'');
+    expect(await insert('IT FIXTURE ONE')).toBe('SUB0001');
+    await db.query('update public."subjects" set code = \'SUB0041\' where id = $1', [ids.subject.maths]);
+    expect(await insert('IT FIXTURE TWO')).toBe('SUB0042');
+    expect(await insert('IT FIXTURE THREE')).toBe('SUB0043');
+    await db.query('update public."subjects" set code = \'SUB9999\' where id = $1', [ids.subject.maths]);
+    expect(await insert('IT FIXTURE FOUR')).toBe('SUB10000');
+  });
+
+  it('lets admins create subjects but never set or change their code', async () => {
+    await actAs(db, 'admin');
+    const { rows: [row] } = await db.query('insert into public."subjects" (name, description) values (\'it fixture art\', null) returning code, name');
+    expect(row).toEqual({ code: expect.stringMatching(/^SUB\d{4,}$/), name: 'IT FIXTURE ART' });
+    await expectSqlError(db, 'insert into public."subjects" (code, name) values (\'SUB0999\', \'IT FIXTURE X\')', [], SQLSTATE.insufficientPrivilege);
+    await expectSqlError(db, 'update public."subjects" set code = \'SUB0999\' where id = $1', [ids.subject.maths], SQLSTATE.insufficientPrivilege);
+  });
+
+  it('allows only classes 1-12 and sections A-Z, sorted by grade (migration 18)', async () => {
+    for (const [name, section] of [['0', 'A'], ['13', 'A'], ['01', 'A'], ['Nursery', 'A'], ['10', 'a'], ['10', 'AA'], ['10', '1']]) {
+      await expectSqlError(
+        db,
+        'insert into public."classes" ("academicYearId", name, section) values ($1, $2, $3)',
+        [ids.year, name, section],
+        SQLSTATE.checkViolation,
+      );
+    }
+    for (const name of ['2', '12', '1']) {
+      await db.query('insert into public."classes" ("academicYearId", name, section) values ($1, $2, \'Z\')', [ids.year, name]);
+    }
+    const sorted = await db.query('select name from public."classes" where "academicYearId" = $1 and section = \'Z\' order by grade', [ids.year]);
+    expect(sorted.rows.map((row) => row.name)).toEqual(['1', '2', '12']);
   });
 
   it('rejects duplicate admission numbers, emails and subject codes', async () => {
@@ -233,6 +278,29 @@ describe('constraints reject invalid data', () => {
     );
   });
 
+  it('generates the next employee code after the highest EMP code (migration 17)', async () => {
+    const next = async () => (await db.query('select app."nextEmployeeCode"() as code')).rows[0].code;
+    // ROLLED BACK: SET REAL CODES ASIDE SO ONLY THE FIXTURE CODES COUNT.
+    await db.query('update public."teachers" set "employeeCode" = \'IT-\' || id where "employeeCode" ~ \'^EMP[0-9]+$\'');
+    await db.query('update public."teachers" set "employeeCode" = \'EMP0041\' where id = $1', [ids.teacher.a]);
+    await db.query('update public."teachers" set "employeeCode" = \'EMP0007\' where id = $1', [ids.teacher.b]);
+    expect(await next()).toBe('EMP0042');
+    await db.query('update public."teachers" set "employeeCode" = \'EMP9999\' where id = $1', [ids.teacher.a]);
+    expect(await next()).toBe('EMP10000');
+  });
+
+  it('keeps employee codes permanent for signed-in users, admins included', async () => {
+    await actAs(db, 'admin');
+    await expectSqlError(db, 'update public."teachers" set "employeeCode" = \'EMP0999\' where id = $1', [ids.teacher.a], SQLSTATE.insufficientPrivilege);
+    await expectSqlError(
+      db,
+      'select public."updateTeacherProfile"($1, \'{}\'::jsonb, \'{"employeeCode": "EMP0999"}\'::jsonb)',
+      [ids.teacher.a],
+      SQLSTATE.insufficientPrivilege,
+    );
+    await expectSqlError(db, 'select app."nextEmployeeCode"()', [], SQLSTATE.insufficientPrivilege);
+  });
+
   it("blocks changing a user's role while a profile depends on it", async () => {
     await expectSqlError(db, 'update public."users" set role = \'teacher\' where id = $1', [ids.user.studentA], SQLSTATE.foreignKeyViolation);
   });
@@ -270,6 +338,6 @@ describe('constraints reject invalid data', () => {
       'select name, "updatedAt" = now() as "isNow" from public."subjects" where id = $1',
       [ids.subject.maths],
     );
-    expect(row).toEqual({ name: 'Mathematics', isNow: true });
+    expect(row).toEqual({ name: 'MATHEMATICS', isNow: true });
   });
 });

@@ -263,7 +263,7 @@ describe('administrator', () => {
   });
 
   it('can create reference data and edit profile details', async () => {
-    expect(await affected(db, 'insert into public."subjects" (code, name) values (\'IT-ART\', \'Art\')')).toBe(1);
+    expect(await affected(db, 'insert into public."subjects" (name) values (\'IT FIXTURE ART\')')).toBe(1);
     expect(await affected(db, 'update public."users" set "fullName" = \'Renamed\' where id = $1', [user.studentB])).toBe(1);
   });
 

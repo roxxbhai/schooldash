@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { SUBJECT_CODE_SCHEMA, SUBJECT_COLUMNS, SUBJECT_ERRORS, SUBJECT_NAME_SCHEMA } from '@/constants/subjects';
+import { SUBJECT_COLUMNS, SUBJECT_ERRORS, SUBJECT_NAME_SCHEMA } from '@/constants/subjects';
 import { requireAdmin, requireAuthenticatedUser } from '@/functions/authorization';
 import { findSubject } from '@/functions/subjects';
 import { apiRoute, ok } from '@/helpers/api-response';
@@ -13,8 +13,8 @@ import type { Subject } from '@/types/subjects';
 
 type Context = RouteContext<'/api/subjects/[id]'>;
 
+/** code IS DELIBERATELY ABSENT: SUBJECT CODES ARE GENERATED AND PERMANENT. */
 const updateSubjectSchema = z.strictObject({
-  code: SUBJECT_CODE_SCHEMA.optional(),
   name: SUBJECT_NAME_SCHEMA.optional(),
   description: optionalText(500),
 });
@@ -27,7 +27,7 @@ export const GET = apiRoute(async (_request: Request, context: Context) => {
   return ok(unwrapResult(await findSubject(supabase, id)));
 });
 
-/** ADMIN ONLY. CODE, NAME, DESCRIPTION. */
+/** ADMIN ONLY. NAME, DESCRIPTION. */
 export const PATCH = apiRoute(async (request: Request, context: Context) => {
   assertSameOrigin(request);
   const supabase = await createSupabaseServerClient();

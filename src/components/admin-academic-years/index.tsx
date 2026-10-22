@@ -16,10 +16,12 @@ import { ACADEMIC_YEAR_FORM_SCHEMA, EMPTY_ACADEMIC_YEAR_FORM, type AcademicYearF
 import { API_PATHS } from '@/constants/api-client';
 import { createAcademicYear, setCurrentAcademicYear, updateAcademicYear } from '@/functions/admin-academic-years';
 import { refreshReferenceData } from '@/functions/reference-data';
-import { formatDate } from '@/helpers/format';
+import { suggestNextAcademicYear } from '@/helpers/admin-academic-years';
+import { formatDate, todayInSchool } from '@/helpers/format';
 import { fieldControlProps, withoutKey, zodFieldErrors } from '@/helpers/forms';
 import { useApiQuery } from '@/hooks/use-api-query';
 import { useMutation } from '@/hooks/use-mutation';
+import { useReferenceData } from '@/hooks/use-reference-data';
 import type { AcademicYear } from '@/types/academic-years';
 import type { PaginatedList } from '@/types/api';
 
@@ -31,6 +33,7 @@ export function AdminAcademicYears() {
   const [form, setForm] = useState<AcademicYearForm>(EMPTY_ACADEMIC_YEAR_FORM);
   const [makingCurrent, setMakingCurrent] = useState<AcademicYear | null>(null);
 
+  const { academicYears } = useReferenceData();
   const list = useApiQuery<PaginatedList<AcademicYear>>(API_PATHS.academicYears, { page, limit: 20 });
 
   const save = useMutation((values: AcademicYearForm) => (editing ? updateAcademicYear(editing.id, values) : createAcademicYear(values)), {
@@ -87,7 +90,7 @@ export function AdminAcademicYears() {
 
   function openCreate() {
     setEditing(null);
-    setForm(EMPTY_ACADEMIC_YEAR_FORM);
+    setForm(suggestNextAcademicYear(academicYears, todayInSchool()));
     save.reset();
     setIsFormOpen(true);
   }
@@ -162,13 +165,13 @@ export function AdminAcademicYears() {
         isOpen={isFormOpen}
         onOpenChange={setIsFormOpen}
         title={editing ? `Edit ${editing.name}` : 'New academic year'}
-        description={editing ? undefined : 'You can mark it as current once it is created.'}
+        description={editing ? undefined : 'Prefilled as the year after the latest one. You can mark it as current once it is created.'}
         submitLabel={editing ? 'Save changes' : 'Create year'}
         isSubmitting={save.isPending}
         formError={save.formError}
         onSubmit={handleSubmit}
       >
-        <FormField id='name' label='Name' description='For example 2026–27.' error={save.fieldErrors.name} isRequired>
+        <FormField id='name' label='Name' description='For example 2026-2027.' error={save.fieldErrors.name} isRequired>
           <Input {...fieldControlProps('name', save.fieldErrors.name, true)} value={form.name} onChange={updateField('name')} autoComplete='off' />
         </FormField>
         <div className='grid gap-4 sm:grid-cols-2'>

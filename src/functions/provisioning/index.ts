@@ -47,8 +47,8 @@ const studentProfileSchema = z.strictObject({
   address: z.string().trim().min(1).max(500).optional(),
 });
 
+/** NO EMPLOYEE CODE: `provisionAppUser` GENERATES IT (MIGRATION 17). */
 const teacherProfileSchema = z.strictObject({
-  employeeCode: z.string().trim().min(1).max(50),
   qualification: optionalText,
   dateOfJoining: optionalDate,
 });
@@ -172,7 +172,7 @@ async function removeAuthUser(admin: DbClient, authUserId: string): Promise<void
 
 function mapProvisionError(code: string | undefined, message: string | undefined): Error {
   switch (code) {
-    case '23505': // UNIQUE: IDENTITY, EMAIL, TEACHER PHONE OR admission/employee NUMBER ALREADY USED
+    case '23505': // UNIQUE: IDENTITY, EMAIL, TEACHER PHONE OR ADMISSION NUMBER ALREADY USED
       if (message?.includes('usersTeacherPhoneKey')) return conflict('Another teacher already uses this phone number.');
       return conflict('An account or profile with these details already exists.');
     case '22023': // MISSING REQUIRED PROFILE FIELD

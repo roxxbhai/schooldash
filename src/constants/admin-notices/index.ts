@@ -22,12 +22,14 @@ export const NOTICE_STATUS_META: Record<NoticeStatus, { label: string; tone: Sta
   archived: { label: 'Archived', tone: 'warning' },
 };
 
-/** THE ROLES A NOTICE CAN BE ADDRESSED TO (EVERY ROLE THE API ACCEPTS). */
+/** THE ROLES A NOTICE CAN BE ADDRESSED TO (EVERY ROLE THE API ACCEPTS). ADMINS ALREADY SEE EVERY NOTICE. */
 export const AUDIENCE_ROLES: readonly { role: AppRole; label: string; description: string }[] = [
   { role: 'STUDENT', label: 'All students', description: 'Every active student account.' },
   { role: 'TEACHER', label: 'All teachers', description: 'Every active teacher account.' },
-  { role: 'ADMIN', label: 'All admins', description: 'Every active admin account.' },
 ];
+
+/** "ALL" IN THE CLASS AND SECTION FILTERS OF THE AUDIENCE PICKER. */
+export const ALL_CLASS_FILTER = 'all';
 
 export const NOTICE_CONTENT_SCHEMA = z.object({
   title: z.string().trim().min(1, { error: 'Enter a title.' }).max(200, { error: 'Use at most 200 characters.' }),

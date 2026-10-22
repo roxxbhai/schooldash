@@ -36,15 +36,7 @@ import * as assignments from '@/app/api/teacher-assignments/route';
 import * as assignment from '@/app/api/teacher-assignments/[id]/route';
 import * as deactivate from '@/app/api/users/[id]/deactivate/route';
 import * as reactivate from '@/app/api/users/[id]/reactivate/route';
-import {
-  ensureItAdmin,
-  provisionTestAccount,
-  teardown,
-  runId,
-  testCode,
-  track,
-  type TestAccount,
-} from './helpers/actors';
+import { ensureItAdmin, provisionTestAccount, runId, teardown, testCode, testSubjectName, track, type TestAccount } from './helpers/actors';
 import { connect } from './helpers/db';
 import { APP, anonymous, call, signIn, type ApiResult } from './helpers/http';
 
@@ -112,7 +104,7 @@ const endpoints: Endpoint[] = [
   { name: 'PATCH /academic-years/{id}', handler: year.PATCH, method: 'PATCH', path: (id) => `/api/academic-years/${id}`, id: () => f.yearId, allowed: ADMIN, body: () => ({ name: 'renamed' }) },
   { name: 'POST /academic-years/{id}/set-current', handler: setCurrent.POST, method: 'POST', path: (id) => `/api/academic-years/${id}/set-current`, id: () => f.yearId, allowed: ADMIN },
   { name: 'GET /subjects', handler: subjects.GET, method: 'GET', path: () => '/api/subjects', allowed: ALL, list: true },
-  { name: 'POST /subjects', handler: subjects.POST, method: 'POST', path: () => '/api/subjects', allowed: ADMIN, body: () => ({ code: 'X', name: 'X' }) },
+  { name: 'POST /subjects', handler: subjects.POST, method: 'POST', path: () => '/api/subjects', allowed: ADMIN, body: () => ({ name: 'X' }) },
   { name: 'GET /subjects/{id}', handler: subject.GET, method: 'GET', path: (id) => `/api/subjects/${id}`, id: () => f.subjectId, allowed: ALL },
   { name: 'PATCH /subjects/{id}', handler: subject.PATCH, method: 'PATCH', path: (id) => `/api/subjects/${id}`, id: () => f.subjectId, allowed: ADMIN, body: () => ({ name: 'x' }) },
   { name: 'GET /classes', handler: classes.GET, method: 'GET', path: () => '/api/classes', allowed: ALL, list: true },
@@ -120,7 +112,7 @@ const endpoints: Endpoint[] = [
   { name: 'GET /classes/{id}', handler: klass.GET, method: 'GET', path: (id) => `/api/classes/${id}`, id: () => f.classA, allowed: ALL },
   { name: 'PATCH /classes/{id}', handler: klass.PATCH, method: 'PATCH', path: (id) => `/api/classes/${id}`, id: () => f.classA, allowed: ADMIN, body: () => ({ roomNumber: 'x' }) },
   { name: 'GET /teachers', handler: teachers.GET, method: 'GET', path: () => '/api/teachers', allowed: ADMIN, list: true },
-  { name: 'POST /teachers', handler: teachers.POST, method: 'POST', path: () => '/api/teachers', allowed: ADMIN, body: () => ({ email: 'x@example.com', fullName: 'X', phone: '9876543210', employeeCode: 'X' }) },
+  { name: 'POST /teachers', handler: teachers.POST, method: 'POST', path: () => '/api/teachers', allowed: ADMIN, body: () => ({ email: 'x@example.com', fullName: 'X', phone: '9876543210' }) },
   { name: 'GET /teachers/{id}', handler: teacher.GET, method: 'GET', path: (id) => `/api/teachers/${id}`, id: () => f.teacherId, allowed: ['admin', 'teacher'] },
   { name: 'PATCH /teachers/{id}', handler: teacher.PATCH, method: 'PATCH', path: (id) => `/api/teachers/${id}`, id: () => f.teacherId, allowed: ADMIN, body: () => ({ qualification: 'x' }) },
   { name: 'GET /students', handler: students.GET, method: 'GET', path: () => '/api/students', allowed: ['admin', 'teacher', 'otherTeacher'], list: true },
@@ -164,8 +156,8 @@ async function raw(e: Endpoint, body: string, contentType: string) {
 beforeAll(async () => {
   db = await connect();
   itAdmin = await ensureItAdmin();
-  const t = await provisionTestAccount('mx-teacher', { role: 'TEACHER', profile: { employeeCode: testCode('mx-t') } });
-  const t2 = await provisionTestAccount('mx-teacher2', { role: 'TEACHER', profile: { employeeCode: testCode('mx-t2') } });
+  const t = await provisionTestAccount('mx-teacher', { role: 'TEACHER', profile: {} });
+  const t2 = await provisionTestAccount('mx-teacher2', { role: 'TEACHER', profile: {} });
   const s = await provisionTestAccount('mx-student', { role: 'STUDENT', profile: { admissionNumber: testCode('mx-s') } });
   const s2 = await provisionTestAccount('mx-student2', { role: 'STUDENT', profile: { admissionNumber: testCode('mx-s2') } });
   const a2 = await provisionTestAccount('mx-admin2', { role: 'ADMIN' });
@@ -178,11 +170,11 @@ beforeAll(async () => {
   f.studentUserId = s.userId;
   f.yearId = await id('insert into public."academicYears" (name, "startDate", "endDate") values ($1, \'2094-04-01\', \'2095-03-31\') returning id', [`IT ${runId} matrix`]);
   track('academicYears', f.yearId);
-  f.classA = await id('insert into public.classes ("academicYearId", name, section) values ($1, \'M\', \'A\') returning id', [f.yearId]);
-  f.classB = await id('insert into public.classes ("academicYearId", name, section) values ($1, \'M\', \'B\') returning id', [f.yearId]);
+  f.classA = await id('insert into public.classes ("academicYearId", name, section) values ($1, \'4\', \'A\') returning id', [f.yearId]);
+  f.classB = await id('insert into public.classes ("academicYearId", name, section) values ($1, \'4\', \'B\') returning id', [f.yearId]);
   track('classes', f.classA);
   track('classes', f.classB);
-  f.subjectId = await id('insert into public.subjects (code, name) values ($1, \'Matrix\') returning id', [testCode('mx-sub')]);
+  f.subjectId = await id('insert into public.subjects (code, name) values ($1, $2) returning id', [testCode('mx-sub'), testSubjectName('matrix')]);
   track('subjects', f.subjectId);
   f.assignmentId = await id('insert into public."teacherAssignments" ("teacherId", "classId", "subjectId") values ($1, $2, $3) returning id', [f.teacherId, f.classA, f.subjectId]);
   track('teacherAssignments', f.assignmentId);
@@ -320,7 +312,7 @@ describe('audit coverage for admin updates', () => {
     (await db.query('select action, "actorUserId" from public."auditLogs" where "entityId" = $1 order by "createdAt"', [entityId])).rows;
 
   it('subject and enrollment updates are audited with the acting admin', async () => {
-    await api(sessions.admin, subject.PATCH, 'PATCH', `/api/subjects/${f.subjectId}`, { params: { id: f.subjectId }, body: { name: 'Matrix 2' } });
+    await api(sessions.admin, subject.PATCH, 'PATCH', `/api/subjects/${f.subjectId}`, { params: { id: f.subjectId }, body: { name: testSubjectName('matrix 2') } });
     expect(await actions(f.subjectId)).toContainEqual({ action: 'subjects.update', actorUserId: itAdmin.userId });
 
     await api(sessions.admin, enrollment.PATCH, 'PATCH', `/api/enrollments/${f.enrollmentA}`, { params: { id: f.enrollmentA }, body: { rollNumber: 7 } });
@@ -329,7 +321,7 @@ describe('audit coverage for admin updates', () => {
 
   it('an update that changes nothing is not audited', async () => {
     const before = (await actions(f.subjectId)).length;
-    await api(sessions.admin, subject.PATCH, 'PATCH', `/api/subjects/${f.subjectId}`, { params: { id: f.subjectId }, body: { name: 'Matrix 2' } });
+    await api(sessions.admin, subject.PATCH, 'PATCH', `/api/subjects/${f.subjectId}`, { params: { id: f.subjectId }, body: { name: testSubjectName('matrix 2') } });
     expect((await actions(f.subjectId)).length).toBe(before);
   });
 });

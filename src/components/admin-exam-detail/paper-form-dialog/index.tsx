@@ -44,7 +44,8 @@ export function PaperFormDialog({ isOpen, onOpenChange, exam, paper, defaultClas
           passMarks: marksToText(paper.passMarks),
           examDate: paper.examDate ?? '',
         }
-      : { ...EMPTY_PAPER_FORM, classId: defaultClassId ?? '' },
+      : // A ONE-DAY EXAM HAS ONLY ONE POSSIBLE PAPER DATE.
+        { ...EMPTY_PAPER_FORM, classId: defaultClassId ?? '', examDate: exam.startDate && exam.startDate === exam.endDate ? exam.startDate : '' },
   );
 
   const { classes, subjects, classById, subjectById, academicYearById } = useReferenceData();
@@ -120,7 +121,7 @@ export function PaperFormDialog({ isOpen, onOpenChange, exam, paper, defaultClas
         <FormField
           id='maxMarks'
           label='Max marks'
-          description={paper ? "Can't go below a mark already entered." : 'For example 100.'}
+          description={paper ? "Can't go below a mark already entered." : '100 by default.'}
           error={save.fieldErrors.maxMarks}
           isRequired
         >

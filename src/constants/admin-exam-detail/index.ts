@@ -26,7 +26,8 @@ export const PAPER_FORM_SCHEMA = z
 
 export type PaperForm = z.input<typeof PAPER_FORM_SCHEMA>;
 
-export const EMPTY_PAPER_FORM: PaperForm = { classId: '', subjectId: '', maxMarks: '', passMarks: '', examDate: '' };
+/** MOST PAPERS ARE OUT OF 100, SO A NEW PAPER STARTS THERE. */
+export const EMPTY_PAPER_FORM: PaperForm = { classId: '', subjectId: '', maxMarks: '100', passMarks: '', examDate: '' };
 
 /** "ALL CLASSES" IN THE PAPERS FILTER. */
 export const ALL_CLASSES = 'all';

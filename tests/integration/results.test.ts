@@ -20,16 +20,7 @@ vi.mock('next/server', async (original) => ({
 import * as results from '@/app/api/results/route';
 import * as resultsBulk from '@/app/api/results/bulk/route';
 import * as resultOne from '@/app/api/results/[id]/route';
-import {
-  ensureItAdmin,
-  ensureItTeacher,
-  provisionTestAccount,
-  runId,
-  teardown,
-  testCode,
-  track,
-  type TestAccount,
-} from './helpers/actors';
+import { ensureItAdmin, ensureItTeacher, provisionTestAccount, runId, teardown, testCode, testSubjectName, track, type TestAccount } from './helpers/actors';
 import { connect } from './helpers/db';
 import { APP, anonymous, call, signIn, type ApiResult } from './helpers/http';
 
@@ -59,7 +50,7 @@ beforeAll(async () => {
   db = await connect();
   itAdmin = await ensureItAdmin();
   itTeacher = await ensureItTeacher();
-  acc.t2 = await provisionTestAccount('rs-t2', { role: 'TEACHER', profile: { employeeCode: testCode('rs-t2') } });
+  acc.t2 = await provisionTestAccount('rs-t2', { role: 'TEACHER', profile: {} });
   for (const n of ['s1', 's2', 's3', 's4'] as const) {
     acc[n] = await provisionTestAccount(`rs-${n}`, { role: 'STUDENT', profile: { admissionNumber: testCode(`rs-${n}`) } });
     sid[n] = (await db.query('select id from public.students where "userId" = $1', [acc[n].userId])).rows[0].id;
@@ -72,12 +63,12 @@ beforeAll(async () => {
   track('academicYears', yearId);
   const itTeacherId = await teacherId(itTeacher.userId);
   // The integration teacher teaches Maths in A and is also A's class teacher (but not its Science teacher).
-  p.classA = await one('insert into public.classes ("academicYearId", name, section, "classTeacherId") values ($1, \'RS\', \'A\', $2) returning id', [yearId, itTeacherId]);
-  const classB = await one('insert into public.classes ("academicYearId", name, section) values ($1, \'RS\', \'B\') returning id', [yearId]);
+  p.classA = await one('insert into public.classes ("academicYearId", name, section, "classTeacherId") values ($1, \'6\', \'A\', $2) returning id', [yearId, itTeacherId]);
+  const classB = await one('insert into public.classes ("academicYearId", name, section) values ($1, \'6\', \'B\') returning id', [yearId]);
   track('classes', p.classA);
   track('classes', classB);
-  p.maths = await one('insert into public.subjects (code, name) values ($1, \'Rs Maths\') returning id', [testCode('rs-math')]);
-  const science = await one('insert into public.subjects (code, name) values ($1, \'Rs Science\') returning id', [testCode('rs-sci')]);
+  p.maths = await one('insert into public.subjects (code, name) values ($1, $2) returning id', [testCode('rs-math'), testSubjectName('rs maths')]);
+  const science = await one('insert into public.subjects (code, name) values ($1, $2) returning id', [testCode('rs-sci'), testSubjectName('rs science')]);
   track('subjects', p.maths);
   track('subjects', science);
   track('teacherAssignments', await one('insert into public."teacherAssignments" ("teacherId", "classId", "subjectId") values ($1, $2, $3) returning id', [itTeacherId, p.classA, p.maths]));

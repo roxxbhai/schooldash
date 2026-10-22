@@ -62,16 +62,34 @@ describe('requireChanges', () => {
 });
 
 describe('subjects', () => {
-  it('normalizes codes to upper case and validates their format', async () => {
+  it('stores names trimmed, single-spaced and upper-case', async () => {
     db.respondTo('subjects.insert', { data: { id: UUID } });
-    await callRoute(subjects.POST, { body: { code: ' math-10 ', name: 'Maths' } });
-    expect(db.callsTo('subjects', 'insert')[0].payload).toEqual({ code: 'MATH-10', name: 'Maths' });
-    expect((await callRoute(subjects.POST, { body: { code: 'ma th', name: 'x' } })).status).toBe(422);
+    db.respondTo('subjects.update', { data: { id: UUID } });
+    await callRoute(subjects.POST, { body: { name: '  social \t  science   10 ' } });
+    expect(db.callsTo('subjects', 'insert')[0].payload).toEqual({ name: 'SOCIAL SCIENCE 10' });
+    await callRoute(subject.PATCH, { method: 'PATCH', body: { name: ' hindi  ' }, params: { id: UUID } });
+    expect(db.callsTo('subjects', 'update')[0].payload).toEqual({ name: 'HINDI' });
+  });
+
+  it('rejects special characters and blank names', async () => {
+    for (const name of ['Maths & Science', 'ENG-10', 'art.', 'C++', '   ', '']) {
+      expect((await callRoute(subjects.POST, { body: { name } })).status, name).toBe(422);
+    }
+    expect((await callRoute(subject.PATCH, { method: 'PATCH', body: { name: 'a/b' }, params: { id: UUID } })).status).toBe(422);
+    expect(db.callsTo('subjects', 'insert')).toHaveLength(0);
+    expect(db.callsTo('subjects', 'update')).toHaveLength(0);
+  });
+
+  it('never accepts a subject code: the database generates it', async () => {
+    expect((await callRoute(subjects.POST, { body: { code: 'MATH', name: 'Maths' } })).status).toBe(422);
+    expect((await callRoute(subject.PATCH, { method: 'PATCH', body: { code: 'MATH' }, params: { id: UUID } })).status).toBe(422);
+    expect(db.callsTo('subjects', 'insert')).toHaveLength(0);
+    expect(db.callsTo('subjects', 'update')).toHaveLength(0);
   });
 
   it('clears blank descriptions to null', async () => {
     db.respondTo('subjects.insert', { data: { id: UUID } });
-    await callRoute(subjects.POST, { body: { code: 'A', name: 'B', description: '  ' } });
+    await callRoute(subjects.POST, { body: { name: 'B', description: '  ' } });
     expect(db.callsTo('subjects', 'insert')[0].payload).toMatchObject({ description: null });
   });
 
@@ -100,6 +118,24 @@ describe('classes', () => {
 
   it('does not allow moving a class to another academic year', async () => {
     expect((await patchClass({ academicYearId: UUID })).status).toBe(422);
+  });
+
+  it('accepts only classes 1-12 and sections A-Z', async () => {
+    db.respondTo('classes.insert', { data: { id: UUID } });
+    for (const name of ['1', '9', '12']) expect((await callRoute(classes.POST, { body: { ...base, name } })).status, name).toBe(201);
+    for (const section of ['A', 'Z']) expect((await callRoute(classes.POST, { body: { ...base, section } })).status, section).toBe(201);
+    expect(db.callsTo('classes', 'insert')).toHaveLength(5);
+
+    for (const name of ['0', '13', '01', ' 10', 'Nursery', '']) {
+      expect((await callRoute(classes.POST, { body: { ...base, name } })).status, name).toBe(422);
+    }
+    for (const section of ['a', 'AA', '1', ' A', '']) {
+      expect((await callRoute(classes.POST, { body: { ...base, section } })).status, section).toBe(422);
+    }
+    expect((await patchClass({ name: '13' })).status).toBe(422);
+    expect((await patchClass({ section: 'b' })).status).toBe(422);
+    expect(db.callsTo('classes', 'insert')).toHaveLength(5);
+    expect(db.callsTo('classes', 'update')).toHaveLength(0);
   });
 
   it('requires an existing class teacher', async () => {

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { PHONE_NUMBER_SCHEMA } from '@/constants/phone';
-import { EMPLOYEE_CODE_SCHEMA, TEACHER_ERRORS } from '@/constants/teachers';
+import { TEACHER_ERRORS } from '@/constants/teachers';
 import { findTeacherIdByUserId, requireAdmin, requireAuthenticatedUser } from '@/functions/authorization';
 import { findTeacher } from '@/functions/teachers';
 import { forbidden } from '@/helpers/api-error';
@@ -18,7 +18,6 @@ const updateTeacherSchema = z.strictObject({
   fullName: fullNameSchema.optional(),
   // TEACHERS SIGN IN WITH THEIR PHONE NUMBER, SO IT CAN BE CHANGED BUT NOT REMOVED.
   phone: PHONE_NUMBER_SCHEMA.optional(),
-  employeeCode: EMPLOYEE_CODE_SCHEMA.optional(),
   qualification: optionalText(200),
   dateOfJoining: z.iso.date().nullable().optional(),
 });

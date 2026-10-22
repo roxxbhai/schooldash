@@ -24,7 +24,7 @@ import {
   updateTimetableEntry,
 } from '@/functions/admin-timetable';
 import { refreshReferenceData } from '@/functions/reference-data';
-import { periodTimeRange } from '@/helpers/admin-timetable';
+import { periodTimeRange, suggestNextPeriod } from '@/helpers/admin-timetable';
 import { cn } from '@/helpers/cn';
 import { WEEKDAYS, formatTime, weekdayLabel } from '@/helpers/format';
 import { fieldControlProps, withoutKey, zodFieldErrors } from '@/helpers/forms';
@@ -121,7 +121,8 @@ export function AdminTimetable() {
 
   function openCreate() {
     setEditing(null);
-    setForm({ ...EMPTY_TIMETABLE_FORM, classId: isClassView ? (selectedClassId ?? '') : '' });
+    const classId = isClassView ? (selectedClassId ?? '') : '';
+    setForm({ ...EMPTY_TIMETABLE_FORM, classId, ...suggestedTimes(classId, EMPTY_TIMETABLE_FORM.dayOfWeek) });
     save.reset();
     setIsFormOpen(true);
   }
@@ -139,6 +140,22 @@ export function AdminTimetable() {
     });
     save.reset();
     setIsFormOpen(true);
+  }
+
+  /** ONLY THE CLASS SHOWN ON THE PAGE HAS ITS PERIODS LOADED, SO ONLY IT GETS SUGGESTED TIMES. */
+  function suggestedTimes(classId: string, dayOfWeek: string) {
+    if (!isClassView || !classId || classId !== selectedClassId || !dayOfWeek) return { startTime: '', endTime: '' };
+    return suggestNextPeriod(entries, Number(dayOfWeek));
+  }
+
+  /** ON CREATE, SUGGESTED (OR EMPTY) TIMES FOLLOW THE CLASS AND DAY; TYPED TIMES ARE KEPT. */
+  function setSlotField(field: 'classId' | 'dayOfWeek', value: string) {
+    const previous = suggestedTimes(form.classId, form.dayOfWeek);
+    const isSuggested = !editing && form.startTime === previous.startTime && form.endTime === previous.endTime;
+    setField(field, value);
+    if (!isSuggested) return;
+    const slot = { classId: form.classId, dayOfWeek: form.dayOfWeek, [field]: value };
+    setForm((current) => ({ ...current, ...suggestedTimes(slot.classId, slot.dayOfWeek) }));
   }
 
   function setField<K extends keyof TimetableForm>(field: K, value: TimetableForm[K]) {
@@ -342,7 +359,7 @@ export function AdminTimetable() {
             <OptionSelect
               {...fieldControlProps('classId', save.fieldErrors.classId)}
               value={form.classId || null}
-              onValueChange={(value) => setField('classId', value ?? '')}
+              onValueChange={(value) => setSlotField('classId', value ?? '')}
               options={classOptions(classes, formYearId)}
               placeholder='Choose a class'
             />
@@ -351,7 +368,7 @@ export function AdminTimetable() {
             <OptionSelect
               {...fieldControlProps('dayOfWeek', save.fieldErrors.dayOfWeek)}
               value={form.dayOfWeek || null}
-              onValueChange={(value) => setField('dayOfWeek', value ?? '')}
+              onValueChange={(value) => setSlotField('dayOfWeek', value ?? '')}
               options={DAY_OPTIONS}
               placeholder='Choose a day'
             />

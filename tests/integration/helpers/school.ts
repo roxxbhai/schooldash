@@ -83,8 +83,8 @@ insert into public."classes" ("id", "academicYearId", "name", "section", "classT
 ('${ids.class.tenB}', '${ids.year}', '10', 'B', '${ids.teacher.b}');
 
 insert into public."subjects" ("id", "code", "name") values
-('${ids.subject.maths}', 'IT-MATH', 'Maths'),
-('${ids.subject.science}', 'IT-SCI', 'Science');
+('${ids.subject.maths}', 'IT-MATH', 'IT FIXTURE MATHS'),
+('${ids.subject.science}', 'IT-SCI', 'IT FIXTURE SCIENCE');
 
 insert into public."teacherAssignments" ("teacherId", "classId", "subjectId") values
 ('${ids.teacher.a}', '${ids.class.tenA}', '${ids.subject.maths}'),

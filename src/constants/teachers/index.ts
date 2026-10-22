@@ -1,4 +1,3 @@
-import { z } from 'zod';
 import type { DbErrorContext } from '@/types/supabase';
 
 const TEACHER_FIELDS = 'id, userId, employeeCode, qualification, dateOfJoining, createdAt, updatedAt';
@@ -17,5 +16,3 @@ export const TEACHER_ERRORS: DbErrorContext = {
     usersTeacherPhoneFormat: { message: 'Enter a 10-digit mobile number.', field: 'phone' },
   },
 };
-
-export const EMPLOYEE_CODE_SCHEMA = z.string().trim().min(1).max(50);

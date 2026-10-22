@@ -19,7 +19,7 @@ vi.mock('next/server', async (original) => ({
 
 import * as collection from '@/app/api/timetable-entries/route';
 import * as single from '@/app/api/timetable-entries/[id]/route';
-import { ensureItAdmin, provisionTestAccount, runId, teardown, testCode, track, type TestAccount } from './helpers/actors';
+import { ensureItAdmin, provisionTestAccount, runId, teardown, testCode, testSubjectName, track, type TestAccount } from './helpers/actors';
 import { connect } from './helpers/db';
 import { anonymous, call, signIn } from './helpers/http';
 
@@ -60,19 +60,19 @@ const remember = (id: string) => (created.add(id), id);
 beforeAll(async () => {
   db = await connect();
   itAdmin = await ensureItAdmin();
-  for (const n of ['t1', 't2', 'tOff'] as const) acc[n] = await provisionTestAccount(`tt-${n}`, { role: 'TEACHER', profile: { employeeCode: testCode(`tt-${n}`) } });
+  for (const n of ['t1', 't2', 'tOff'] as const) acc[n] = await provisionTestAccount(`tt-${n}`, { role: 'TEACHER', profile: {} });
   for (const n of ['s1', 's2'] as const) acc[n] = await provisionTestAccount(`tt-${n}`, { role: 'STUDENT', profile: { admissionNumber: testCode(`tt-${n}`) } });
 
   const one = async (sql: string, params: unknown[]) => (await db.query(sql, params)).rows[0].id as string;
   f.year = await one('insert into public."academicYears" (name, "startDate", "endDate") values ($1, \'2023-04-01\', \'2024-03-31\') returning id', [`IT ${runId} tt`]);
   f.otherYear = await one('insert into public."academicYears" (name, "startDate", "endDate") values ($1, \'2024-04-01\', \'2025-03-31\') returning id', [`IT ${runId} tt next`]);
   [f.year, f.otherYear].forEach((id) => track('academicYears', id));
-  f.classA = await one('insert into public.classes ("academicYearId", name, section) values ($1, \'TT\', \'A\') returning id', [f.year]);
-  f.classB = await one('insert into public.classes ("academicYearId", name, section) values ($1, \'TT\', \'B\') returning id', [f.year]);
-  f.classC = await one('insert into public.classes ("academicYearId", name, section) values ($1, \'TT\', \'C\') returning id', [f.otherYear]);
+  f.classA = await one('insert into public.classes ("academicYearId", name, section) values ($1, \'9\', \'A\') returning id', [f.year]);
+  f.classB = await one('insert into public.classes ("academicYearId", name, section) values ($1, \'9\', \'B\') returning id', [f.year]);
+  f.classC = await one('insert into public.classes ("academicYearId", name, section) values ($1, \'9\', \'C\') returning id', [f.otherYear]);
   [f.classA, f.classB, f.classC].forEach((id) => track('classes', id));
-  f.maths = await one('insert into public.subjects (code, name) values ($1, \'Maths\') returning id', [testCode('tt-math')]);
-  f.science = await one('insert into public.subjects (code, name) values ($1, \'Science\') returning id', [testCode('tt-sci')]);
+  f.maths = await one('insert into public.subjects (code, name) values ($1, $2) returning id', [testCode('tt-math'), testSubjectName('tt maths')]);
+  f.science = await one('insert into public.subjects (code, name) values ($1, $2) returning id', [testCode('tt-sci'), testSubjectName('tt science')]);
   [f.maths, f.science].forEach((id) => track('subjects', id));
 
   const teacherId = async (a: TestAccount) => (await db.query('select id from public.teachers where "userId" = $1', [a.userId])).rows[0].id as string;

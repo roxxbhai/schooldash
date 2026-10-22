@@ -63,6 +63,8 @@ export function AdminEnrollments() {
 
   const roster = useAsyncResult<EnrollmentRow[]>(classId ? `enrollments|${classId}` : null, () => loadClassRoster(classId ?? ''));
   const enrolledIds = new Set((roster.data ?? []).map((row) => row.enrollment.studentId));
+  // THE NEXT ROLL NUMBER IN THE CLASS SHOWN ON THE PAGE (THE ONLY ROSTER THAT IS LOADED).
+  const nextRollNumber = roster.data ? String(Math.max(0, ...roster.data.map((row) => row.enrollment.rollNumber ?? 0)) + 1) : '';
 
   const enroll = useMutation((values: EnrollValues) => enrollStudent(values), {
     successMessage: (enrollment) =>
@@ -141,7 +143,7 @@ export function AdminEnrollments() {
   }
 
   function openEnroll() {
-    setEnrollForm({ ...EMPTY_ENROLL_FORM, classId: classId ?? '' });
+    setEnrollForm({ ...EMPTY_ENROLL_FORM, classId: classId ?? '', rollNumber: classId ? nextRollNumber : '' });
     setEnrollingStudent(null);
     enroll.reset();
     setIsEnrollOpen(true);
@@ -161,6 +163,17 @@ export function AdminEnrollments() {
   function setEnrollField<K extends keyof EnrollForm>(field: K, value: EnrollForm[K]) {
     setEnrollForm((current) => ({ ...current, [field]: value }));
     enroll.setFieldErrors((errors) => withoutKey(errors, field));
+  }
+
+  /** KEEPS A TYPED ROLL NUMBER; A SUGGESTED ONE FOLLOWS THE CLASS (CLEARED FOR A CLASS WHOSE ROSTER ISN'T LOADED). */
+  function handleEnrollClassChange(value: string | null) {
+    const nextClassId = value ?? '';
+    setEnrollForm((current) => {
+      const isSuggestedRoll = current.rollNumber === (current.classId === classId ? nextRollNumber : '');
+      const rollNumber = isSuggestedRoll ? (nextClassId === classId ? nextRollNumber : '') : current.rollNumber;
+      return { ...current, classId: nextClassId, rollNumber };
+    });
+    enroll.setFieldErrors((errors) => withoutKey(errors, 'classId'));
   }
 
   function handleStudentChange(student: Student | null) {
@@ -297,12 +310,17 @@ export function AdminEnrollments() {
             <OptionSelect
               {...fieldControlProps('classId', enroll.fieldErrors.classId)}
               value={enrollForm.classId || null}
-              onValueChange={(value) => setEnrollField('classId', value ?? '')}
+              onValueChange={handleEnrollClassChange}
               options={yearClassOptions}
               placeholder='Choose a class'
             />
           </FormField>
-          <FormField id='rollNumber' label='Roll number' description='Optional.' error={enroll.fieldErrors.rollNumber}>
+          <FormField
+            id='rollNumber'
+            label='Roll number'
+            description={enrollForm.classId && enrollForm.classId === classId ? 'Next in this class. Optional.' : 'Optional.'}
+            error={enroll.fieldErrors.rollNumber}
+          >
             <Input
               {...fieldControlProps('rollNumber', enroll.fieldErrors.rollNumber, true)}
               value={enrollForm.rollNumber}

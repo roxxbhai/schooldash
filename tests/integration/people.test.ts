@@ -1,4 +1,4 @@
-import { ensureItAdmin, runId, teardown, testCode, testEmail, testPassword, testPhone, track } from './helpers/actors';
+import { ensureItAdmin, runId, teardown, testCode, testEmail, testPassword, testPhone, testSubjectName, track } from './helpers/actors';
 import type { TestAccount } from './helpers/actors';
 import { connect } from './helpers/db';
 import { anonymous, call, signIn, signInAsStudent, signUpAsTeacher } from './helpers/http';
@@ -90,7 +90,7 @@ beforeAll(async () => {
   classB = await insert('insert into public.classes ("academicYearId", name, section) values ($1, \'7\', \'B\') returning id', [yearId]);
   classOtherYear = await insert('insert into public.classes ("academicYearId", name, section) values ($1, \'6\', \'A\') returning id', [otherYearId]);
   [classA, classB, classOtherYear].forEach((id) => track('classes', id));
-  subjectId = await insert('insert into public.subjects (code, name) values ($1, \'IT Subject\') returning id', [testCode('pplsub')]);
+  subjectId = await insert('insert into public.subjects (code, name) values ($1, $2) returning id', [testCode('pplsub'), testSubjectName('ppl')]);
   track('subjects', subjectId);
 });
 
@@ -103,16 +103,18 @@ afterAll(async () => {
 
 describe('teacher management', () => {
   it('admin creates teachers through provisioning (201); creation is audited; each teacher then signs up', async () => {
+    const codes: string[] = [];
     for (const label of ['t1', 't2']) {
       const email = testEmail(label);
       const phone = testPhone();
       const password = testPassword();
       const result = await api(adminSession, teachers.POST, 'POST', '/api/teachers', {
-        body: { email, phone, fullName: `IT Teacher ${label}`, employeeCode: testCode(label), qualification: 'B.Ed' },
+        body: { email, phone, fullName: `IT Teacher ${label}`, qualification: 'B.Ed' },
       });
       expect(result.status).toBe(201);
+      codes.push(result.body.data.employeeCode);
       expect(result.body.data).toMatchObject({
-        employeeCode: testCode(label),
+        employeeCode: expect.stringMatching(/^EMP\d{4,}$/),
         user: { fullName: `IT Teacher ${label}`, email, phone, isActive: true, passwordSetAt: null },
       });
       await trackAccount(email);
@@ -120,6 +122,8 @@ describe('teacher management', () => {
       // THE TEACHER CHOOSES THEIR OWN PASSWORD (NO INITIAL PASSWORD FROM THE ADMIN).
       people[label].session = await signUpAsTeacher(harness, phone, password);
     }
+    // GENERATED CODES ARE CONSECUTIVE (MIGRATION 17).
+    expect(Number(codes[1].slice(3))).toBe(Number(codes[0].slice(3)) + 1);
     expect((await audit(people.t1.userId)).map((a) => [a.action, a.actorUserId])).toEqual([
       ['users.provision', itAdmin.userId],
       ['users.teacherSignUp', null],
@@ -128,23 +132,38 @@ describe('teacher management', () => {
 
   it('rejects duplicate emails without creating another Auth identity', async () => {
     const result = await api(adminSession, teachers.POST, 'POST', '/api/teachers', {
-      body: { email: people.t1.email, phone: testPhone(), fullName: 'Dup', employeeCode: testCode('dup') },
+      body: { email: people.t1.email, phone: testPhone(), fullName: 'Dup' },
     });
     expect(result.status).toBe(409);
   });
 
-  it('a duplicate employee code fails with 409 and leaves no orphaned Auth user (compensation)', async () => {
-    const email = testEmail('t-dupcode');
+  it('a duplicate phone number fails with 409 and leaves no orphaned Auth user (compensation)', async () => {
+    const email = testEmail('t-dupphone');
+    const { rows } = await db.query('select phone from public.users where id = $1', [people.t1.userId]);
     const result = await api(adminSession, teachers.POST, 'POST', '/api/teachers', {
-      body: { email, phone: testPhone(), fullName: 'Dup Code', employeeCode: testCode('t1') },
+      body: { email, phone: rows[0].phone, fullName: 'Dup Phone' },
     });
     expect(result.status).toBe(409);
     expect(await authIdFor(email)).toBeNull();
   });
 
+  it('the employee code can never be chosen or changed by a client (422)', async () => {
+    const email = testEmail('t-code');
+    const created = await api(adminSession, teachers.POST, 'POST', '/api/teachers', {
+      body: { email, phone: testPhone(), fullName: 'Chosen Code', employeeCode: testCode('chosen') },
+    });
+    expect(created.status).toBe(422);
+    expect(await authIdFor(email)).toBeNull();
+    const patched = await api(adminSession, teacherById.PATCH, 'PATCH', `/api/teachers/${people.t1.id}`, {
+      params: { id: people.t1.id },
+      body: { employeeCode: testCode('changed') },
+    });
+    expect(patched.status).toBe(422);
+  });
+
   it('rejects client-chosen roles and invalid fields (422), and non-admin callers (401/403)', async () => {
     const injected = await api(adminSession, teachers.POST, 'POST', '/api/teachers', {
-      body: { email: testEmail('x'), phone: testPhone(), fullName: 'X', employeeCode: testCode('x'), role: 'ADMIN' },
+      body: { email: testEmail('x'), phone: testPhone(), fullName: 'X', role: 'ADMIN' },
     });
     expect(injected.status).toBe(422);
     expect(await authIdFor(testEmail('x'))).toBeNull();
@@ -178,13 +197,17 @@ describe('teacher management', () => {
   });
 
   it('a failed update changes nothing (both tables roll back together)', async () => {
+    const taken = (await db.query('select phone from public.users where id = $1', [people.t2.userId])).rows[0].phone;
     const result = await api(adminSession, teacherById.PATCH, 'PATCH', `/api/teachers/${people.t1.id}`, {
       params: { id: people.t1.id },
-      body: { fullName: 'Should Not Persist', employeeCode: testCode('t2') }, // employeeCode clashes
+      body: { fullName: 'Should Not Persist', phone: taken, qualification: 'Should Not Persist' }, // phone clashes
     });
     expect(result.status).toBe(409);
-    const { rows } = await db.query('select "fullName" from public.users where id = $1', [people.t1.userId]);
-    expect(rows[0].fullName).toBe('IT Teacher Renamed');
+    const { rows } = await db.query(
+      'select u."fullName", t."qualification" from public.users u join public.teachers t on t."userId" = u.id where u.id = $1',
+      [people.t1.userId],
+    );
+    expect(rows[0]).toEqual({ fullName: 'IT Teacher Renamed', qualification: 'M.Ed' });
   });
 
   it('returns 404 for unknown teachers and 403 for teachers editing', async () => {
