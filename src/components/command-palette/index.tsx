@@ -91,7 +91,7 @@ export function CommandPalette({ role }: CommandPaletteProps) {
         type='button'
         onClick={openPalette}
         aria-keyshortcuts={modifier === 'mac' ? 'Meta+K' : 'Control+K'}
-        className='hidden h-8 w-72 items-center xl:w-80 gap-2 border bg-card px-2.5 text-sm text-muted-foreground transition-[border-color,transform] duration-100 hover:border-border-strong active:scale-[0.99] md:flex'
+        className='hidden h-8 w-72 items-center xl:w-80 gap-2 border bg-card px-2.5 text-sm text-muted-foreground transition-[border-color,scale] duration-150 ease-out hover:border-border-strong active:scale-[0.99] md:flex'
       >
         <SearchIcon aria-hidden className='size-3.5 opacity-70' />
         <span className='flex-1 text-left'>Search or jump to…</span>
@@ -109,9 +109,11 @@ export function CommandPalette({ role }: CommandPaletteProps) {
       <CommandDialog
         open={isOpen}
         onOpenChange={handleOpenChange}
+        // OPENED BY ⌘K MANY TIMES A DAY: APPEARS AND DISAPPEARS INSTANTLY, NO ANIMATION.
+        isAnimated={false}
         title='Search or jump to'
         description={role === 'ADMIN' ? 'Find a page, a student or a teacher.' : 'Find a page.'}
-        className='top-[16vh] border-border bg-popover/95 shadow-[0_24px_60px_-16px_rgb(16_40_74/0.35)] backdrop-blur-xl sm:max-w-xl'
+        className='top-[16vh] border-border bg-popover/95 shadow-[0_24px_60px_-16px_rgb(16_40_74/0.35)] backdrop-blur-lg sm:max-w-xl'
       >
         <Command loop filter={matchCommandItem} className='bg-transparent [&_[data-slot=command-item]>svg:last-child]:hidden'>
           <CommandInput

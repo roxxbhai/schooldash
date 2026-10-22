@@ -40,7 +40,7 @@ export function SignOutButton({ role, variant = 'outline', tooltip, className }:
     >
       {isSigningOut ? <Loader2Icon className='animate-spin' aria-hidden /> : <LogOutIcon aria-hidden />}
       {/* IN THE SIDEBAR THE LABEL FADES OUT WHEN THE SIDEBAR COLLAPSES TO ITS ICON RAIL. */}
-      <span className={cn(isSidebar && 'whitespace-nowrap transition-opacity duration-200 group-data-[collapsed=true]/sidebar:opacity-0')}>
+      <span className={cn(isSidebar && 'whitespace-nowrap transition-opacity duration-120 ease-out group-data-[collapsed=true]/sidebar:opacity-0')}>
         {isSigningOut ? 'Signing out…' : 'Sign out'}
       </span>
     </Button>

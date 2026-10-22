@@ -71,7 +71,7 @@ export function AttendanceStatusToggle({ value, onValueChange, label, isDisabled
             disabled={isDisabled}
             onClick={() => onValueChange(option.value)}
             className={cn(
-              'flex min-h-11 min-w-0 items-center justify-center border px-2 text-xs font-medium whitespace-nowrap transition-colors outline-none sm:px-3 sm:text-sm',
+              'flex min-h-11 min-w-0 items-center justify-center border px-2 text-xs font-medium whitespace-nowrap transition-[color,background-color,border-color,scale] duration-150 ease-out outline-none active:scale-[0.97] sm:px-3 sm:text-sm',
               'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
               'disabled:cursor-not-allowed disabled:opacity-50',
               isChecked ? ATTENDANCE_TONE_SELECTED_CLASSES[option.tone] : 'border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground',

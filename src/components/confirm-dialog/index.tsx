@@ -11,6 +11,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { FormAlert } from '@/components/form-alert';
+import { ButtonLabel } from '@/components/button-label';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/helpers/cn';
 
@@ -67,8 +68,10 @@ export function ConfirmDialog({
             onClick={onConfirm}
             disabled={isPending}
           >
-            {isPending && <Loader2Icon className='animate-spin' aria-hidden />}
-            {confirmLabel}
+            <ButtonLabel stateKey={isPending ? 'pending' : 'idle'}>
+              {isPending && <Loader2Icon className='animate-spin' aria-hidden />}
+              {confirmLabel}
+            </ButtonLabel>
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>

@@ -12,6 +12,7 @@ import { OptionSelect } from '@/components/option-select';
 import { PageHeader } from '@/components/page-header';
 import { Panel } from '@/components/panel';
 import { StatusBadge } from '@/components/status-badge';
+import { ButtonLabel } from '@/components/button-label';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { MARKS_MESSAGES, MARKS_PORTAL_COPY, MAX_BULK_MARKS } from '@/constants/admin-results';
@@ -299,8 +300,10 @@ export function AdminResults({ role = 'ADMIN', canEnterPaper }: AdminResultsProp
               Reload
             </Button>
             <Button onClick={handleSave} disabled={isSaving || changedCount === 0}>
-              {isSaving ? <Loader2Icon className='animate-spin' aria-hidden /> : <SaveIcon aria-hidden />}
-              {changedCount > 0 ? `Save ${pluralize(changedCount, 'change')}` : 'Save'}
+              <ButtonLabel stateKey={isSaving ? 'pending' : 'idle'}>
+                {isSaving ? <Loader2Icon className='animate-spin' aria-hidden /> : <SaveIcon aria-hidden />}
+                {changedCount > 0 ? `Save ${pluralize(changedCount, 'change')}` : 'Save'}
+              </ButtonLabel>
             </Button>
           </>
         }

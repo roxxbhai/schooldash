@@ -2,6 +2,7 @@
 
 import { Loader2Icon } from 'lucide-react';
 import { FormAlert } from '@/components/form-alert';
+import { ButtonLabel } from '@/components/button-label';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { cn } from '@/helpers/cn';
@@ -60,8 +61,10 @@ export function FormDialog({
               Cancel
             </Button>
             <Button type='submit' disabled={isSubmitting}>
-              {isSubmitting && <Loader2Icon className='animate-spin' aria-hidden />}
-              {submitLabel}
+              <ButtonLabel stateKey={isSubmitting ? 'pending' : 'idle'}>
+                {isSubmitting && <Loader2Icon className='animate-spin' aria-hidden />}
+                {submitLabel}
+              </ButtonLabel>
             </Button>
           </DialogFooter>
         </form>

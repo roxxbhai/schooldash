@@ -31,17 +31,21 @@ function DialogClose({
   return <DialogPrimitive.Close data-slot='dialog-close' {...props} />;
 }
 
+/** ENTER 180MS, EXIT 120MS, STRONG EASE-OUT. ADDED ONLY WHEN ANIMATED (tailwind-merge CAN'T OVERRIDE tw-animate CLASSES). */
+const OVERLAY_ANIMATION = 'ease-out data-open:duration-180 data-closed:duration-120 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0';
+const CONTENT_ANIMATION = `${OVERLAY_ANIMATION} data-open:zoom-in-95 data-closed:zoom-out-95`;
+
 function DialogOverlay({
   className,
+  isAnimated = true,
   ...props
-}: React.ComponentProps<typeof DialogPrimitive.Overlay>) {
+}: React.ComponentProps<typeof DialogPrimitive.Overlay> & {
+  isAnimated?: boolean
+}) {
   return (
     <DialogPrimitive.Overlay
       data-slot='dialog-overlay'
-      className={cn(
-        'fixed inset-0 isolate z-50 bg-sidebar/40 duration-100 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0',
-        className
-      )}
+      className={cn('fixed inset-0 isolate z-50 bg-sidebar/40', isAnimated && OVERLAY_ANIMATION, className)}
       {...props}
     />
   );
@@ -51,17 +55,21 @@ function DialogContent({
   className,
   children,
   showCloseButton = true,
+  isAnimated = true,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean
+  /** FALSE FOR SURFACES OPENED BY KEYBOARD MANY TIMES A DAY (THE ⌘K PALETTE): THEY APPEAR AND GO INSTANTLY. */
+  isAnimated?: boolean
 }) {
   return (
     <DialogPortal>
-      <DialogOverlay />
+      <DialogOverlay isAnimated={isAnimated} />
       <DialogPrimitive.Content
         data-slot='dialog-content'
         className={cn(
-          'fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-none border bg-popover p-6 text-sm/relaxed text-popover-foreground shadow-lg duration-100 outline-none sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95',
+          'fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-none border bg-popover p-6 text-sm/relaxed text-popover-foreground shadow-lg outline-none sm:max-w-sm',
+          isAnimated && CONTENT_ANIMATION,
           className
         )}
         {...props}

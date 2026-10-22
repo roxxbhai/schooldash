@@ -24,6 +24,9 @@ interface SectionProps {
   children: React.ReactNode;
 }
 
+/** CONTENT THAT REPLACES A SKELETON FADES IN ONCE, VIA @starting-style (NO JS; SKIPPED WHERE UNSUPPORTED). */
+const FADE_IN = 'transition-opacity duration-200 ease-out starting:opacity-0';
+
 /** A QUIET CARD: A SMALL TITLE ROW, NO DIVIDER UNDER IT. */
 function Section({ title, aside, className, children }: SectionProps) {
   return (
@@ -90,12 +93,12 @@ function AttentionSection({ overview, isLoading }: { overview: TodayOverview | n
           ))}
         </ul>
       ) : attention.length === 0 ? (
-        <div className='border-t px-5 py-8 text-center'>
+        <div className={cn('border-t px-5 py-8 text-center', FADE_IN)}>
           <p className='text-[0.9375rem] font-medium text-foreground'>You&apos;re all caught up</p>
           <p className='mt-0.5 text-sm text-muted-foreground'>Nothing needs you right now.</p>
         </div>
       ) : (
-        <ul>
+        <ul className={FADE_IN}>
           {attention.map((item) => (
             <AttentionRow key={item.id} item={item} isPrimary={item.id === firstWarningId} />
           ))}
@@ -110,12 +113,12 @@ function AttentionSection({ overview, isLoading }: { overview: TodayOverview | n
             aria-expanded={isDoneOpen}
             className='flex w-full items-center gap-1.5 border-t px-5 py-2.5 text-left text-xs text-muted-foreground transition-colors hover:text-foreground'
           >
-            <ChevronRightIcon aria-hidden className={cn('size-3 transition-transform duration-200', isDoneOpen && 'rotate-90')} />
+            <ChevronRightIcon aria-hidden className={cn('size-3 transition-transform duration-220 ease-in-out', isDoneOpen && 'rotate-90')} />
             {pluralize(done.length, 'thing')} done
           </button>
-          {/* HEIGHT EASES OPEN AND SHUT; A CSS TRANSITION REVERSES FROM WHERE IT IS IF CLICKED AGAIN MID-WAY. */}
-          <div className={cn('grid transition-[grid-template-rows] duration-300', isDoneOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]')}>
-            <ul className='overflow-hidden' inert={!isDoneOpen}>
+          {/* HEIGHT, CHEVRON AND CONTENT MOVE TOGETHER (ONE DURATION, ONE CURVE). CSS TRANSITIONS REVERSE FROM WHERE THEY ARE IF CLICKED AGAIN MID-WAY. */}
+          <div className={cn('grid transition-[grid-template-rows] duration-220 ease-in-out', isDoneOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]')}>
+            <ul className={cn('overflow-hidden transition-opacity duration-220 ease-in-out', !isDoneOpen && 'opacity-0')} inert={!isDoneOpen}>
               {done.map((item) => (
                 <DoneRow key={item.id} item={item} />
               ))}
@@ -136,19 +139,19 @@ function UpcomingSection({ items, isLoading }: { items: UpcomingItem[]; isLoadin
           <Skeleton className='h-10 w-full' />
         </div>
       ) : items.length === 0 ? (
-        <p className='px-5 pb-5 text-sm text-muted-foreground'>
+        <p className={cn('px-5 pb-5 text-sm text-muted-foreground', FADE_IN)}>
           Nothing scheduled.{' '}
           <Link href={ROUTES.admin.exams} className='font-medium text-primary underline-offset-3 hover:underline'>
             Plan an exam
           </Link>
         </p>
       ) : (
-        <ol className='px-2 pb-2'>
+        <ol className={cn('px-2 pb-2', FADE_IN)}>
           {items.map((item) => {
             const block = dateBlock(item.date);
             return (
               <li key={item.id} className='border-t first:border-t-0'>
-                <Link href={item.href} className='grid grid-cols-[2.75rem_minmax(0,1fr)] items-start gap-3 px-3 py-2.5 transition-colors hover:bg-surface-muted'>
+                <Link href={item.href} className='grid grid-cols-[2.75rem_minmax(0,1fr)] items-start gap-3 px-3 py-2.5 transition-colors hover:bg-surface-muted active:bg-muted'>
                   <span className='pt-0.5 text-center leading-none'>
                     <span className='block text-2xs font-semibold tracking-[0.06em] text-muted-foreground uppercase'>{block.month}</span>
                     <span className='mt-1 block text-lg font-semibold tracking-[-0.02em] text-foreground tabular-nums'>{block.day}</span>
@@ -176,7 +179,7 @@ function SnapshotSection({ snapshot }: { snapshot: ExamSnapshot }) {
 
   return (
     <Section
-      className='xl:col-span-2'
+      className={cn('xl:col-span-2', FADE_IN)}
       title={
         <>
           {snapshot.examName} results
@@ -277,7 +280,7 @@ function YearCountsStrip({ overview }: { overview: TodayOverview }) {
   ];
 
   return (
-    <nav aria-label='This year' className='flex flex-wrap gap-x-6 gap-y-2 border bg-card px-5 py-3.5 text-sm shadow-xs xl:col-span-2'>
+    <nav aria-label='This year' className={cn('flex flex-wrap gap-x-6 gap-y-2 border bg-card px-5 py-3.5 text-sm shadow-xs xl:col-span-2', FADE_IN)}>
       {entries.map((entry) => (
         <Link key={entry.href} href={entry.href} className='text-muted-foreground transition-colors hover:text-primary'>
           <span className='font-semibold text-foreground tabular-nums'>{entry.value === null ? '—' : formatNumber(entry.value)}</span>{' '}
@@ -337,11 +340,11 @@ export function AdminOverview() {
           {isLoading ? (
             <Skeleton className='h-5 w-64' />
           ) : !data ? null : openCount === 0 ? (
-            <p>
+            <p className={FADE_IN}>
               <span className='font-medium text-foreground'>You&apos;re all caught up.</span> Nothing needs you right now.
             </p>
           ) : (
-            <p>
+            <p className={FADE_IN}>
               <span className='font-medium text-foreground'>
                 {openCount} {openCount === 1 ? 'thing needs' : 'things need'} your attention.
               </span>{' '}

@@ -4,6 +4,7 @@ import { CheckCheckIcon, RotateCcwIcon, SaveIcon } from 'lucide-react';
 import { useState } from 'react';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { StatusBadge } from '@/components/status-badge';
+import { ButtonLabel } from '@/components/button-label';
 import { Button } from '@/components/ui/button';
 import { ATTENDANCE_STATUS_OPTIONS } from '@/constants/admin-attendance';
 import { formatNumber, pluralize } from '@/helpers/format';
@@ -57,8 +58,10 @@ export function AttendanceToolbar({ counts, pendingCount, isSaving, isDisabled, 
           Reset changes
         </Button>
         <Button className='min-h-11 md:min-h-9' onClick={onSave} disabled={isLocked || pendingCount === 0} aria-busy={isSaving}>
-          <SaveIcon aria-hidden />
-          {isSaving ? 'Saving…' : saveLabel}
+          <ButtonLabel stateKey={isSaving ? 'pending' : 'idle'}>
+            <SaveIcon aria-hidden />
+            {isSaving ? 'Saving…' : saveLabel}
+          </ButtonLabel>
         </Button>
       </div>
 

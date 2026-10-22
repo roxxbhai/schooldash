@@ -89,6 +89,18 @@
 }
 
 @theme inline {
+  /*
+   * MOTION CURVES (THEY REPLACE TAILWIND'S WEAK DEFAULTS, SO ease-out / ease-in-out USE THEM).
+   * ease-out: ENTERING AND EXITING UI, PRESS FEEDBACK. ease-in-out: THINGS MOVING OR
+   * RESIZING ON SCREEN. ease-drawer: PANELS SLIDING IN FROM AN EDGE (THE iOS SHEET CURVE).
+   */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* A QUICKER TURN MAKES WAITING FEEL SHORTER. */
+  --animate-spin: spin 0.75s linear infinite;
+
   /* TYPE: GEIST SANS IS THE ONLY FACE. */
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   /* NO MONOSPACE FACE: ANYTHING THAT ASKS FOR ONE (kbd, code, font-mono) GETS GEIST SANS. */
@@ -269,14 +281,24 @@
     outline-offset: 2px;
   }
 
-  /* REDUCED MOTION: NO TRANSITIONS OR ANIMATIONS. */
+  /*
+   * REDUCED MOTION: GENTLER, NOT NONE. NOTHING SLIDES, SCALES OR RESIZES, BUT FADES AND
+   * COLOUR CHANGES STAY, BECAUSE THEY HELP PEOPLE FOLLOW WHAT CHANGED. ENTER/EXIT
+   * ANIMATIONS BECOME PLAIN FADES; TRANSITIONS KEEP ONLY NON-MOVING PROPERTIES.
+   */
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
     *::after {
-      animation-duration: 0.01ms !important;
-      animation-iteration-count: 1 !important;
-      transition-duration: 0.01ms !important;
+      --tw-enter-translate-x: 0 !important;
+      --tw-enter-translate-y: 0 !important;
+      --tw-enter-scale: 1 !important;
+      --tw-enter-rotate: 0 !important;
+      --tw-exit-translate-x: 0 !important;
+      --tw-exit-translate-y: 0 !important;
+      --tw-exit-scale: 1 !important;
+      --tw-exit-rotate: 0 !important;
+      transition-property: color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, opacity, box-shadow, filter !important;
       scroll-behavior: auto !important;
     }
   }

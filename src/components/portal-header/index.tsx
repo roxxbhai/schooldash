@@ -36,7 +36,7 @@ export function PortalHeader({ role }: PortalHeaderProps) {
 
   return (
     // FROM md UP, THREE COLUMNS WITH EQUAL OUTER TRACKS KEEP THE SEARCH FIELD IN THE TRUE CENTRE.
-    <header className='sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-border/70 bg-background/75 px-4 backdrop-blur-xl backdrop-saturate-150 md:grid md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:gap-6 lg:px-8 print:hidden'>
+    <header className='sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-border/70 bg-background/75 px-4 backdrop-blur-lg backdrop-saturate-150 md:grid md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:gap-6 lg:px-8 print:hidden'>
       <div className='flex min-w-0 flex-1 items-center gap-2'>
         <Button
           variant='ghost'

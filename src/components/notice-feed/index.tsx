@@ -57,7 +57,7 @@ export function NoticeFeed({ basePath }: NoticeFeedProps) {
               <li key={notice.id}>
                 <Link
                   href={`${basePath}/${notice.id}`}
-                  className='group flex items-start gap-4 px-5 py-4 transition-colors outline-none hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset'
+                  className='group flex items-start gap-4 px-5 py-4 transition-colors outline-none hover:bg-accent/50 active:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset'
                 >
                   <span className='min-w-0 flex-1'>
                     <span className='flex flex-wrap items-center gap-2'>

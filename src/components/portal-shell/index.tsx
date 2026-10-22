@@ -27,7 +27,7 @@ export function PortalShell({ role, profile, children }: PortalShellProps) {
       </a>
       <PortalSidebar role={role} profile={profile} />
       <PortalNavigationDrawer role={role} profile={profile} />
-      <div className={cn('transition-[padding] duration-200 print:pl-0', isSidebarCollapsed ? 'lg:pl-15' : 'lg:pl-64')}>
+      <div className={cn('transition-[padding] duration-220 ease-in-out print:pl-0', isSidebarCollapsed ? 'lg:pl-15' : 'lg:pl-64')}>
         <PortalHeader role={role} />
         <main id='main-content' tabIndex={-1} className='mx-auto w-full max-w-[1440px] px-4 py-6 outline-none sm:px-6 lg:px-8 lg:py-8 print:max-w-none print:p-0'>
           {children}

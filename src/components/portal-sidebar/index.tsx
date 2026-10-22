@@ -27,7 +27,7 @@ interface SidebarContentProps extends PortalSidebarProps {
 }
 
 /** FADES A LABEL OUT WHEN THE SIDEBAR COLLAPSES. NOWRAP SO NOTHING REFLOWS WHILE THE WIDTH ANIMATES. */
-const COLLAPSIBLE_LABEL = 'whitespace-nowrap transition-opacity duration-200 group-data-[collapsed=true]/sidebar:opacity-0';
+const COLLAPSIBLE_LABEL = 'whitespace-nowrap transition-opacity duration-120 ease-out group-data-[collapsed=true]/sidebar:opacity-0';
 
 /**
  * NAVIGATION, BRANDING AND THE SIGNED-IN PERSON. SHARED BY THE DESKTOP SIDEBAR AND THE MOBILE DRAWER.
@@ -70,7 +70,7 @@ function SidebarContent({ role, profile, isCollapsed }: SidebarContentProps) {
                           className={cn(
                             'flex h-9 items-center gap-2.5 px-2.5 text-sm transition-colors outline-none',
                             'focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-inset',
-                            isActive ? 'bg-sidebar-active font-medium text-sidebar-accent-foreground' : 'hover:bg-sidebar-accent/60 hover:text-white',
+                            isActive ? 'bg-sidebar-active font-medium text-sidebar-accent-foreground' : 'hover:bg-sidebar-accent/60 hover:text-white active:bg-sidebar-accent',
                           )}
                         >
                           <Icon aria-hidden className={cn('size-4 shrink-0', isActive ? 'text-white' : 'text-sidebar-foreground/80')} />
@@ -120,7 +120,7 @@ export function PortalSidebar({ role, profile }: PortalSidebarProps) {
   return (
     <aside
       className={cn(
-        'fixed inset-y-0 left-0 z-30 hidden transition-[width] duration-200 lg:block print:hidden',
+        'fixed inset-y-0 left-0 z-30 hidden transition-[width] duration-220 ease-in-out lg:block print:hidden',
         isSidebarCollapsed ? 'w-15' : 'w-64',
       )}
     >

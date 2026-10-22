@@ -15,7 +15,8 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
     <html lang='en' className={`${geistSans.variable} h-full`}>
       <body className='min-h-full'>
-        <TooltipProvider delayDuration={300}>{children}</TooltipProvider>
+        {/* AFTER ONE TOOLTIP, NEIGHBOURS WITHIN 500MS OPEN INSTANTLY AND UNANIMATED (E.G. RUNNING ALONG THE SIDEBAR RAIL). */}
+        <TooltipProvider delayDuration={300} skipDelayDuration={500}>{children}</TooltipProvider>
         <Toaster position='top-right' closeButton />
       </body>
     </html>
