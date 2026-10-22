@@ -12,11 +12,12 @@ import {
   MegaphoneIcon,
   PenLineIcon,
   SchoolIcon,
+  ShieldCheckIcon,
   UserCheckIcon,
   UsersIcon,
 } from 'lucide-react';
 import { ROUTES } from '@/constants/routes';
-import type { NavigationItem, NavigationSection } from '@/types/admin-shell';
+import type { NavigationItem, NavigationSection } from '@/types/portal-shell';
 
 /** THE ADMIN SIDEBAR, GROUPED BY HOW THE SCHOOL OFFICE THINKS ABOUT ITS WORK. */
 export const ADMIN_NAVIGATION: readonly NavigationSection[] = [
@@ -39,6 +40,7 @@ export const ADMIN_NAVIGATION: readonly NavigationSection[] = [
       { label: 'Teachers', href: ROUTES.admin.teachers, icon: UsersIcon, description: 'Teaching staff and portal accounts.' },
       { label: 'Enrollments', href: ROUTES.admin.enrollments, icon: ClipboardListIcon, description: 'Which class each student is in, by year.' },
       { label: 'Teacher assignments', href: ROUTES.admin.teacherAssignments, icon: LinkIcon, description: 'Who teaches which subject to which class.' },
+      { label: 'Administrators', href: ROUTES.admin.administrators, icon: ShieldCheckIcon, description: 'School office staff who use this portal.' },
     ],
   },
   {

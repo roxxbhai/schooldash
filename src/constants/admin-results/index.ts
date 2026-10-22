@@ -14,3 +14,17 @@ export const MARKS_MESSAGES = {
 
 /** THE API'S LIMIT ON REMARKS. */
 export const MAX_REMARKS_LENGTH = 500;
+
+/** EMPTY-STATE WORDING PER PORTAL: ADMINS CAN FIX THE GAP THEMSELVES, TEACHERS ARE TOLD WHO CAN. */
+export const MARKS_PORTAL_COPY = {
+  ADMIN: {
+    noPapers: 'Add papers on the exam page before entering marks.',
+    noStudents: 'Enroll students into the class to enter their marks.',
+    choosePaper: 'Only classes with papers in this exam are listed.',
+  },
+  TEACHER: {
+    noPapers: 'This exam has no papers for the subjects you teach.',
+    noStudents: 'The school office enrolls students into classes.',
+    choosePaper: 'Only your classes and subjects with papers in this exam are listed.',
+  },
+} as const;

@@ -431,14 +431,14 @@ isOneToOne: false
                   ]
                 },"users": {
                   Row: {
-                    "authUserId": string,"createdAt": string,"deactivatedAt": string | null,"email": string,"fullName": string,"id": string,"isActive": boolean,"phone": string | null,"role": Database["public"]['Enums']["userRole"],"updatedAt": string
+                    "authUserId": string,"createdAt": string,"deactivatedAt": string | null,"email": string,"fullName": string,"id": string,"isActive": boolean,"passwordSetAt": string | null,"phone": string | null,"role": Database["public"]['Enums']["userRole"],"updatedAt": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "authUserId": string,"createdAt"?: string,"deactivatedAt"?: string | null,"email": string,"fullName": string,"id"?: string,"isActive"?: boolean,"phone"?: string | null,"role": Database["public"]['Enums']["userRole"],"updatedAt"?: string
+                    "authUserId": string,"createdAt"?: string,"deactivatedAt"?: string | null,"email": string,"fullName": string,"id"?: string,"isActive"?: boolean,"passwordSetAt"?: string | null,"phone"?: string | null,"role": Database["public"]['Enums']["userRole"],"updatedAt"?: string
                   }
                   Update: {
-                    "authUserId"?: string,"createdAt"?: string,"deactivatedAt"?: string | null,"email"?: string,"fullName"?: string,"id"?: string,"isActive"?: boolean,"phone"?: string | null,"role"?: Database["public"]['Enums']["userRole"],"updatedAt"?: string
+                    "authUserId"?: string,"createdAt"?: string,"deactivatedAt"?: string | null,"email"?: string,"fullName"?: string,"id"?: string,"isActive"?: boolean,"passwordSetAt"?: string | null,"phone"?: string | null,"role"?: Database["public"]['Enums']["userRole"],"updatedAt"?: string
                   }
                   Relationships: [
                     
@@ -449,7 +449,10 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "consumeAccountSetupCode":
+            "claimTeacherSignUp":
+{ Args: { "phone": string }; Returns: Json
+                           },
+"consumeAccountSetupCode":
 { Args: { "codeHash": string,"email": string }; Returns: Json
                            },
 "createNotice":
@@ -462,10 +465,13 @@ isOneToOne: false
 { Args: { "actorUserId": string,"codeHash": string,"expiresAt": string,"userId": string }; Returns: undefined
                            },
 "provisionAppUser":
-{ Args: { "actorUserId"?: string,"authUserId": string,"email": string,"fullName": string,"profile"?: Json,"role": Database["public"]['Enums']["userRole"] }; Returns: string
+{ Args: { "actorUserId"?: string,"authUserId": string,"email": string,"fullName": string,"phone"?: string,"profile"?: Json,"role": Database["public"]['Enums']["userRole"] }; Returns: string
                            },
 "publishNotice":
 { Args: { "noticeId": string }; Returns: undefined
+                           },
+"resetTeacherSignUp":
+{ Args: { "actorUserId": string,"userId": string }; Returns: Json
                            },
 "setAppUserStatus":
 { Args: { "actorUserId": string,"isActive": boolean,"userId": string }; Returns: Json

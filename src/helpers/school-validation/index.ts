@@ -60,9 +60,6 @@ export const fullNameSchema = z.string().trim().min(1).max(200);
 /** A NEW ACCOUNT'S LOGIN EMAIL, STORED LOWER-CASE. */
 export const emailSchema = z.string().trim().toLowerCase().pipe(z.email());
 
-/** OPTIONAL INITIAL PASSWORD (12–72 CHARS). WITHOUT ONE, THE USER SETS IT WITH AN ADMIN-ISSUED SETUP CODE. */
-export const initialPasswordSchema = z.string().min(12).max(72).optional();
-
 /** `?isActive=true|false` ON PEOPLE LISTS. */
 export const isActiveFilterSchema = z.enum(['true', 'false']).transform((value) => value === 'true').optional();
 

@@ -2,9 +2,9 @@ import 'client-only';
 import { API_PATHS } from '@/constants/api-client';
 import { runRecordAction } from '@/functions/api-client';
 import { networkFailure } from '@/helpers/api-client';
-import type { IssuedSetupCode } from '@/types/account-setup';
 import type { AccountStatusChange } from '@/types/account-status';
 import type { ApiResult } from '@/types/api-client';
+import type { TeacherSignUpReset } from '@/types/sign-in';
 
 /** `userId` IS `users.id` (THE RECORD'S `userId`), NOT THE TEACHER OR STUDENT ID. */
 
@@ -25,10 +25,10 @@ export async function reactivateAccount(userId: string): Promise<ApiResult<Accou
   }
 }
 
-/** A NEW ONE-TIME CODE, REPLACING ANY EARLIER ONE. 409 FOR A DEACTIVATED ACCOUNT, 403 FOR AN ADMIN. */
-export async function issueAccountSetupCode(userId: string): Promise<ApiResult<IssuedSetupCode>> {
+/** LETS A TEACHER SIGN UP AGAIN: THEIR OLD PASSWORD STOPS WORKING AND THEIR SESSIONS END. 409 FOR A DEACTIVATED ACCOUNT. */
+export async function resetTeacherSignUp(userId: string): Promise<ApiResult<TeacherSignUpReset>> {
   try {
-    return await runRecordAction<IssuedSetupCode>(API_PATHS.users, userId, 'setup-code');
+    return await runRecordAction<TeacherSignUpReset>(API_PATHS.users, userId, 'reset-sign-up');
   } catch {
     return networkFailure();
   }

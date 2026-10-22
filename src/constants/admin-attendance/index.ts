@@ -30,3 +30,21 @@ export const ATTENDANCE_SAVE_CONCURRENCY = 4;
 
 /** THE API'S LIMIT FOR `remarks`. */
 export const ATTENDANCE_REMARKS_MAX_LENGTH = 500;
+
+/** EMPTY-STATE WORDING PER PORTAL FOR THE STUDENT REGISTER. */
+export const STUDENT_REGISTER_PORTAL_COPY = {
+  ADMIN: {
+    title: 'Student attendance',
+    noYear: 'Classes, and so their registers, belong to an academic year.',
+    noYearTitle: 'Create an academic year first',
+    noClasses: 'Add classes from the Classes page, then come back to take attendance.',
+    noStudents: 'Enroll students into this class from the Enrollments page.',
+  },
+  TEACHER: {
+    title: 'Attendance',
+    noYear: 'The school office hasn’t set up an academic year yet.',
+    noYearTitle: 'No academic year yet',
+    noClasses: 'You don’t teach any class in this year. The school office assigns classes.',
+    noStudents: 'The school office enrolls students into classes.',
+  },
+} as const;

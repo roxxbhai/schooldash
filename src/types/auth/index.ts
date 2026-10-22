@@ -28,6 +28,21 @@ export interface PasswordCredentials {
   password: string;
 }
 
+/** EACH SIGN-IN FORM ACCEPTS ONE ROLE AND NAMES ITS OWN FIELDS IN THE CREDENTIAL ERROR. */
+export interface SignInOptions {
+  role?: AppRole;
+  credentialMessage?: string;
+}
+
+export interface TeacherCredentials {
+  phone: string;
+  password: string;
+}
+
+export interface StudentCredentials {
+  admissionNumber: string;
+}
+
 /** THE `users` ROW BEHIND A SUPABASE AUTH IDENTITY. */
 export interface AppUserRecord {
   id: string;

@@ -23,6 +23,7 @@ import { ROUTES } from '@/constants/routes';
 import { loadTeacher, updateTeacher } from '@/functions/admin-teacher-detail';
 import { refreshReferenceData } from '@/functions/reference-data';
 import { formatDate, pluralize } from '@/helpers/format';
+import { formatPhone } from '@/helpers/phone';
 import { fieldControlProps, withoutKey, zodFieldErrors } from '@/helpers/forms';
 import { classLabel, sortClasses, subjectLabel } from '@/helpers/reference-labels';
 import { useApiQuery } from '@/hooks/use-api-query';
@@ -175,7 +176,7 @@ export function AdminTeacherDetail() {
                 { label: 'Full name', value: teacher.user.fullName },
                 { label: 'Employee code', value: teacher.employeeCode, isMono: true },
                 { label: 'Email', value: teacher.user.email, isMono: true },
-                { label: 'Phone', value: teacher.user.phone, isMono: true },
+                { label: 'Mobile number', value: formatPhone(teacher.user.phone), isMono: true },
                 { label: 'Qualification', value: teacher.qualification },
                 { label: 'Date of joining', value: teacher.dateOfJoining ? formatDate(teacher.dateOfJoining) : null, isMono: true },
               ]}
@@ -264,9 +265,8 @@ export function AdminTeacherDetail() {
         <AccountAccessPanel
           userId={teacher.userId}
           fullName={teacher.user.fullName}
-          email={teacher.user.email}
           isActive={teacher.user.isActive}
-          role='teacher'
+          access={{ role: 'teacher', phone: teacher.user.phone, isSignedUp: teacher.user.passwordSetAt !== null }}
           onChanged={() => {
             record.reload();
             void refreshReferenceData();
@@ -302,10 +302,12 @@ export function AdminTeacherDetail() {
                   spellCheck={false}
                 />
               </FormField>
-              <FormField id='phone' label='Phone' description='Optional.' error={save.fieldErrors.phone}>
+              <FormField id='phone' label='Mobile number' description='They sign in with this number.' error={save.fieldErrors.phone} isRequired>
                 <Input
                   {...fieldControlProps('phone', save.fieldErrors.phone, true)}
                   type='tel'
+                  inputMode='tel'
+                  placeholder='98765 43210'
                   value={form.phone}
                   onChange={updateField('phone')}
                   className='font-mono'

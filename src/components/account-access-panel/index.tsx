@@ -1,33 +1,36 @@
 'use client';
 
-import { KeyRoundIcon, UserCheckIcon, UserXIcon } from 'lucide-react';
+import { RotateCcwKeyIcon, UserCheckIcon, UserXIcon } from 'lucide-react';
 import { useState } from 'react';
 import { AccountStatusBadge } from '@/components/account-status-badge';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { Panel } from '@/components/panel';
-import { SetupCodeDialog } from '@/components/setup-code-dialog';
+import { StatusBadge } from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
-import { deactivateAccount, issueAccountSetupCode, reactivateAccount } from '@/functions/account-access-panel';
+import { ROUTES } from '@/constants/routes';
+import { deactivateAccount, reactivateAccount, resetTeacherSignUp } from '@/functions/account-access-panel';
+import { formatPhone } from '@/helpers/phone';
 import { useMutation } from '@/hooks/use-mutation';
-import type { IssuedSetupCode } from '@/types/account-setup';
+import type { AccountAccess } from '@/types/account-access-panel';
 
 interface AccountAccessPanelProps {
   /** `users.id`: THE RECORD'S `userId`. */
   userId: string;
   fullName: string;
-  email: string;
   isActive: boolean;
-  /** WHAT THE RECORDS ARE CALLED IN THE CONFIRMATION WORDING. */
-  role: 'teacher' | 'student';
-  /** CALLED AFTER THE ACCOUNT STATUS CHANGES, SO THE PAGE RELOADS THE RECORD. */
+  /** HOW THIS PERSON SIGNS IN. */
+  access: AccountAccess;
+  /** CALLED AFTER THE ACCOUNT CHANGES, SO THE PAGE RELOADS THE RECORD. */
   onChanged: () => void;
 }
 
-/** HOW A TEACHER OR STUDENT SIGNS IN: THEIR LOGIN EMAIL, WHETHER THEY CAN, A NEW SETUP CODE, AND DEACTIVATE/REACTIVATE. */
-export function AccountAccessPanel({ userId, fullName, email, isActive, role, onChanged }: AccountAccessPanelProps) {
+/**
+ * HOW A TEACHER OR STUDENT SIGNS IN, AND DEACTIVATE/REACTIVATE.
+ * TEACHERS: THEIR PHONE NUMBER, WHETHER THEY HAVE SIGNED UP, AND RESET SIGN-UP. STUDENTS: THEIR ADMISSION NUMBER.
+ */
+export function AccountAccessPanel({ userId, fullName, isActive, access, onChanged }: AccountAccessPanelProps) {
   const [isStatusConfirmOpen, setIsStatusConfirmOpen] = useState(false);
-  const [isCodeConfirmOpen, setIsCodeConfirmOpen] = useState(false);
-  const [issuedCode, setIssuedCode] = useState<IssuedSetupCode | null>(null);
+  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
 
   const changeStatus = useMutation((targetUserId: string) => (isActive ? deactivateAccount(targetUserId) : reactivateAccount(targetUserId)), {
     successMessage: (change) => (change.isActive ? `${fullName} can sign in again.` : `${fullName} can no longer sign in.`),
@@ -37,23 +40,30 @@ export function AccountAccessPanel({ userId, fullName, email, isActive, role, on
     },
   });
 
-  const issueCode = useMutation((targetUserId: string) => issueAccountSetupCode(targetUserId), {
-    onSuccess: (code) => {
-      setIsCodeConfirmOpen(false);
-      setIssuedCode(code);
+  const resetSignUp = useMutation((targetUserId: string) => resetTeacherSignUp(targetUserId), {
+    successMessage: () => `${fullName} can now sign up again with their phone number.`,
+    onSuccess: () => {
+      setIsResetConfirmOpen(false);
+      onChanged();
     },
   });
 
-  const keptRecords = role === 'teacher' ? 'attendance, class and subject assignments' : 'enrollments, attendance and results';
+  const isTeacher = access.role === 'teacher';
+  const keptRecords = isTeacher ? 'attendance, class and subject assignments' : 'enrollments, attendance and results';
+  const howTheySignIn = isTeacher
+    ? access.isSignedUp
+      ? `${fullName} signs in on the teacher sign-in page with this number and the password they chose. If they have forgotten it, reset their sign-up.`
+      : `${fullName} hasn't signed up yet. They open the teacher sign-up page (${ROUTES.teacherSignUp}), enter this number and choose a password.`
+    : `${fullName} signs in on the student sign-in page (${ROUTES.studentSignIn}) with this admission number. No password is needed.`;
 
   function openStatusConfirm() {
     changeStatus.reset();
     setIsStatusConfirmOpen(true);
   }
 
-  function openCodeConfirm() {
-    issueCode.reset();
-    setIsCodeConfirmOpen(true);
+  function openResetConfirm() {
+    resetSignUp.reset();
+    setIsResetConfirmOpen(true);
   }
 
   return (
@@ -61,29 +71,30 @@ export function AccountAccessPanel({ userId, fullName, email, isActive, role, on
       <Panel title='Account access' description={`How ${fullName} signs in to the school portal.`}>
         <dl className='flex flex-col gap-4'>
           <div>
-            <dt className='text-xs font-medium text-muted-foreground'>Login email</dt>
-            <dd className='mt-0.5 font-mono text-sm break-all text-foreground'>{email}</dd>
-            <dd className='mt-0.5 text-xs text-muted-foreground'>The login email can&apos;t be changed.</dd>
+            <dt className='text-xs font-medium text-muted-foreground'>{isTeacher ? 'Sign-in mobile number' : 'Admission number'}</dt>
+            <dd className='mt-0.5 font-mono text-sm break-all text-foreground'>{isTeacher ? formatPhone(access.phone) : access.admissionNumber}</dd>
+            {isTeacher && !access.phone && <dd className='mt-0.5 text-xs text-destructive'>Add a mobile number to their profile so they can sign in.</dd>}
           </div>
           <div>
             <dt className='text-xs font-medium text-muted-foreground'>Status</dt>
-            <dd className='mt-1'>
+            <dd className='mt-1 flex flex-wrap gap-1.5'>
               <AccountStatusBadge isActive={isActive} />
+              {isTeacher && <StatusBadge tone={access.isSignedUp ? 'success' : 'warning'}>{access.isSignedUp ? 'Signed up' : 'Not signed up yet'}</StatusBadge>}
             </dd>
-            <dd className='mt-1.5 text-sm text-muted-foreground'>
-              {isActive
-                ? `${fullName} signs in with this email and the password they chose with their setup code. If they have lost the code or forgotten the password, issue a new code.`
-                : `${fullName} can't sign in. Their ${keptRecords} are kept.`}
-            </dd>
+            <dd className='mt-1.5 text-sm text-muted-foreground'>{isActive ? howTheySignIn : `${fullName} can't sign in. Their ${keptRecords} are kept.`}</dd>
           </div>
         </dl>
 
         <div className='mt-5 flex flex-col gap-2 border-t pt-5'>
-          <Button variant='outline' onClick={openCodeConfirm} disabled={!isActive} className='justify-start'>
-            <KeyRoundIcon aria-hidden />
-            Issue new setup code
-          </Button>
-          {!isActive && <p className='text-xs text-muted-foreground'>Reactivate the account to issue a setup code.</p>}
+          {isTeacher && (
+            <>
+              <Button variant='outline' onClick={openResetConfirm} disabled={!isActive || !access.isSignedUp} className='justify-start'>
+                <RotateCcwKeyIcon aria-hidden />
+                Reset sign-up
+              </Button>
+              {!isActive && <p className='text-xs text-muted-foreground'>Reactivate the account to reset their sign-up.</p>}
+            </>
+          )}
           {isActive ? (
             <Button variant='destructive' onClick={openStatusConfirm} className='justify-start'>
               <UserXIcon aria-hidden />
@@ -105,7 +116,7 @@ export function AccountAccessPanel({ userId, fullName, email, isActive, role, on
         description={
           isActive
             ? `${fullName} will be signed out everywhere straight away and won't be able to sign in. Their ${keptRecords} are kept, and you can reactivate the account later.`
-            : `${fullName} will be able to sign in again with their email and password.`
+            : `${fullName} will be able to sign in again.`
         }
         confirmLabel={isActive ? 'Deactivate account' : 'Reactivate account'}
         tone={isActive ? 'destructive' : 'default'}
@@ -115,22 +126,24 @@ export function AccountAccessPanel({ userId, fullName, email, isActive, role, on
       />
 
       <ConfirmDialog
-        isOpen={isCodeConfirmOpen}
-        onOpenChange={setIsCodeConfirmOpen}
-        title={`Issue a new setup code for ${fullName}?`}
+        isOpen={isResetConfirmOpen}
+        onOpenChange={setIsResetConfirmOpen}
+        title={`Reset ${fullName}'s sign-up?`}
         description={
           <>
-            <p>The new code replaces any earlier code, which stops working. It works once and expires after 7 days.</p>
-            <p className='mt-2'>Use it when {fullName} hasn&apos;t set a password yet, or has forgotten it: the code lets them choose a new password.</p>
+            <p>Their current password stops working and they are signed out everywhere.</p>
+            <p className='mt-2'>
+              They then sign up again on the teacher sign-up page with their mobile number and choose a new password. Use this when they have forgotten
+              their password.
+            </p>
           </>
         }
-        confirmLabel='Issue code'
-        isPending={issueCode.isPending}
-        errorMessage={issueCode.formError}
-        onConfirm={() => void issueCode.run(userId)}
+        confirmLabel='Reset sign-up'
+        tone='destructive'
+        isPending={resetSignUp.isPending}
+        errorMessage={resetSignUp.formError}
+        onConfirm={() => void resetSignUp.run(userId)}
       />
-
-      <SetupCodeDialog setupCode={issuedCode} personName={fullName} onClose={() => setIssuedCode(null)} />
     </>
   );
 }

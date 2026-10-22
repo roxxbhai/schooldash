@@ -1,10 +1,14 @@
 import { z } from 'zod';
+import { PHONE_NUMBER_SCHEMA } from '@/constants/phone';
 import { SIGN_IN_REASONS } from '@/constants/routes';
 
 /**
- * CLIENT-SIDE CHECKS FOR THE SIGN-IN AND SETUP FORMS. THEY ONLY CATCH OBVIOUS
- * MISTAKES EARLY; THE SERVER VALIDATES EVERYTHING AGAIN.
+ * CLIENT-SIDE CHECKS FOR THE SIGN-IN, SIGN-UP AND SETUP FORMS. THEY ONLY CATCH
+ * OBVIOUS MISTAKES EARLY; THE SERVER VALIDATES EVERYTHING AGAIN.
  */
+
+export const MIN_PASSWORD_LENGTH = 12;
+export const MAX_PASSWORD_LENGTH = 72;
 
 const emailField = z
   .string()
@@ -12,13 +16,22 @@ const emailField = z
   .min(1, { error: 'Enter your email address.' })
   .pipe(z.email({ error: 'Enter a valid email address, like name@example.com.' }));
 
-export const SIGN_IN_FORM_SCHEMA = z.object({
-  email: emailField,
-  password: z.string().min(1, { error: 'Enter your password.' }),
-});
+const passwordField = z.string().min(1, { error: 'Enter your password.' });
 
-export const MIN_PASSWORD_LENGTH = 12;
-export const MAX_PASSWORD_LENGTH = 72;
+const newPasswordField = z
+  .string()
+  .min(MIN_PASSWORD_LENGTH, { error: `Use at least ${MIN_PASSWORD_LENGTH} characters.` })
+  .max(MAX_PASSWORD_LENGTH, { error: `Use at most ${MAX_PASSWORD_LENGTH} characters.` });
+
+const confirmPasswordField = z.string().min(1, { error: 'Enter the password again.' });
+
+function isPasswordConfirmed(form: { password: string; confirmPassword: string }): boolean {
+  return form.password === form.confirmPassword;
+}
+
+const PASSWORD_MISMATCH = { path: ['confirmPassword'], error: 'The passwords do not match.' };
+
+export const ADMIN_SIGN_IN_FORM_SCHEMA = z.object({ email: emailField, password: passwordField });
 
 export const ACCOUNT_SETUP_FORM_SCHEMA = z
   .object({
@@ -28,18 +41,27 @@ export const ACCOUNT_SETUP_FORM_SCHEMA = z
       .trim()
       .min(1, { error: 'Enter the setup code you were given.' })
       .regex(/^[0-9A-Za-z\s-]{12,20}$/, { error: 'Setup codes have 12 letters and numbers, like 7K2M-Q9TB-4HXD.' }),
-    password: z
-      .string()
-      .min(MIN_PASSWORD_LENGTH, { error: `Use at least ${MIN_PASSWORD_LENGTH} characters.` })
-      .max(MAX_PASSWORD_LENGTH, { error: `Use at most ${MAX_PASSWORD_LENGTH} characters.` }),
-    confirmPassword: z.string().min(1, { error: 'Enter the password again.' }),
+    password: newPasswordField,
+    confirmPassword: confirmPasswordField,
   })
-  .refine((form) => form.password === form.confirmPassword, { path: ['confirmPassword'], error: 'The passwords do not match.' });
+  .refine(isPasswordConfirmed, PASSWORD_MISMATCH);
+
+export const TEACHER_SIGN_IN_FORM_SCHEMA = z.object({ phone: PHONE_NUMBER_SCHEMA, password: passwordField });
+
+export const TEACHER_SIGN_UP_FORM_SCHEMA = z
+  .object({ phone: PHONE_NUMBER_SCHEMA, password: newPasswordField, confirmPassword: confirmPasswordField })
+  .refine(isPasswordConfirmed, PASSWORD_MISMATCH);
+
+export const STUDENT_SIGN_IN_FORM_SCHEMA = z.object({
+  admissionNumber: z.string().trim().min(1, { error: 'Enter your admission number.' }).max(50, { error: 'Use at most 50 characters.' }),
+});
 
 /** A SHORT HEADLINE ABOVE EACH SIGN-IN OR SETUP FAILURE; THE MESSAGE BELOW IT SAYS WHAT TO DO. */
 export const AUTH_ERROR_TITLES: Record<string, string> = {
   INVALID_CREDENTIALS: "Couldn't sign you in",
   INVALID_SETUP_CODE: "Couldn't verify the setup code",
+  NOT_FOUND: 'Phone number not registered',
+  CONFLICT: 'Already signed up',
   ACCOUNT_INACTIVE: 'Account deactivated',
   ACCOUNT_NOT_PROVISIONED: 'Account not set up',
   RATE_LIMITED: 'Too many attempts',
@@ -50,11 +72,11 @@ export const AUTH_ERROR_TITLES: Record<string, string> = {
 
 export const DEFAULT_AUTH_ERROR_TITLE = 'Something went wrong';
 
-/** NOTICES SHOWN ABOVE THE SIGN-IN FORM, KEYED BY THE ?reason= THE PORTAL REDIRECTED WITH. */
+/** NOTICES SHOWN ABOVE A SIGN-IN FORM, KEYED BY THE ?reason= THE PORTAL REDIRECTED WITH. */
 export const SIGN_IN_NOTICES: Record<string, { tone: 'info' | 'success' | 'error'; message: string }> = {
   [SIGN_IN_REASONS.sessionExpired]: { tone: 'info', message: 'Your session ended. Please sign in again to continue.' },
   [SIGN_IN_REASONS.signedOut]: { tone: 'success', message: 'You have signed out.' },
-  [SIGN_IN_REASONS.passwordSet]: { tone: 'success', message: 'Your password is set. Sign in with your email and new password.' },
+  [SIGN_IN_REASONS.passwordSet]: { tone: 'success', message: 'Your password is set. Sign in with it now.' },
   [SIGN_IN_REASONS.inactive]: { tone: 'error', message: 'This account has been deactivated. Please contact the school office.' },
   [SIGN_IN_REASONS.notProvisioned]: { tone: 'error', message: "This account isn't set up for the school portal yet. Please contact the school office." },
 };

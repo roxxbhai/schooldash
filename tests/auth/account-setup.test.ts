@@ -27,7 +27,7 @@ function fakeSession(isSignInOk = true) {
       ? { data: { user: { id: AUTH_ID } }, error: null }
       : { data: { user: null }, error: new AuthApiError('Invalid login credentials', 400, 'invalid_credentials') },
   );
-  const row = { id: USER_ID, authUserId: AUTH_ID, role: 'teacher', isActive: true, fullName: 'Asha Verma', email: INPUT.email };
+  const row = { id: USER_ID, authUserId: AUTH_ID, role: 'admin', isActive: true, fullName: 'Asha Verma', email: INPUT.email };
   const query = { select: () => query, eq: () => query, maybeSingle: async () => ({ data: row, error: null }) };
   const client = { auth: { signInWithPassword, signOut: vi.fn(async () => ({ error: null })) }, from: () => query };
   return { client: client as never, signInWithPassword };
@@ -102,7 +102,7 @@ describe('completeAccountSetup (unit)', () => {
     expect(result).toEqual({
       success: true,
       message: expect.any(String),
-      data: { isSignedIn: true, profile: { id: USER_ID, role: 'TEACHER', isActive: true, fullName: 'Asha Verma', email: INPUT.email } },
+      data: { isSignedIn: true, profile: { id: USER_ID, role: 'ADMIN', isActive: true, fullName: 'Asha Verma', email: INPUT.email } },
     });
     expect(admin.rpc).toHaveBeenCalledWith('consumeAccountSetupCode', { email: INPUT.email, codeHash: hashSetupCode('7K2MQ9TB4HXD') });
     expect(admin.updateUserById).toHaveBeenCalledWith(AUTH_ID, { password: INPUT.password });

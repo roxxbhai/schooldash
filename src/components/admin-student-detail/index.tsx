@@ -360,9 +360,8 @@ export function AdminStudentDetail() {
         <AccountAccessPanel
           userId={student.userId}
           fullName={student.user.fullName}
-          email={student.user.email}
           isActive={student.user.isActive}
-          role='student'
+          access={{ role: 'student', admissionNumber: student.admissionNumber }}
           onChanged={record.reload}
         />
       </div>

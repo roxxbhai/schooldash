@@ -3,7 +3,6 @@
 import { PlusIcon, UsersIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
-import { toast } from 'sonner';
 import { AccountStatusBadge } from '@/components/account-status-badge';
 import { DataTable, type DataTableColumn } from '@/components/data-table';
 import { EmptyState } from '@/components/empty-state';
@@ -13,7 +12,6 @@ import { OptionSelect } from '@/components/option-select';
 import { PageHeader } from '@/components/page-header';
 import { PaginationBar } from '@/components/pagination-bar';
 import { SearchInput } from '@/components/search-input';
-import { SetupCodeDialog } from '@/components/setup-code-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { EMPTY_TEACHER_FORM, TEACHER_FORM_SCHEMA, type TeacherForm } from '@/constants/admin-teachers';
@@ -24,39 +22,31 @@ import { createTeacher } from '@/functions/admin-teachers';
 import { refreshReferenceData } from '@/functions/reference-data';
 import { toSearchTerm } from '@/helpers/api-client';
 import { formatDate } from '@/helpers/format';
+import { formatPhone } from '@/helpers/phone';
 import { fieldControlProps, withoutKey, zodFieldErrors } from '@/helpers/forms';
 import { useApiQuery } from '@/hooks/use-api-query';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { useMutation } from '@/hooks/use-mutation';
-import type { CreatedTeacher } from '@/types/admin-teachers';
 import type { PaginatedList } from '@/types/api';
 import type { Teacher } from '@/types/teachers';
 
-/** TEACHERS: SEARCH, FILTER BY STATUS, AND ADD. EACH NEW TEACHER GETS A ONE-TIME SETUP CODE TO CHOOSE THEIR PASSWORD. */
+/** TEACHERS: SEARCH, FILTER BY STATUS, AND ADD. A NEW TEACHER SIGNS UP WITH THE MOBILE NUMBER ENTERED HERE AND CHOOSES THEIR PASSWORD. */
 export function AdminTeachers() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [form, setForm] = useState<TeacherForm>(EMPTY_TEACHER_FORM);
-  const [createdTeacher, setCreatedTeacher] = useState<CreatedTeacher | null>(null);
 
   const debouncedSearch = useDebouncedValue(toSearchTerm(search));
   const list = useApiQuery<PaginatedList<Teacher>>(API_PATHS.teachers, { page, limit: 20, search: debouncedSearch, isActive: statusFilter });
 
   const create = useMutation((values: TeacherForm) => createTeacher(values), {
-    successMessage: (teacher) => `Added ${teacher.user.fullName}.`,
-    onSuccess: (teacher) => {
+    successMessage: (teacher) => `Added ${teacher.user.fullName}. They can now sign up on the teacher sign-up page with ${formatPhone(teacher.user.phone)}.`,
+    onSuccess: () => {
       setIsFormOpen(false);
       list.reload();
       void refreshReferenceData();
-      if (teacher.setupCode) {
-        setCreatedTeacher(teacher);
-        return;
-      }
-      toast.warning(`${teacher.user.fullName}'s account was created, but a setup code couldn't be issued.`, {
-        description: 'Issue one from their profile so they can choose a password.',
-      });
     },
   });
 
@@ -71,7 +61,7 @@ export function AdminTeachers() {
           <Link href={`${ROUTES.admin.teachers}/${teacher.id}`} className='font-medium text-foreground underline-offset-3 hover:text-primary hover:underline'>
             {teacher.user.fullName}
           </Link>
-          <p className='font-mono text-xs text-muted-foreground'>{teacher.user.email}</p>
+          <p className='font-mono text-xs text-muted-foreground'>{formatPhone(teacher.user.phone)}</p>
         </div>
       ),
     },
@@ -128,7 +118,7 @@ export function AdminTeachers() {
     <>
       <PageHeader
         title='Teachers'
-        description='Each teacher signs in with their own email. A new teacher gets a one-time setup code to choose their password.'
+        description='Each teacher signs in with their mobile number. A new teacher signs up once with the number you enter here and chooses their password.'
         actions={
           <Button onClick={openCreate}>
             <PlusIcon aria-hidden />
@@ -138,7 +128,7 @@ export function AdminTeachers() {
       />
 
       <div className='mb-4 flex flex-col gap-3 sm:flex-row sm:items-center'>
-        <SearchInput value={search} onChange={handleSearchChange} label='Search teachers' placeholder='Search by name, email or code' />
+        <SearchInput value={search} onChange={handleSearchChange} label='Search teachers' placeholder='Search by name, mobile, email or code' />
         <div className='w-full sm:w-44'>
           <OptionSelect
             aria-label='Status'
@@ -178,7 +168,7 @@ export function AdminTeachers() {
         isOpen={isFormOpen}
         onOpenChange={setIsFormOpen}
         title='New teacher'
-        description='This creates their login. You will get a one-time setup code to give them, so they can choose their own password.'
+        description='This creates their login. They then sign up on the teacher sign-up page with this mobile number and choose their own password.'
         submitLabel='Add teacher'
         isSubmitting={create.isPending}
         formError={create.formError}
@@ -187,7 +177,19 @@ export function AdminTeachers() {
         <FormField id='fullName' label='Full name' error={create.fieldErrors.fullName} isRequired>
           <Input {...fieldControlProps('fullName', create.fieldErrors.fullName)} value={form.fullName} onChange={updateField('fullName')} autoComplete='off' />
         </FormField>
-        <FormField id='email' label='Email' description='They sign in with this. It cannot be changed later.' error={create.fieldErrors.email} isRequired>
+        <FormField id='phone' label='Mobile number' description='They sign in with this number.' error={create.fieldErrors.phone} isRequired>
+          <Input
+            {...fieldControlProps('phone', create.fieldErrors.phone, true)}
+            type='tel'
+            inputMode='tel'
+            placeholder='98765 43210'
+            value={form.phone}
+            onChange={updateField('phone')}
+            className='font-mono'
+            autoComplete='off'
+          />
+        </FormField>
+        <FormField id='email' label='Email' description='For school records. It cannot be changed later.' error={create.fieldErrors.email} isRequired>
           <Input
             {...fieldControlProps('email', create.fieldErrors.email, true)}
             type='email'
@@ -229,11 +231,6 @@ export function AdminTeachers() {
         </FormField>
       </FormDialog>
 
-      <SetupCodeDialog
-        setupCode={createdTeacher?.setupCode ?? null}
-        personName={createdTeacher?.user.fullName ?? ''}
-        onClose={() => setCreatedTeacher(null)}
-      />
     </>
   );
 }

@@ -3,11 +3,15 @@ import type { ApiErrorCode } from '@/types/api';
 /** EVERY API PATH THE PORTAL CALLS. DYNAMIC SEGMENTS ARE BUILT BY THE FUNCTIONS BELOW. */
 export const API_PATHS = {
   auth: {
-    login: '/api/auth/login',
+    adminLogin: '/api/auth/admin/login',
+    adminSetup: '/api/auth/admin/setup',
+    teacherLogin: '/api/auth/teacher/login',
+    teacherSignUp: '/api/auth/teacher/sign-up',
+    studentLogin: '/api/auth/student/login',
     logout: '/api/auth/logout',
     me: '/api/auth/me',
-    setup: '/api/auth/setup',
   },
+  admins: '/api/admins',
   academicYears: '/api/academic-years',
   subjects: '/api/subjects',
   classes: '/api/classes',
@@ -41,7 +45,6 @@ export const ERROR_MESSAGES: Partial<Record<ApiErrorCode, string>> = {
   INVALID_JSON: 'Something in the request was not valid. Refresh the page and try again.',
   VALIDATION_ERROR: 'Some details need your attention. Check the highlighted fields.',
   UNAUTHORIZED: 'Your session has ended. Please sign in again.',
-  INVALID_CREDENTIALS: 'The email or password is incorrect.',
   ACCOUNT_NOT_PROVISIONED: "This account isn't set up for the school portal yet. Please contact the school office.",
   ACCOUNT_INACTIVE: 'This account has been deactivated. Please contact the school office.',
   CSRF_REJECTED: 'This request was blocked for security reasons. Refresh the page and try again.',

@@ -13,7 +13,8 @@ import type { CookieStore } from './helpers/http';
  * Also: concurrent duplicate writes, client retries, and identity injection.
  *
  * Every write is made by the persistent integration admin (audit actor). The
- * teacher and student created here only read, so they are deleted on cleanup.
+ * teacher signs up and the student signs in through the real routes; both only
+ * read afterwards, so they are deleted on cleanup.
  */
 
 const state = vi.hoisted(() => ({ cookies: undefined as unknown as CookieStore }));
@@ -24,7 +25,7 @@ vi.mock('next/server', async (original) => ({
 }));
 
 import * as me from '@/app/api/auth/me/route';
-import * as loginRoute from '@/app/api/auth/login/route';
+import * as studentLoginRoute from '@/app/api/auth/student/login/route';
 import * as years from '@/app/api/academic-years/route';
 import * as subjects from '@/app/api/subjects/route';
 import * as teachers from '@/app/api/teachers/route';
@@ -44,9 +45,9 @@ import * as noticeOne from '@/app/api/notices/[id]/route';
 import * as publish from '@/app/api/notices/[id]/publish/route';
 import * as deactivate from '@/app/api/users/[id]/deactivate/route';
 import * as reactivate from '@/app/api/users/[id]/reactivate/route';
-import { ensureItAdmin, provisionTestAccount, runId, teardown, testCode, testEmail, testPassword, track, type TestAccount } from './helpers/actors';
+import { ensureItAdmin, provisionTestAccount, runId, teardown, testCode, testEmail, testPassword, testPhone, track, type TestAccount } from './helpers/actors';
 import { connect } from './helpers/db';
-import { anonymous, call, signIn } from './helpers/http';
+import { anonymous, call, signIn, signInAsStudent, signUpAsTeacher } from './helpers/http';
 
 const harness = { state };
 /** Subject codes are limited to 20 characters. */
@@ -76,8 +77,8 @@ async function trackUser(userId: string) {
 
 const w = {} as {
   yearId: string; subjectId: string; classId: string; otherClassId: string; examId: string; paperId: string;
-  teacher: { id: string; userId: string; email: string; password: string; session?: CookieStore };
-  student: { id: string; userId: string; email: string; password: string; session?: CookieStore };
+  teacher: { id: string; userId: string; email: string; phone: string; password: string; session?: CookieStore };
+  student: { id: string; userId: string; email: string; admissionNumber: string; session?: CookieStore };
   attendanceId: string; resultId: string; entryId: string; noticeId: string;
 };
 
@@ -99,8 +100,9 @@ describe('a school year built end to end through the API', () => {
     w.subjectId = (await create(subjects.POST, '/api/subjects', { code: subjectCode('S'), name: 'Workflow' })).id;
     track('subjects', w.subjectId);
 
-    const teacherLogin = { email: testEmail('wf-teacher'), password: testPassword() };
-    const teacher = await create(teachers.POST, '/api/teachers', { ...teacherLogin, fullName: 'IT wf teacher', employeeCode: testCode('wf-t') });
+    // TEACHERS ARE ADDED WITH THEIR MOBILE NUMBER AND SIGN UP THEMSELVES (STEP BELOW).
+    const teacherLogin = { email: testEmail('wf-teacher'), phone: testPhone(), password: testPassword() };
+    const teacher = await create(teachers.POST, '/api/teachers', { email: teacherLogin.email, phone: teacherLogin.phone, fullName: 'IT wf teacher', employeeCode: testCode('wf-t') });
     await trackUser(teacher.userId);
     w.teacher = { id: teacher.id, userId: teacher.userId, ...teacherLogin };
 
@@ -109,8 +111,9 @@ describe('a school year built end to end through the API', () => {
     track('classes', w.classId);
     track('classes', w.otherClassId);
 
-    const studentLogin = { email: testEmail('wf-student'), password: testPassword() };
-    const student = await create(students.POST, '/api/students', { ...studentLogin, fullName: 'IT wf student', admissionNumber: testCode('wf-s') });
+    // STUDENTS HAVE NO PASSWORD: THEY SIGN IN WITH THEIR ADMISSION NUMBER.
+    const studentLogin = { email: testEmail('wf-student'), admissionNumber: testCode('wf-s') };
+    const student = await create(students.POST, '/api/students', { ...studentLogin, fullName: 'IT wf student' });
     await trackUser(student.userId);
     w.student = { id: student.id, userId: student.userId, ...studentLogin };
 
@@ -119,8 +122,9 @@ describe('a school year built end to end through the API', () => {
     expect(enrollment.academicYearId).toBe(w.yearId);
     track('teacherAssignments', (await create(assignments.POST, '/api/teacher-assignments', { teacherId: w.teacher.id, classId: w.classId, subjectId: w.subjectId })).id);
 
-    w.teacher.session = await signIn(harness, w.teacher.email, w.teacher.password);
-    w.student.session = await signIn(harness, w.student.email, w.student.password);
+    w.teacher.session = await signUpAsTeacher(harness, w.teacher.phone, w.teacher.password);
+    w.student.session = await signInAsStudent(harness, w.student.admissionNumber);
+    expect((await get(w.teacher.session, me.GET, '/api/auth/me')).body.data).toMatchObject({ id: w.teacher.userId, role: 'TEACHER' });
     expect((await get(w.student.session, me.GET, '/api/auth/me')).body.data).toMatchObject({ id: w.student.userId, role: 'STUDENT' });
   });
 
@@ -177,7 +181,7 @@ describe('a school year built end to end through the API', () => {
     const result = await post(admin, deactivate.POST, `/api/users/${w.student.userId}/deactivate`, undefined, { id: w.student.userId });
     expect(result.status).toBe(200);
     expect((await get(w.student.session!, me.GET, '/api/auth/me')).status).toBe(401);
-    const login = await call(harness, anonymous(), loginRoute.POST, 'POST', '/api/auth/login', { body: { email: w.student.email, password: w.student.password } });
+    const login = await call(harness, anonymous(), studentLoginRoute.POST, 'POST', '/api/auth/student/login', { body: { admissionNumber: w.student.admissionNumber } });
     expect([login.status, login.body.error?.code]).toEqual([403, 'ACCOUNT_INACTIVE']);
 
     const history = await db.query(
@@ -196,7 +200,7 @@ describe('a school year built end to end through the API', () => {
 
   it('8. reactivation restores access; the student signs in again and sees their history', async () => {
     expect((await post(admin, reactivate.POST, `/api/users/${w.student.userId}/reactivate`, undefined, { id: w.student.userId })).status).toBe(200);
-    w.student.session = await signIn(harness, w.student.email, w.student.password);
+    w.student.session = await signInAsStudent(harness, w.student.admissionNumber);
     const card = await get(w.student.session, reportCard.GET, `/api/students/${w.student.id}/report-cards/${w.examId}`, { id: w.student.id, examId: w.examId });
     expect([card.status, card.body.data.summary.complete]).toEqual([200, true]);
   });

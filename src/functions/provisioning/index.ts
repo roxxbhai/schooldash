@@ -1,6 +1,7 @@
 import 'server-only';
 import { isAuthApiError } from '@supabase/supabase-js';
 import { z } from 'zod';
+import { PHONE_NUMBER_SCHEMA } from '@/constants/phone';
 import { conflict, DataAccessError, validationError } from '@/helpers/api-error';
 import { functionFailure, functionSuccess } from '@/helpers/function-result';
 import { logServerError } from '@/helpers/logger';
@@ -55,13 +56,14 @@ const teacherProfileSchema = z.strictObject({
 const baseSchema = {
   email: z.string().trim().toLowerCase().pipe(z.email()),
   fullName: z.string().trim().min(1).max(200),
-  /** INITIAL PASSWORD. OMIT TO CREATE THE IDENTITY WITHOUT ONE (SET VIA reset/invite). */
+  /** INITIAL PASSWORD. OMIT TO CREATE THE IDENTITY WITHOUT ONE (TEACHER SIGN-UP, ADMIN SETUP CODE, OR NONE FOR STUDENTS). */
   password: z.string().min(12).max(72).optional(),
 };
 
 const provisionInputSchema = z.discriminatedUnion('role', [
   z.strictObject({ ...baseSchema, role: z.literal('ADMIN') }),
-  z.strictObject({ ...baseSchema, role: z.literal('TEACHER'), profile: teacherProfileSchema }),
+  // A TEACHER SIGNS IN WITH THIS NUMBER (MIGRATION 15).
+  z.strictObject({ ...baseSchema, role: z.literal('TEACHER'), phone: PHONE_NUMBER_SCHEMA, profile: teacherProfileSchema }),
   z.strictObject({ ...baseSchema, role: z.literal('STUDENT'), profile: studentProfileSchema }),
 ]);
 
@@ -136,15 +138,25 @@ async function createAccount(rawInput: ProvisionAccountInput, options: Provision
     role: toDbRole(input.role),
     profile: 'profile' in input ? input.profile : {},
     actorUserId: options.actorUserId ?? undefined,
+    phone: 'phone' in input ? input.phone : undefined,
   });
 
   if (result.error || !result.data) {
     // 3. COMPENSATE: NEVER LEAVE AN AUTH IDENTITY WE CREATED WITHOUT AN ACCOUNT.
     if (isAuthUserCreated) await removeAuthUser(admin, authUserId);
-    throw mapProvisionError(result.error?.code);
+    throw mapProvisionError(result.error?.code, result.error?.message);
   }
 
+  // 4. AN IDENTITY CREATED WITH A PASSWORD, OR AN EXISTING ONE (CREATED WITH A PASSWORD IN
+  //    THE DASHBOARD), NEEDS NO SIGN-UP OR SETUP CODE. BEST EFFORT: ONLY THE "SETUP PENDING" LABEL DEPENDS ON IT.
+  if (input.password || !isAuthUserCreated) await markPasswordSet(admin, result.data);
+
   return { userId: result.data, authUserId, role: input.role, isAuthUserCreated };
+}
+
+async function markPasswordSet(admin: DbClient, userId: string): Promise<void> {
+  const { error } = await admin.from('users').update({ passwordSetAt: new Date().toISOString() }).eq('id', userId);
+  if (error) logServerError('provisioning.markPasswordSet', error, { userId });
 }
 
 async function removeAuthUser(admin: DbClient, authUserId: string): Promise<void> {
@@ -158,9 +170,10 @@ async function removeAuthUser(admin: DbClient, authUserId: string): Promise<void
   throw new ProvisioningRecoveryError(authUserId);
 }
 
-function mapProvisionError(code: string | undefined): Error {
+function mapProvisionError(code: string | undefined, message: string | undefined): Error {
   switch (code) {
-    case '23505': // UNIQUE: IDENTITY, EMAIL OR admission/employee NUMBER ALREADY USED
+    case '23505': // UNIQUE: IDENTITY, EMAIL, TEACHER PHONE OR admission/employee NUMBER ALREADY USED
+      if (message?.includes('usersTeacherPhoneKey')) return conflict('Another teacher already uses this phone number.');
       return conflict('An account or profile with these details already exists.');
     case '22023': // MISSING REQUIRED PROFILE FIELD
     case '22007': // INVALID DATE

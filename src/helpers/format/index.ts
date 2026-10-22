@@ -61,6 +61,19 @@ export function formatTime(time: string | null | undefined): string {
   return time ? time.slice(0, 5) : '—';
 }
 
+/** "YYYY-MM-DD" MOVED BY `days` CALENDAR DAYS (NEGATIVE GOES BACK). */
+export function shiftIsoDate(isoDate: string, days: number): string {
+  const date = new Date(`${isoDate}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+/** ISO WEEKDAY (1 = MONDAY … 7 = SUNDAY) OF A "YYYY-MM-DD" DATE, AS THE TIMETABLE COUNTS DAYS. */
+export function isoWeekday(isoDate: string): number {
+  const day = new Date(`${isoDate}T00:00:00Z`).getUTCDay();
+  return day === 0 ? 7 : day;
+}
+
 export function weekdayLabel(dayOfWeek: number): string {
   return WEEKDAYS.find((day) => day.value === dayOfWeek)?.label ?? '—';
 }

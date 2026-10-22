@@ -103,7 +103,7 @@ const cases: Case[] = [
   ['GET /classes/{id}', klass.GET, 'GET', undefined],
   ['PATCH /classes/{id}', klass.PATCH, 'PATCH', { roomNumber: 'x' }],
   ['GET /teachers', teachers.GET, 'GET', undefined],
-  ['POST /teachers', teachers.POST, 'POST', { email: 'x@example.com', fullName: 'X', employeeCode: 'X' }],
+  ['POST /teachers', teachers.POST, 'POST', { email: 'x@example.com', fullName: 'X', phone: '9876543210', employeeCode: 'X' }],
   ['GET /teachers/{id}', teacher.GET, 'GET', undefined],
   ['PATCH /teachers/{id}', teacher.PATCH, 'PATCH', { qualification: 'x' }],
   ['GET /students', students.GET, 'GET', undefined],

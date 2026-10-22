@@ -120,7 +120,7 @@ const endpoints: Endpoint[] = [
   { name: 'GET /classes/{id}', handler: klass.GET, method: 'GET', path: (id) => `/api/classes/${id}`, id: () => f.classA, allowed: ALL },
   { name: 'PATCH /classes/{id}', handler: klass.PATCH, method: 'PATCH', path: (id) => `/api/classes/${id}`, id: () => f.classA, allowed: ADMIN, body: () => ({ roomNumber: 'x' }) },
   { name: 'GET /teachers', handler: teachers.GET, method: 'GET', path: () => '/api/teachers', allowed: ADMIN, list: true },
-  { name: 'POST /teachers', handler: teachers.POST, method: 'POST', path: () => '/api/teachers', allowed: ADMIN, body: () => ({ email: 'x@example.com', fullName: 'X', employeeCode: 'X' }) },
+  { name: 'POST /teachers', handler: teachers.POST, method: 'POST', path: () => '/api/teachers', allowed: ADMIN, body: () => ({ email: 'x@example.com', fullName: 'X', phone: '9876543210', employeeCode: 'X' }) },
   { name: 'GET /teachers/{id}', handler: teacher.GET, method: 'GET', path: (id) => `/api/teachers/${id}`, id: () => f.teacherId, allowed: ['admin', 'teacher'] },
   { name: 'PATCH /teachers/{id}', handler: teacher.PATCH, method: 'PATCH', path: (id) => `/api/teachers/${id}`, id: () => f.teacherId, allowed: ADMIN, body: () => ({ qualification: 'x' }) },
   { name: 'GET /students', handler: students.GET, method: 'GET', path: () => '/api/students', allowed: ['admin', 'teacher', 'otherTeacher'], list: true },

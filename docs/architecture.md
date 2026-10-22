@@ -21,7 +21,7 @@ Modules (`<module>` names): `academic-years`, `subjects`, `classes`,
 `teachers`, `students`, `enrollments`, `teacher-assignments`,
 `student-attendance`, `teacher-attendance`, `exams`, `exam-subjects`,
 `results`, `report-cards`, `timetable`, `notices`, plus the shared `session`,
-`authorization`, `provisioning`, `account-status` and `account-setup`.
+`authorization`, `provisioning`, `account-status`, `account-setup` and `sign-in`.
 
 ## The function result contract
 
@@ -84,6 +84,6 @@ this.
 `tests/server-only.test.ts` enforces:
 - every module declares its side (`server-only` / `client-only`) or is pure, and no browser module imports a server-only one;
 - only config and the admin client read the secret key;
-- only provisioning, account status and account setup use the admin client;
+- only provisioning, account status, account setup and sign-in use the admin client;
 - only the two admin-guarded people routes import provisioning, and both call
   `requireAdmin` before it.

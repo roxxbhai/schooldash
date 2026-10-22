@@ -27,7 +27,7 @@ export function SetupCodeDialog({ setupCode, personName, onClose, note }: SetupC
   const [isCopyFailed, setIsCopyFailed] = useState(false);
 
   // THE DIALOG ONLY RENDERS ITS CONTENT IN THE BROWSER, WHERE `window` EXISTS.
-  const setupAddress = typeof window === 'undefined' ? ROUTES.accountSetup : `${window.location.origin}${ROUTES.accountSetup}`;
+  const setupAddress = typeof window === 'undefined' ? ROUTES.adminAccountSetup : `${window.location.origin}${ROUTES.adminAccountSetup}`;
 
   function handleOpenChange(isOpen: boolean) {
     if (isOpen) return;

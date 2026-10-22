@@ -78,9 +78,11 @@ export function mapDbError(
     case 'SD002':
       return conflict('At least one active administrator must remain.');
     case 'SD003':
-      return forbidden('Setup codes can only be issued for teacher and student accounts.');
+      return forbidden('Setup codes can only be issued for administrator accounts.');
     case 'SD004':
-      return conflict('This account is deactivated. Reactivate it before issuing a setup code.');
+      return conflict('This account is deactivated. Reactivate it first.');
+    case 'SD005':
+      return forbidden('Sign-up can only be reset for teacher accounts.');
   }
 
   if (VALIDATION_CODES.has(code)) return validationError(fieldIssue(rule, 'A value is not allowed.'));

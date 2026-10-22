@@ -22,6 +22,8 @@ export const runId = `${Date.now().toString(36)}${randomBytes(2).toString('hex')
 export const testEmail = (label: string) => `it-${runId}-${label}@example.com`;
 export const testCode = (label: string) => `IT-${runId}-${label}`.toUpperCase();
 export const testPassword = () => `It-${randomBytes(18).toString('base64url')}`;
+/** A RANDOM MOBILE NUMBER (TEACHER NUMBERS ARE UNIQUE). STARTS WITH 6 SO IT IS UNLIKELY TO BE A REAL TEACHER'S. */
+export const testPhone = () => `6${randomBytes(5).readUIntBE(0, 5).toString().padStart(9, '0').slice(-9)}`;
 
 const admin = () => createSupabaseAdminClient();
 
@@ -47,7 +49,7 @@ async function setStatus(userId: string, isActive: boolean) {
  */
 async function ensurePersistent(
   email: string,
-  input: { fullName: string; role: 'ADMIN' } | { fullName: string; role: 'TEACHER'; profile: { employeeCode: string } },
+  input: { fullName: string; role: 'ADMIN' } | { fullName: string; role: 'TEACHER'; phone: string; profile: { employeeCode: string } },
 ): Promise<TestAccount> {
   const password = testPassword();
   const found = await admin().rpc('findAuthUserIdByEmail', { email });
@@ -79,6 +81,7 @@ export const ensureItTeacher = () =>
   ensurePersistent(IT_TEACHER_EMAIL, {
     fullName: 'Integration Test Teacher',
     role: 'TEACHER',
+    phone: '6000000001',
     profile: { employeeCode: 'IT-PERSISTENT-TEACHER' },
   });
 
@@ -136,14 +139,17 @@ export function track(kind: Tracked, id: string | undefined | null): void {
   if (id) tracked[kind].add(id);
 }
 
-/** Provisions a tracked student/teacher/admin account with a known password. */
+/** Provisions a tracked student/teacher/admin account with a known password (teachers get a random phone number). */
 export async function provisionTestAccount(
   label: string,
-  input: DistributiveOmit<ProvisionAccountInput, 'email' | 'password' | 'fullName'> & { fullName?: string },
+  input: DistributiveOmit<ProvisionAccountInput, 'email' | 'password' | 'fullName' | 'phone'> & { fullName?: string; phone?: string },
 ): Promise<TestAccount> {
   const email = testEmail(label);
   const password = testPassword();
-  const account = unwrapResult(await provisionAccount({ fullName: `IT ${label}`, ...input, email, password } as ProvisionAccountInput));
+  const phone = input.role === 'TEACHER' ? (input.phone ?? testPhone()) : undefined;
+  const account = unwrapResult(
+    await provisionAccount({ fullName: `IT ${label}`, ...input, email, password, ...(phone ? { phone } : {}) } as ProvisionAccountInput),
+  );
   track('authUsers', account.authUserId);
   return { email, password, userId: account.userId, authUserId: account.authUserId };
 }

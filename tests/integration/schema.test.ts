@@ -162,6 +162,7 @@ describe('applied schema', () => {
         and p.proname <> 'rls_auto_enable' order by 1`);
     expect(grants).toEqual([
       { proname: 'findAuthUserIdByEmail', anon: false, authed: false, service: true },
+      { proname: 'resetTeacherSignUp', anon: false, authed: false, service: true },
       { proname: 'setAppUserStatus', anon: false, authed: false, service: true },
     ]);
   });
@@ -173,6 +174,7 @@ describe('applied schema', () => {
         and p.proname not in (
           'findAuthUserIdByEmail', -- reads auth.users (service_role only)
           'setAppUserStatus',      -- deletes auth.sessions on deactivation (service_role only)
+          'resetTeacherSignUp',    -- deletes a teacher's auth.sessions on reset (service_role only)
           'rls_auto_enable'        -- Supabase-managed event trigger
         )`);
     expect(exposed).toEqual([]);

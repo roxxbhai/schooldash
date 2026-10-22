@@ -80,24 +80,25 @@ Classes are never deleted.
 
 | Method | Path | Who | Notes |
 | ------ | ---- | --- | ----- |
-| GET | `/api/teachers` | Admin | `?isActive=true|false`, `?search=` (employee code, name or email). Each item embeds `user: { fullName, email, phone, isActive }`. |
-| POST | `/api/teachers` | Admin | `{ email, fullName, employeeCode, password?, qualification?, dateOfJoining? }`. Uses the provisioning service; the role is always TEACHER. Returns the teacher plus `setupCode` (see Account setup codes). |
+| GET | `/api/teachers` | Admin | `?isActive=true|false`, `?search=` (employee code, name, email or mobile number). Each item embeds `user: { fullName, email, phone, isActive, passwordSetAt }` (`passwordSetAt` null: not signed up yet). |
+| POST | `/api/teachers` | Admin | `{ email, fullName, phone, employeeCode, qualification?, dateOfJoining? }`. `phone` is required: the teacher signs in with it (normalized to 10 digits, unique among teachers, 409 if taken). No password: the teacher signs up with the number. Uses the provisioning service; the role is always TEACHER. |
 | GET | `/api/teachers/{id}` | Admin; a teacher only for their own record | Other teachers and students → 403. |
-| PATCH | `/api/teachers/{id}` | Admin | `fullName`, `phone`, `employeeCode`, `qualification`, `dateOfJoining`. Atomic across `users` and `teachers`. |
+| PATCH | `/api/teachers/{id}` | Admin | `fullName`, `phone` (can change, not be removed; 409 if another teacher has it), `employeeCode`, `qualification`, `dateOfJoining`. Atomic across `users` and `teachers`. |
 
 ### Students
 
 | Method | Path | Who | Notes |
 | ------ | ---- | --- | ----- |
 | GET | `/api/students` | Admin: all. Teacher: students they teach (RLS). Student: 403. | `?classId=`, `?isActive=`, `?search=` (admission number, name or email). Embeds `user`. |
-| POST | `/api/students` | Admin | `{ email, fullName, admissionNumber, password?, admissionDate?, dateOfBirth?, gender?, bloodGroup?, fatherName?, motherName?, address? }`. Role is always STUDENT. Returns the student plus `setupCode`. |
+| POST | `/api/students` | Admin | `{ email, fullName, admissionNumber, admissionDate?, dateOfBirth?, gender?, bloodGroup?, fatherName?, motherName?, address? }`. Role is always STUDENT. No password: the student signs in with the admission number. |
 | GET | `/api/students/{id}` | Admin; teacher if they teach the student (else 404); a student only themselves (else 403) | |
 | PATCH | `/api/students/{id}` | Admin | Name, phone and profile fields. Atomic across `users` and `students`. |
 
-**Passwords:** `password` is optional (12–72 characters). The admin portal
-never sends one: without it, the response carries `setupCode: { code, expiresAt }`
-(or `null` if issuing failed after the account was created), and the person
-chooses their own password at `/account-setup`. Phone numbers are set with PATCH.
+**Signing in** (see `docs/auth-and-api.md`): teachers with their mobile number
+and the password they chose at sign-up; students with their admission number
+only. Neither endpoint accepts a `password`. `email` is still required for both:
+Supabase Auth identifies every account by email. Student phone numbers (often a
+parent's) are optional, set with PATCH, and not unique.
 
 **Search:** `?search=` uses the `studentSearchText` / `teacherSearchText`
 computed fields (migration 13). Like subject search, it accepts letters,
@@ -128,6 +129,15 @@ Rules:
 | GET | `/api/teacher-assignments/{id}` | RLS-scoped | |
 | DELETE | `/api/teacher-assignments/{id}` | Admin | Returns the removed row. 409 while timetable entries use it. There is no update: remove and re-add. |
 
+### Administrators
+
+| Method | Path | Who | Notes |
+| ------ | ---- | --- | ----- |
+| GET | `/api/admins` | Admin | Every administrator, active first: `{ id, fullName, email, isActive, passwordSetAt, createdAt }`. |
+| POST | `/api/admins` | Admin | `{ email, fullName }`. Creates another administrator without a password and returns it plus `setupCode: { code, expiresAt }` (null if issuing failed after the account was created). There is no admin sign-up; the first administrator comes from `npm run bootstrap:admin`. |
+
+Deactivate and reactivate administrators with the account-status endpoints below.
+
 ### Account status
 
 | Method | Path | Who | Notes |
@@ -146,9 +156,10 @@ records. Rules:
 
 | Method | Path | Who | Notes |
 | ------ | ---- | --- | ----- |
-| POST | `/api/users/{userId}/setup-code` | Admin | Issues a new one-time code for an active teacher or student, replacing any earlier one. Returns 201 `{ code, expiresAt }`. Also serves as an admin-issued password reset. Admin accounts → 403; deactivated → 409; unknown → 404. Audited as `users.issueSetupCode`. |
+| POST | `/api/users/{userId}/setup-code` | Admin | Issues a new one-time code for an active **administrator**, replacing any earlier one. Returns 201 `{ code, expiresAt }`. Also serves as an admin-issued password reset. Teacher and student accounts → 403; deactivated → 409; unknown → 404. Audited as `users.issueSetupCode`. |
+| POST | `/api/users/{userId}/reset-sign-up` | Admin | Teachers only: lets them sign up again (forgotten password). Ends their sessions and replaces the old password with a random one. Returns `{ userId, revokedSessions }`. Other roles → 403; deactivated → 409. Audited as `users.resetTeacherSignUp`. |
 
-The person redeems it with `POST /api/auth/setup` (see `docs/auth-and-api.md`).
+The administrator redeems a code with `POST /api/auth/admin/setup` (see `docs/auth-and-api.md`).
 Codes live in `accountSetupCodes`, which only the service role can read; the
 plain code is returned once and never stored.
 

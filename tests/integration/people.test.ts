@@ -1,7 +1,7 @@
-import { ensureItAdmin, runId, teardown, testCode, testEmail, testPassword, track } from './helpers/actors';
+import { ensureItAdmin, runId, teardown, testCode, testEmail, testPassword, testPhone, track } from './helpers/actors';
 import type { TestAccount } from './helpers/actors';
 import { connect } from './helpers/db';
-import { anonymous, call, signIn } from './helpers/http';
+import { anonymous, call, signIn, signInAsStudent, signUpAsTeacher } from './helpers/http';
 import type { CookieStore } from './helpers/http';
 import { createClient } from '@supabase/supabase-js';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
@@ -102,27 +102,33 @@ afterAll(async () => {
 // ---------------------------------------------------------------------------------
 
 describe('teacher management', () => {
-  it('admin creates teachers through provisioning (201); creation is audited', async () => {
+  it('admin creates teachers through provisioning (201); creation is audited; each teacher then signs up', async () => {
     for (const label of ['t1', 't2']) {
       const email = testEmail(label);
+      const phone = testPhone();
       const password = testPassword();
       const result = await api(adminSession, teachers.POST, 'POST', '/api/teachers', {
-        body: { email, password, fullName: `IT Teacher ${label}`, employeeCode: testCode(label), qualification: 'B.Ed' },
+        body: { email, phone, fullName: `IT Teacher ${label}`, employeeCode: testCode(label), qualification: 'B.Ed' },
       });
       expect(result.status).toBe(201);
       expect(result.body.data).toMatchObject({
         employeeCode: testCode(label),
-        user: { fullName: `IT Teacher ${label}`, email, isActive: true },
+        user: { fullName: `IT Teacher ${label}`, email, phone, isActive: true, passwordSetAt: null },
       });
       await trackAccount(email);
       people[label] = { email, password, userId: result.body.data.userId, id: result.body.data.id };
+      // THE TEACHER CHOOSES THEIR OWN PASSWORD (NO INITIAL PASSWORD FROM THE ADMIN).
+      people[label].session = await signUpAsTeacher(harness, phone, password);
     }
-    expect((await audit(people.t1.userId)).map((a) => [a.action, a.actorUserId])).toEqual([['users.provision', itAdmin.userId]]);
+    expect((await audit(people.t1.userId)).map((a) => [a.action, a.actorUserId])).toEqual([
+      ['users.provision', itAdmin.userId],
+      ['users.teacherSignUp', null],
+    ]);
   });
 
   it('rejects duplicate emails without creating another Auth identity', async () => {
     const result = await api(adminSession, teachers.POST, 'POST', '/api/teachers', {
-      body: { email: people.t1.email, fullName: 'Dup', employeeCode: testCode('dup') },
+      body: { email: people.t1.email, phone: testPhone(), fullName: 'Dup', employeeCode: testCode('dup') },
     });
     expect(result.status).toBe(409);
   });
@@ -130,7 +136,7 @@ describe('teacher management', () => {
   it('a duplicate employee code fails with 409 and leaves no orphaned Auth user (compensation)', async () => {
     const email = testEmail('t-dupcode');
     const result = await api(adminSession, teachers.POST, 'POST', '/api/teachers', {
-      body: { email, password: testPassword(), fullName: 'Dup Code', employeeCode: testCode('t1') },
+      body: { email, phone: testPhone(), fullName: 'Dup Code', employeeCode: testCode('t1') },
     });
     expect(result.status).toBe(409);
     expect(await authIdFor(email)).toBeNull();
@@ -138,7 +144,7 @@ describe('teacher management', () => {
 
   it('rejects client-chosen roles and invalid fields (422), and non-admin callers (401/403)', async () => {
     const injected = await api(adminSession, teachers.POST, 'POST', '/api/teachers', {
-      body: { email: testEmail('x'), fullName: 'X', employeeCode: testCode('x'), role: 'ADMIN' },
+      body: { email: testEmail('x'), phone: testPhone(), fullName: 'X', employeeCode: testCode('x'), role: 'ADMIN' },
     });
     expect(injected.status).toBe(422);
     expect(await authIdFor(testEmail('x'))).toBeNull();
@@ -162,7 +168,7 @@ describe('teacher management', () => {
       body: { fullName: 'IT Teacher Renamed', phone: '+91 90000 00000', qualification: 'M.Ed' },
     });
     expect(result.status).toBe(200);
-    expect(result.body.data).toMatchObject({ qualification: 'M.Ed', user: { fullName: 'IT Teacher Renamed', phone: '+91 90000 00000' } });
+    expect(result.body.data).toMatchObject({ qualification: 'M.Ed', user: { fullName: 'IT Teacher Renamed', phone: '9000000000' } }); // STORED NORMALIZED (MIGRATION 15)
 
     const entries = await audit(people.t1.userId);
     const userUpdate = entries.find((e) => e.action === 'users.update');
@@ -268,24 +274,23 @@ describe('teacher assignments', () => {
 // ---------------------------------------------------------------------------------
 
 describe('student management', () => {
-  it('admin creates students through provisioning', async () => {
+  it('admin creates students through provisioning (no password: they sign in with the admission number)', async () => {
     for (const label of ['s1', 's2', 's3']) {
       const email = testEmail(label);
-      const password = testPassword();
       const result = await api(adminSession, students.POST, 'POST', '/api/students', {
-        body: { email, password, fullName: `IT Student ${label}`, admissionNumber: testCode(label), dateOfBirth: '2012-01-15' },
+        body: { email, fullName: `IT Student ${label}`, admissionNumber: testCode(label), dateOfBirth: '2012-01-15' },
       });
       expect(result.status).toBe(201);
       expect(result.body.data).toMatchObject({ admissionNumber: testCode(label), user: { email, isActive: true } });
       await trackAccount(email);
-      people[label] = { email, password, userId: result.body.data.userId, id: result.body.data.id };
+      people[label] = { email, password: '', userId: result.body.data.userId, id: result.body.data.id };
     }
   });
 
   it('a duplicate admission number is 409 and the new Auth user is removed again', async () => {
     const email = testEmail('s-dup');
     const result = await api(adminSession, students.POST, 'POST', '/api/students', {
-      body: { email, password: testPassword(), fullName: 'Dup', admissionNumber: testCode('s1') },
+      body: { email, fullName: 'Dup', admissionNumber: testCode('s1') },
     });
     expect(result.status).toBe(409);
     expect(await authIdFor(email)).toBeNull();
@@ -412,7 +417,7 @@ describe('scoped access to students and enrollments', () => {
   });
 
   it('a student sees only their own record and enrollments', async () => {
-    people.s1.session = await signIn(harness, people.s1.email, people.s1.password);
+    people.s1.session = await signInAsStudent(harness, testCode('s1'));
     const own = await api(people.s1.session, studentById.GET, 'GET', `/api/students/${people.s1.id}`, { params: { id: people.s1.id } });
     expect(own.body.data.id).toBe(people.s1.id);
     expect((await api(people.s1.session, studentById.GET, 'GET', `/api/students/${people.s2.id}`, { params: { id: people.s2.id } })).status).toBe(403);

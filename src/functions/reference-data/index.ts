@@ -2,6 +2,7 @@ import 'client-only';
 import { API_PATHS, NETWORK_ERROR_MESSAGE } from '@/constants/api-client';
 import { fetchAllPages } from '@/functions/api-client';
 import { networkFailure } from '@/helpers/api-client';
+import { portalRoleFor } from '@/helpers/routes';
 import type { AcademicYear } from '@/types/academic-years';
 import type { ApiResult } from '@/types/api-client';
 import type { SchoolClass } from '@/types/classes';
@@ -10,14 +11,27 @@ import type { Subject } from '@/types/subjects';
 import type { Teacher } from '@/types/teachers';
 import { referenceDataStore } from '@/zustand/reference-data';
 
-/** LOADS THE FOUR REFERENCE LISTS IN PARALLEL. ANY FAILURE FAILS THE WHOLE LOAD, SO A PAGE NEVER SHOWS HALF-RESOLVED NAMES. */
+/** THE TEACHERS LIST IS ADMIN-ONLY (403 FOR EVERYONE ELSE), SO OTHER PORTALS NEVER ASK FOR IT AND KEEP IT EMPTY. */
+async function loadTeachers(): Promise<ApiResult<Teacher[]>> {
+  try {
+    if (portalRoleFor(window.location.pathname) !== 'ADMIN') return { success: true, message: 'Operation successful', data: [] };
+    return await fetchAllPages<Teacher>(API_PATHS.teachers);
+  } catch {
+    return networkFailure();
+  }
+}
+
+/**
+ * LOADS THE REFERENCE LISTS IN PARALLEL. ANY FAILURE FAILS THE WHOLE LOAD, SO A PAGE NEVER SHOWS HALF-RESOLVED NAMES.
+ * CLASSES ARE WHAT THE SIGNED-IN PERSON MAY SEE (RLS): EVERY CLASS FOR ADMINS, THE CLASSES THEY TEACH FOR TEACHERS.
+ */
 async function loadReferenceData(): Promise<ApiResult<ReferenceData>> {
   try {
     const [academicYears, classes, subjects, teachers] = await Promise.all([
       fetchAllPages<AcademicYear>(API_PATHS.academicYears),
       fetchAllPages<SchoolClass>(API_PATHS.classes),
       fetchAllPages<Subject>(API_PATHS.subjects),
-      fetchAllPages<Teacher>(API_PATHS.teachers),
+      loadTeachers(),
     ]);
     if (!academicYears.success) return academicYears;
     if (!classes.success) return classes;

@@ -2,19 +2,18 @@
 
 import { GraduationCapIcon, PlusIcon } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { AccountStatusBadge } from '@/components/account-status-badge';
 import { DataTable, type DataTableColumn } from '@/components/data-table';
 import { EmptyState } from '@/components/empty-state';
-import { FormAlert } from '@/components/form-alert';
 import { FormDialog } from '@/components/form-dialog';
 import { FormField } from '@/components/form-field';
 import { OptionSelect } from '@/components/option-select';
 import { PageHeader } from '@/components/page-header';
 import { PaginationBar } from '@/components/pagination-bar';
 import { SearchInput } from '@/components/search-input';
-import { SetupCodeDialog } from '@/components/setup-code-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -30,11 +29,10 @@ import { useApiQuery } from '@/hooks/use-api-query';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { useMutation } from '@/hooks/use-mutation';
 import { useReferenceData } from '@/hooks/use-reference-data';
-import type { CreatedStudent } from '@/types/admin-students';
 import type { PaginatedList } from '@/types/api';
 import type { Student } from '@/types/students';
 
-/** STUDENTS: SEARCH, FILTER BY CLASS AND STATUS, AND ADD. EACH NEW STUDENT GETS A ONE-TIME SETUP CODE AND IS THEN ENROLLED IN A CLASS. */
+/** STUDENTS: SEARCH, FILTER BY CLASS AND STATUS, AND ADD. A NEW STUDENT SIGNS IN WITH THEIR ADMISSION NUMBER AND IS THEN ENROLLED IN A CLASS. */
 export function AdminStudents() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
@@ -42,9 +40,9 @@ export function AdminStudents() {
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [form, setForm] = useState<StudentForm>(EMPTY_STUDENT_FORM);
-  const [createdStudent, setCreatedStudent] = useState<CreatedStudent | null>(null);
 
   const { classes, currentAcademicYear, isReady } = useReferenceData();
+  const router = useRouter();
   const debouncedSearch = useDebouncedValue(toSearchTerm(search));
   const list = useApiQuery<PaginatedList<Student>>(API_PATHS.students, {
     page,
@@ -55,16 +53,12 @@ export function AdminStudents() {
   });
 
   const create = useMutation((values: StudentForm) => createStudent(values), {
-    successMessage: (student) => `Added ${student.user.fullName}.`,
     onSuccess: (student) => {
       setIsFormOpen(false);
       list.reload();
-      if (student.setupCode) {
-        setCreatedStudent(student);
-        return;
-      }
-      toast.warning(`${student.user.fullName}'s account was created, but a setup code couldn't be issued.`, {
-        description: 'Issue one from their profile so they can choose a password, and enroll them in a class from the Enrollments page.',
+      toast.success(`Added ${student.user.fullName}.`, {
+        description: `They sign in with admission number ${student.admissionNumber}. Next, enroll them in a class.`,
+        action: { label: 'Enroll', onClick: () => router.push(`${ROUTES.admin.enrollments}?studentId=${student.id}`) },
       });
     },
   });
@@ -135,7 +129,7 @@ export function AdminStudents() {
     <>
       <PageHeader
         title='Students'
-        description='Each student signs in with their own email. After adding a student, enroll them in a class from the Enrollments page.'
+        description='Each student signs in with their admission number. After adding a student, enroll them in a class from the Enrollments page.'
         actions={
           <Button onClick={openCreate}>
             <PlusIcon aria-hidden />
@@ -196,7 +190,7 @@ export function AdminStudents() {
         isOpen={isFormOpen}
         onOpenChange={setIsFormOpen}
         title='New student'
-        description='This creates their login. You will get a one-time setup code to give them, so they can choose their own password.'
+        description='This creates their login. They sign in with their admission number; no password is needed.'
         submitLabel='Add student'
         isSubmitting={create.isPending}
         formError={create.formError}
@@ -207,9 +201,9 @@ export function AdminStudents() {
           <FormField id='fullName' label='Full name' error={create.fieldErrors.fullName} isRequired>
             <Input {...fieldControlProps('fullName', create.fieldErrors.fullName)} value={form.fullName} onChange={updateField('fullName')} autoComplete='off' />
           </FormField>
-          <FormField id='admissionNumber' label='Admission number' error={create.fieldErrors.admissionNumber} isRequired>
+          <FormField id='admissionNumber' label='Admission number' description='They sign in with this.' error={create.fieldErrors.admissionNumber} isRequired>
             <Input
-              {...fieldControlProps('admissionNumber', create.fieldErrors.admissionNumber)}
+              {...fieldControlProps('admissionNumber', create.fieldErrors.admissionNumber, true)}
               value={form.admissionNumber}
               onChange={updateField('admissionNumber')}
               className='font-mono'
@@ -220,7 +214,7 @@ export function AdminStudents() {
           <FormField
             id='email'
             label='Email'
-            description='They sign in with this. It cannot be changed later.'
+            description='For school records. It cannot be changed later.'
             error={create.fieldErrors.email}
             isRequired
             className='sm:col-span-2'
@@ -286,25 +280,6 @@ export function AdminStudents() {
         <p className='text-sm text-muted-foreground'>Fields without a star are optional. Phone numbers can be added from the profile.</p>
       </FormDialog>
 
-      <SetupCodeDialog
-        setupCode={createdStudent?.setupCode ?? null}
-        personName={createdStudent?.user.fullName ?? ''}
-        onClose={() => setCreatedStudent(null)}
-        note={
-          createdStudent && (
-            <FormAlert tone='info' title='Next: enroll them in a class'>
-              {createdStudent.user.fullName} isn&apos;t in a class yet. Once you have noted the code,{' '}
-              <Link
-                href={`${ROUTES.admin.enrollments}?studentId=${createdStudent.id}`}
-                className='font-medium text-primary underline underline-offset-3'
-              >
-                enroll them from the Enrollments page
-              </Link>
-              .
-            </FormAlert>
-          )
-        }
-      />
     </>
   );
 }

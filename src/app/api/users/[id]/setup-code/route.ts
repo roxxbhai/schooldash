@@ -7,7 +7,7 @@ import { idParamsSchema, parseParams } from '@/helpers/request-validation';
 import { createSupabaseServerClient } from '@/helpers/supabase-server';
 
 /**
- * ADMIN ONLY. ISSUES A NEW ONE-TIME SETUP CODE FOR AN ACTIVE TEACHER OR STUDENT
+ * ADMIN ONLY. ISSUES A NEW ONE-TIME SETUP CODE FOR AN ACTIVE ADMINISTRATOR
  * (`{id}` IS `users.id`), REPLACING ANY EARLIER CODE. ALSO SERVES AS A PASSWORD RESET.
  */
 export const POST = apiRoute(async (request: Request, context: RouteContext<'/api/users/[id]/setup-code'>) => {

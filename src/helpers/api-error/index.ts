@@ -65,8 +65,9 @@ export function unauthorized() {
   return new ApiError(401, 'UNAUTHORIZED', 'Authentication is required.');
 }
 
-export function invalidCredentials() {
-  return new ApiError(401, 'INVALID_CREDENTIALS', 'Invalid email or password.');
+/** ONE MESSAGE FOR EVERY CREDENTIAL FAILURE OF A SIGN-IN FORM, SO RESPONSES DO NOT REVEAL WHICH PART WAS WRONG. */
+export function invalidCredentials(message = 'Invalid email or password.') {
+  return new ApiError(401, 'INVALID_CREDENTIALS', message);
 }
 
 /** ONE MESSAGE FOR AN UNKNOWN EMAIL, A WRONG, USED OR EXPIRED CODE, SO NOTHING IS REVEALED. */

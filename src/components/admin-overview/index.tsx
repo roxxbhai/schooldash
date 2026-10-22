@@ -24,7 +24,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ROUTES } from '@/constants/routes';
 import { loadOverviewMetrics } from '@/functions/admin-overview';
 import { cn } from '@/helpers/cn';
-import { formatDate, formatNumber, pluralize, todayInSchool, weekdayLabel } from '@/helpers/format';
+import { formatDate, formatNumber, isoWeekday, pluralize, todayInSchool, weekdayLabel } from '@/helpers/format';
 import { useAsyncResult } from '@/hooks/use-async-result';
 import { useReferenceData } from '@/hooks/use-reference-data';
 import type { OverviewMetrics } from '@/types/admin-overview';
@@ -35,12 +35,6 @@ const QUICK_ACTIONS = [
   { label: 'Add a student', href: ROUTES.admin.students, icon: UserPlusIcon },
   { label: 'Draft a notice', href: ROUTES.admin.notices, icon: MegaphoneIcon },
 ] as const;
-
-/** ISO WEEKDAY (1 = MONDAY) OF A "YYYY-MM-DD" DATE. */
-function isoWeekday(isoDate: string): number {
-  const day = new Date(`${isoDate}T00:00:00Z`).getUTCDay();
-  return day === 0 ? 7 : day;
-}
 
 interface AttendanceRowProps {
   label: string;
@@ -133,21 +127,23 @@ export function AdminOverview() {
       <PageHeader
         title='Dashboard'
         description={currentAcademicYear ? `Academic year ${currentAcademicYear.name}.` : 'Today at the school, at a glance.'}
+        actions={
+          isReady &&
+          !currentAcademicYear && (
+            <p role='status' className='border border-info/20 bg-info-soft px-3 py-2 text-xs text-foreground'>
+              <span className='font-medium'>No current academic year</span>
+              <span aria-hidden className='mx-1.5 text-muted-foreground'>·</span>
+              <Link href={ROUTES.admin.academicYears} className='font-medium text-primary underline underline-offset-3'>
+                Set one up
+              </Link>
+            </p>
+          )
+        }
       />
 
       {(referenceError || overview.errorMessage) && (
         <FormAlert tone='error' title="Some figures couldn't be loaded" className='mb-6'>
           {referenceError ?? overview.errorMessage}
-        </FormAlert>
-      )}
-
-      {isReady && !currentAcademicYear && (
-        <FormAlert tone='info' title='No current academic year' className='mb-6'>
-          Classes, enrollments, exams and the timetable all belong to an academic year.{' '}
-          <Link href={ROUTES.admin.academicYears} className='font-medium text-primary underline underline-offset-3'>
-            Create one and mark it as current
-          </Link>{' '}
-          to get started.
         </FormAlert>
       )}
 

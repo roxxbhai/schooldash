@@ -1,7 +1,8 @@
 import 'client-only';
 import { MAX_PAGE_SIZE } from '@/constants/api-client';
-import { ROUTES, SIGN_IN_REASONS } from '@/constants/routes';
+import { SIGN_IN_REASONS } from '@/constants/routes';
 import { apiFailure, buildApiUrl, networkFailure, readEnvelope, toUserMessage } from '@/helpers/api-client';
+import { signInPathFor } from '@/helpers/routes';
 import type { PaginatedList } from '@/types/api';
 import type { ApiRequestOptions, ApiResult, QueryParams } from '@/types/api-client';
 
@@ -12,7 +13,7 @@ import type { ApiRequestOptions, ApiResult, QueryParams } from '@/types/api-clie
  *   THE BROWSER SENDS THE `Origin` HEADER THE CSRF CHECK REQUIRES.
  * - NEVER THROWS: EVERY OUTCOME IS A { success, message, data } RESULT. A
  *   FAILURE'S `data` CARRIES THE HTTP STATUS, ERROR CODE AND FIELD DETAILS.
- * - AN EXPIRED SESSION (401 UNAUTHORIZED) SENDS THE PERSON TO SIGN-IN.
+ * - AN EXPIRED SESSION (401 UNAUTHORIZED) SENDS THE PERSON TO THEIR PORTAL'S SIGN-IN.
  */
 export async function apiRequest<T>(path: string, options: ApiRequestOptions = {}): Promise<ApiResult<T>> {
   try {
@@ -37,7 +38,7 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
     const error = envelope.error ?? { code: 'INTERNAL_ERROR' as const, message: undefined, details: undefined };
     if (error.code === 'UNAUTHORIZED' && options.isSessionRequired !== false) {
       // A FULL PAGE LOAD (NOT A CLIENT NAVIGATION) DELIBERATELY DISCARDS ALL IN-MEMORY STATE OF THE ENDED SESSION.
-      window.location.replace(`${ROUTES.signIn}?reason=${SIGN_IN_REASONS.sessionExpired}`);
+      window.location.replace(`${signInPathFor(window.location.pathname)}?reason=${SIGN_IN_REASONS.sessionExpired}`);
     }
     return apiFailure({ status: response.status, code: error.code, details: error.details ?? [] }, toUserMessage(error.code, error.message));
   } catch (error) {

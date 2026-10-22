@@ -17,7 +17,7 @@ function respond(status: number, body: unknown) {
 
 beforeEach(() => {
   vi.stubGlobal('fetch', fetchMock);
-  vi.stubGlobal('window', { location: { replace: locationReplace } });
+  vi.stubGlobal('window', { location: { replace: locationReplace, pathname: '/admin/classes' } });
 });
 
 afterEach(() => {
@@ -51,20 +51,25 @@ describe('apiRequest', () => {
   });
 
   it('replaces generic or technical messages with plain language', async () => {
-    respond(401, { data: null, error: { code: 'INVALID_CREDENTIALS', message: 'Invalid email or password.' } });
-    expect((await apiRequest('/api/auth/login', { isSessionRequired: false })).message).toBe('The email or password is incorrect.');
+    respond(429, { data: null, error: { code: 'RATE_LIMITED', message: 'Too many requests. Please try again later.' } });
+    expect((await apiRequest('/api/auth/admin/login', { isSessionRequired: false })).message).toBe('Too many attempts. Please wait a minute and try again.');
     respond(503, { data: null, error: { code: 'SERVICE_UNAVAILABLE', message: 'A required service is temporarily unavailable.' } });
     expect((await apiRequest('/api/x')).message).toBe('The school portal is temporarily unavailable. Please try again in a few minutes.');
   });
 
-  it('sends an expired session to sign-in, but not for sign-in itself', async () => {
+  it("keeps each sign-in form's own credential message", async () => {
+    respond(401, { data: null, error: { code: 'INVALID_CREDENTIALS', message: 'The phone number or password is incorrect.' } });
+    expect((await apiRequest('/api/auth/teacher/login', { isSessionRequired: false })).message).toBe('The phone number or password is incorrect.');
+  });
+
+  it("sends an expired session to its portal's sign-in, but not for sign-in itself", async () => {
     respond(401, { data: null, error: { code: 'UNAUTHORIZED', message: 'Authentication is required.' } });
     await apiRequest('/api/classes');
-    expect(locationReplace).toHaveBeenCalledWith('/sign-in?reason=session-expired');
+    expect(locationReplace).toHaveBeenCalledWith('/admin/sign-in?reason=session-expired');
 
     locationReplace.mockReset();
     respond(401, { data: null, error: { code: 'UNAUTHORIZED', message: 'Authentication is required.' } });
-    await apiRequest('/api/auth/login', { method: 'POST', body: {}, isSessionRequired: false });
+    await apiRequest('/api/auth/admin/login', { method: 'POST', body: {}, isSessionRequired: false });
     expect(locationReplace).not.toHaveBeenCalled();
   });
 

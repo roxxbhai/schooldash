@@ -18,10 +18,11 @@ import type { DbClient } from '@/types/supabase';
 /**
  * ADMIN-ISSUED ACCOUNT SETUP CODES (MIGRATION 13).
  *
- * TEACHERS AND STUDENTS ARE PROVISIONED WITHOUT A PASSWORD. AN ADMIN HANDS
- * THEM A ONE-TIME CODE; ON THE PUBLIC SETUP PAGE THEY ENTER THEIR EMAIL, THE
- * CODE AND A NEW PASSWORD. A NEW CODE FOR AN EXISTING ACCOUNT ACTS AS AN
- * ADMIN-ISSUED PASSWORD RESET.
+ * ADMINISTRATORS ONLY (MIGRATION 15). AN ADMIN ADDS ANOTHER ADMIN WITHOUT A
+ * PASSWORD AND HANDS THEM A ONE-TIME CODE; ON THE ADMIN SETUP PAGE THEY ENTER
+ * THEIR EMAIL, THE CODE AND A NEW PASSWORD. A NEW CODE FOR AN EXISTING ADMIN
+ * ACTS AS AN ADMIN-ISSUED PASSWORD RESET. (TEACHERS SIGN UP WITH THEIR PHONE
+ * NUMBER; STUDENTS HAVE NO PASSWORD.)
  *
  * ONLY THE SECRET-KEY CLIENT CAN READ THE CODES TABLE OR CALL ITS FUNCTIONS.
  * ISSUING IS ONLY CALLED FROM ADMIN-GUARDED ROUTES; COMPLETING SETUP IS PUBLIC,
@@ -42,7 +43,7 @@ const consumeResultSchema = z.discriminatedUnion('status', [
 
 const ISSUE_ERRORS = { notFoundMessage: 'User not found.' };
 
-/** ISSUES (OR REPLACES) THE SETUP CODE OF AN ACTIVE TEACHER OR STUDENT. THE PLAIN CODE IS RETURNED ONCE. */
+/** ISSUES (OR REPLACES) THE SETUP CODE OF AN ACTIVE ADMINISTRATOR. THE PLAIN CODE IS RETURNED ONCE. */
 export async function issueSetupCode(
   userId: string,
   options: { actor: AppUser; client?: DbClient },
@@ -112,7 +113,7 @@ export async function completeAccountSetup(
       throw new DataAccessError('auth.updateUserPassword', error.code ?? 'UNKNOWN');
     }
 
-    const signedIn = await signInWithPassword(client, { email: input.email, password: input.password });
+    const signedIn = await signInWithPassword(client, { email: input.email, password: input.password }, { role: 'ADMIN' });
     if (!signedIn.success) {
       logServerError('auth.setupSignIn', new Error(signedIn.message));
       return functionSuccess({ isSignedIn: false, profile: null });

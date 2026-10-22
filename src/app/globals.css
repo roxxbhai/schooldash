@@ -73,7 +73,8 @@
   --sidebar-accent: #1d3a61;
   --sidebar-accent-foreground: #ffffff;
   --sidebar-border: #213a5e;
-  --sidebar-ring: #c9a13b;
+  --sidebar-ring: #7fa8e3;
+  --sidebar-active: #2b5592;
 
   /* CHARTS */
   --chart-1: #0b3164;
@@ -147,6 +148,7 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-active: var(--sidebar-active);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
@@ -188,6 +190,31 @@
   body {
     @apply bg-background font-sans text-base text-foreground antialiased;
     font-feature-settings: 'cv11', 'ss01';
+  }
+
+  /* THE ADMIN PORTAL USES GEIST SANS ONLY: MONO TEXT FALLS BACK TO THE SANS FACE (BODY-LEVEL SO DIALOGS AND MENUS FOLLOW). */
+  body:has([data-portal='ADMIN']) {
+    --font-geist-mono: var(--font-geist-sans);
+  }
+
+  /* POINTER CURSOR ON EVERYTHING CLICKABLE (TAILWIND 4 NO LONGER SETS IT ON BUTTONS). */
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']),
+  [role='tab'],
+  [role='menuitem']:not([data-disabled]),
+  [role='menuitemcheckbox']:not([data-disabled]),
+  [role='menuitemradio']:not([data-disabled]),
+  [role='option']:not([data-disabled]),
+  [role='checkbox']:not(:disabled),
+  [role='radio']:not(:disabled),
+  [role='switch']:not(:disabled),
+  [role='combobox']:not(:disabled),
+  select:not(:disabled),
+  summary,
+  label[for],
+  input[type='checkbox']:not(:disabled),
+  input[type='radio']:not(:disabled) {
+    cursor: pointer;
   }
 
   /* TABULAR FIGURES FOR NUMBERS IN TABLES AND METRICS. */

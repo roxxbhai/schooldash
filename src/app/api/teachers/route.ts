@@ -1,6 +1,6 @@
 import { z } from 'zod';
+import { PHONE_NUMBER_SCHEMA } from '@/constants/phone';
 import { EMPLOYEE_CODE_SCHEMA, TEACHER_COLUMNS, TEACHER_COLUMNS_FILTERABLE, TEACHER_ERRORS } from '@/constants/teachers';
-import { issueSetupCode } from '@/functions/account-setup';
 import { requireAdmin } from '@/functions/authorization';
 import { provisionAccount } from '@/functions/provisioning';
 import { apiRoute, created, paginated } from '@/helpers/api-response';
@@ -8,7 +8,7 @@ import { assertSameOrigin } from '@/helpers/csrf';
 import { one, page } from '@/helpers/db-query';
 import { unwrapResult } from '@/helpers/function-result';
 import { getPagination, parseJsonBody, parseQuery } from '@/helpers/request-validation';
-import { emailSchema, fullNameSchema, initialPasswordSchema, isActiveFilterSchema, searchTermSchema } from '@/helpers/school-validation';
+import { emailSchema, fullNameSchema, isActiveFilterSchema, searchTermSchema } from '@/helpers/school-validation';
 import { createSupabaseServerClient } from '@/helpers/supabase-server';
 import type { Teacher } from '@/types/teachers';
 
@@ -20,14 +20,14 @@ import type { Teacher } from '@/types/teachers';
 const createTeacherSchema = z.strictObject({
   email: emailSchema,
   fullName: fullNameSchema,
-  password: initialPasswordSchema,
+  phone: PHONE_NUMBER_SCHEMA,
   employeeCode: EMPLOYEE_CODE_SCHEMA,
   qualification: z.string().trim().min(1).max(200).optional(),
   dateOfJoining: z.iso.date().optional(),
 });
 const listTeachersQuerySchema = z.object({ isActive: isActiveFilterSchema, search: searchTermSchema.optional() });
 
-/** ADMIN ONLY. ?isActive=TRUE|FALSE ?search= MATCHES EMPLOYEE CODE, NAME OR EMAIL. */
+/** ADMIN ONLY. ?isActive=TRUE|FALSE ?search= MATCHES EMPLOYEE CODE, NAME, EMAIL OR PHONE NUMBER. */
 export const GET = apiRoute(async (request: Request) => {
   const supabase = await createSupabaseServerClient();
   unwrapResult(await requireAdmin(supabase));
@@ -45,24 +45,21 @@ export const GET = apiRoute(async (request: Request) => {
   return paginated(await page<Teacher>('teachers.list', rows, pagination, TEACHER_ERRORS));
 });
 
-/** ADMIN ONLY. CREATES THE LOGIN IDENTITY AND THE TEACHER ACCOUNT; THE ADMIN IS RECORDED AS THE ACTOR. RETURNS A SETUP CODE WHEN NO PASSWORD IS GIVEN. */
+/**
+ * ADMIN ONLY. CREATES THE LOGIN IDENTITY AND THE TEACHER ACCOUNT; THE ADMIN IS RECORDED AS THE ACTOR.
+ * NO PASSWORD: THE TEACHER SIGNS UP ONCE WITH THIS PHONE NUMBER (POST /api/auth/teacher/sign-up).
+ */
 export const POST = apiRoute(async (request: Request) => {
   assertSameOrigin(request);
   const supabase = await createSupabaseServerClient();
   const actor = unwrapResult(await requireAdmin(supabase));
-  const { email, fullName, password, ...profile } = await parseJsonBody(request, createTeacherSchema);
-  const account = unwrapResult(
-    await provisionAccount({ role: 'TEACHER', email, fullName, password, profile }, { actorUserId: actor.id }),
-  );
+  const { email, fullName, phone, ...profile } = await parseJsonBody(request, createTeacherSchema);
+  const account = unwrapResult(await provisionAccount({ role: 'TEACHER', email, fullName, phone, profile }, { actorUserId: actor.id }));
   const query = supabase
     .from('teachers')
     .select(TEACHER_COLUMNS)
     .eq('userId', account.userId)
     .maybeSingle()
     .overrideTypes<Teacher, { merge: false }>();
-  const teacher = await one<Teacher>('teachers.getByUser', query, TEACHER_ERRORS);
-  // WITHOUT AN INITIAL PASSWORD, THE PERSON SETS ONE WITH A ONE-TIME SETUP CODE, SHOWN TO THE ADMIN ONCE.
-  // THE ACCOUNT ALREADY EXISTS, SO A FAILED ISSUE RETURNS `setupCode: null`; THE ADMIN CAN ISSUE ONE LATER.
-  const issued = password ? null : await issueSetupCode(account.userId, { actor });
-  return created({ ...teacher, setupCode: issued?.success ? issued.data : null });
+  return created(await one<Teacher>('teachers.getByUser', query, TEACHER_ERRORS));
 });

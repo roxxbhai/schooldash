@@ -124,13 +124,13 @@ describe('server-only isolation', () => {
     expect(readFileSync(path.join(repoRoot, '.env.example'), 'utf8')).not.toMatch(pattern);
   });
 
-  it('only the provisioning, account-status and account-setup services import the admin (secret-key) client', () => {
+  it('only the provisioning, account-status, account-setup and sign-in services import the admin (secret-key) client', () => {
     const importsAdmin = /from\s+["'][^"']*supabase-admin["']/;
     const importers = sourceFiles()
       .filter((file) => importsAdmin.test(readFileSync(file, 'utf8')))
       .map(rel);
     // ACCOUNT SETUP READS THE SERVICE-ROLE-ONLY CODES TABLE AND SETS AUTH PASSWORDS.
-    expect(importers.sort()).toEqual(['functions/account-setup/index.ts', 'functions/account-status/index.ts', 'functions/provisioning/index.ts']);
+    expect(importers.sort()).toEqual(['functions/account-setup/index.ts', 'functions/account-status/index.ts', 'functions/provisioning/index.ts', 'functions/sign-in/index.ts']);
   });
 
   it('only the admin-guarded people routes import provisioning, and they check requireAdmin before creating an account', () => {
@@ -140,7 +140,7 @@ describe('server-only isolation', () => {
       .filter((file) => importsProvisioning.test(readFileSync(file, 'utf8')))
       .map(rel)
       .sort();
-    expect(importers).toEqual(['app/api/students/route.ts', 'app/api/teachers/route.ts']);
+    expect(importers).toEqual(['app/api/admins/route.ts', 'app/api/students/route.ts', 'app/api/teachers/route.ts']);
 
     for (const file of importers) {
       // EVERY HANDLER THAT PROVISIONS AN ACCOUNT MUST HAVE PASSED THE ADMIN GUARD FIRST.

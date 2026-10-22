@@ -1,5 +1,8 @@
 import { fakeCookieStore } from '../../helpers/fake-cookies';
-import { POST as login } from '@/app/api/auth/login/route';
+import { POST as studentLogin } from '@/app/api/auth/student/login/route';
+import { POST as teacherSignUp } from '@/app/api/auth/teacher/sign-up/route';
+import { signInWithPassword } from '@/functions/session';
+import { createSupabaseServerClient } from '@/helpers/supabase-server';
 
 /**
  * Calls Route Handlers in-process against the REAL Supabase project. Only the
@@ -28,17 +31,32 @@ type Handler = (request: Request, context: { params: Promise<Record<string, stri
 
 export const anonymous = (): CookieStore => fakeCookieStore();
 
+/**
+ * A REAL SESSION FOR ANY ROLE, FROM THE EMAIL + PASSWORD OF A TEST IDENTITY.
+ * TEST-ONLY SHORTCUT: THE APP'S SIGN-IN ROUTES EACH ACCEPT ONE ROLE AND ITS OWN
+ * CREDENTIALS (tests/integration/sign-in.test.ts COVERS THEM).
+ */
 export async function signIn(harness: Harness, email: string, password: string): Promise<CookieStore> {
   const store = fakeCookieStore();
   harness.state.cookies = store;
-  const response = await login(
-    new Request(`${APP}/api/auth/login`, {
-      method: 'POST',
-      headers: { origin: APP, 'content-type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    }),
-  );
-  if (response.status !== 200) throw new Error(`sign-in failed with ${response.status}`);
+  const result = await signInWithPassword(await createSupabaseServerClient(), { email, password });
+  if (!result.success) throw new Error(`sign-in failed with ${result.data.status}`);
+  return store;
+}
+
+/** A REAL STUDENT SESSION THROUGH POST /api/auth/student/login (ADMISSION NUMBER ONLY). */
+export async function signInAsStudent(harness: Harness, admissionNumber: string): Promise<CookieStore> {
+  const store = fakeCookieStore();
+  const result = await call(harness, store, studentLogin, 'POST', '/api/auth/student/login', { body: { admissionNumber } });
+  if (result.status !== 200) throw new Error(`student sign-in failed with ${result.status}`);
+  return store;
+}
+
+/** A TEACHER'S ONE-TIME SIGN-UP THROUGH POST /api/auth/teacher/sign-up; RETURNS THE NEW SESSION. */
+export async function signUpAsTeacher(harness: Harness, phone: string, password: string): Promise<CookieStore> {
+  const store = fakeCookieStore();
+  const result = await call(harness, store, teacherSignUp, 'POST', '/api/auth/teacher/sign-up', { body: { phone, password } });
+  if (result.status !== 200) throw new Error(`teacher sign-up failed with ${result.status}`);
   return store;
 }
 

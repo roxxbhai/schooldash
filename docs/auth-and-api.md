@@ -12,9 +12,10 @@
 | `src/helpers/supabase-server/index.ts` | `createSupabaseServerClient()`: request-scoped client (publishable key + session cookies). `clearSupabaseAuthCookies()`: logout fallback. |
 | `src/helpers/supabase-browser/index.ts` | `createSupabaseBrowserClient()` for Client Components (publishable key only). |
 | `src/helpers/supabase-proxy/index.ts` + `src/proxy.ts` | Session refresh before pages/handlers run (`getClaims()`). |
-| `src/functions/provisioning/index.ts` | `provisionAccount()`: the only secret-key user; creates Auth identities and application accounts. |
-| `src/functions/account-setup/index.ts` | `issueSetupCode`, `completeAccountSetup`: admin-issued one-time setup codes (secret-key client; see below). |
-| `src/functions/session/index.ts` | `getAuthenticatedUser`, `getCurrentAppUser`, `signInWithPassword`, `signOutCurrentSession`, `toSessionProfile`, and the `users`-row lookup. |
+| `src/functions/provisioning/index.ts` | `provisionAccount()`: creates Auth identities and application accounts (secret-key client). |
+| `src/functions/account-setup/index.ts` | `issueSetupCode`, `completeAccountSetup`: one-time setup codes for administrators (secret-key client; see below). |
+| `src/functions/sign-in/index.ts` | `signInAdmin`, `signInTeacher`, `signUpTeacher`, `signInStudent`, `resetTeacherSignUp`: one sign-in per role (secret-key client only to look up the identity behind a phone or admission number). |
+| `src/functions/session/index.ts` | `getAuthenticatedUser`, `getCurrentAppUser`, `signInWithPassword`, `acceptNewSession` (role check, discards a refused session), `signOutCurrentSession`, `toSessionProfile`. |
 | `src/functions/authorization/index.ts` | Guards: `requireAuthenticatedUser`, `requireRole`, `requireAdmin`, `requireStudentOwnership`, `requireTeacherAssignment`; checks `teachesClass`, `teacherHasAssignment`, `findTeacherIdByUserId`. |
 | `src/helpers/roles/index.ts` | `toAppRole` / `toDbRole`: the only mapping between the API's uppercase roles and the lowercase database enum. |
 | `src/helpers/api-response/index.ts` | `ok`, `created`, `paginated`, `errorResponse`, `toErrorResponse`, `apiRoute`. |
@@ -48,32 +49,65 @@ Returns the session profile of the signed-in user.
 | 403 | `ACCOUNT_INACTIVE` | `users.isActive = false`. |
 | 503 | `SERVICE_UNAVAILABLE` | Supabase not configured or unreachable. |
 
-### `POST /api/auth/login`
+### One sign-in per role
 
-Request (`Content-Type: application/json`, same-origin):
+Each role has its own page and its own endpoint; none of them accepts another
+role's account. Supabase Auth still identifies everyone by email: teachers and
+students never type it, the server looks it up from the phone or admission
+number. All of these endpoints are public, same-origin only, take a **strict**
+JSON body (unknown fields such as `role`, `userId` or `isActive` are rejected
+with 422), set the session cookies on success, and return the `/api/auth/me`
+body (or `{ isSignedIn, profile }` after choosing a password). None of them
+creates accounts or assigns roles. If the account is unprovisioned, inactive or
+of another role, the new session is revoked before the error is returned.
 
-```json
-{ "email": "user@example.com", "password": "user-password" }
-```
+| Role | Page | Endpoint | Body |
+| ---- | ---- | -------- | ---- |
+| Administrator | `/admin/sign-in` | `POST /api/auth/admin/login` | `{ email, password }` |
+| Administrator (first time / reset) | `/admin/account-setup` | `POST /api/auth/admin/setup` | `{ email, code, password }` |
+| Teacher | `/teacher/sign-in` | `POST /api/auth/teacher/login` | `{ phone, password }` |
+| Teacher (first time) | `/teacher/sign-up` | `POST /api/auth/teacher/sign-up` | `{ phone, password }` |
+| Student | `/student/sign-in` | `POST /api/auth/student/login` | `{ admissionNumber }` |
 
-- The body is a strict schema. Unknown fields such as `role`, `userId` or
-  `isActive` are rejected with 422, not silently ignored.
-- On success it sets the Supabase session cookies and returns the same body as
-  `/api/auth/me`.
-- It never registers users, creates `users` rows, or assigns roles. If the Auth
-  user is unprovisioned or inactive, the newly created session is revoked and
-  its cookies cleared before the 403 is returned.
+**Administrators.** There is no admin sign-up. The first administrator is
+created with `npm run bootstrap:admin`; every later one by an administrator
+(`POST /api/admins`, the Administrators page), who is shown a one-time setup
+code to hand over. A wrong password, an unknown email and a teacher's or
+student's account all get the same 401 `INVALID_CREDENTIALS` ("The email or
+password is incorrect.").
 
-| Status | Code | When |
-| ------ | ---- | ---- |
-| 200 | — | Signed in. |
-| 400 | `BAD_REQUEST` / `INVALID_JSON` | Not `application/json`, or unparseable body. |
-| 403 | `CSRF_REJECTED` | Cross-site request. |
-| 422 | `VALIDATION_ERROR` | Malformed email, missing password, unknown fields. |
-| 401 | `INVALID_CREDENTIALS` | Wrong password, unknown or unconfirmed email, banned user. All of these return the same message, so responses don't reveal which accounts exist. |
-| 403 | `ACCOUNT_NOT_PROVISIONED` / `ACCOUNT_INACTIVE` | As above. |
-| 429 | `RATE_LIMITED` | Supabase Auth rate limit hit. |
-| 503 | `SERVICE_UNAVAILABLE` | Supabase not configured or unreachable. |
+**Teachers.** An administrator adds the teacher with their mobile number
+(required, stored as 10 digits, unique among teachers). The teacher then signs
+up once on `/teacher/sign-up` with that number and a new password (12–72
+characters); no verification code is sent, by design, because only teachers an
+administrator added (active, not yet signed up) can sign up. Numbers are
+accepted as people write them (`+91 98765-43210`, `098765 43210`). The sign-up
+is claimed atomically (`claimTeacherSignUp`), so two simultaneous sign-ups for
+one number cannot both succeed; if setting the password then fails, the claim
+is released. An administrator can **reset** a teacher's sign-up
+(`POST /api/users/{userId}/reset-sign-up`) after a forgotten password: their
+sessions end, the old password is replaced with a random one, and they sign up
+again.
+
+| Endpoint | Status | Code | When |
+| -------- | ------ | ---- | ---- |
+| teacher/login | 401 | `INVALID_CREDENTIALS` | Unknown number, wrong password, not signed up yet, or not a teacher ("The phone number or password is incorrect."). |
+| teacher/sign-up | 404 | `NOT_FOUND` | No teacher has this number. |
+| teacher/sign-up | 409 | `CONFLICT` | Already signed up. |
+| teacher/sign-up | 422 | `VALIDATION_ERROR` | Not a 10-digit mobile number, password outside 12–72 characters, or a password Supabase Auth rejects as weak (`details` on `password`). |
+| both | 403 | `ACCOUNT_INACTIVE` | Deactivated teacher. |
+
+**Students** sign in with their admission number only (exact match after
+trimming), no password. The server mints a one-time magic-link token for the
+student's Auth identity with the secret key (`generateLink`, no email is sent)
+and redeems it at once on the request client (`verifyOtp`), which writes the
+session cookies. **Anyone who knows a student's admission number can sign in
+as that student**; this was a deliberate product decision. An unknown number is
+401 `INVALID_CREDENTIALS`, a deactivated student 403 `ACCOUNT_INACTIVE`.
+
+Common to all: 400 `BAD_REQUEST` / `INVALID_JSON` (not JSON), 403
+`CSRF_REJECTED` (cross-site), 429 `RATE_LIMITED` (Supabase Auth rate limit),
+503 `SERVICE_UNAVAILABLE`.
 
 ### `POST /api/auth/logout`
 
@@ -97,17 +131,18 @@ which revokes this device's refresh token) and clears its cookies.
   access token, supabase-js retries the refresh with backoff for up to ~30 s
   before giving up, so logout can be slow during a Supabase outage.
 
-### `POST /api/auth/setup`
+### `POST /api/auth/admin/setup`
 
-First-time account setup, and the admin-issued password reset. Public, same-origin only.
+An administrator added by another administrator chooses their password, and
+the admin-issued password reset. Public, same-origin only.
 
 ```json
-{ "email": "teacher@example.com", "code": "7K2M-Q9TB-4HXD", "password": "at least 12 characters" }
+{ "email": "office@example.com", "code": "7K2M-Q9TB-4HXD", "password": "at least 12 characters" }
 ```
 
 - The code is case-insensitive; spaces and dashes are optional, and the look-alike letters O, I and L are read as 0 and 1.
-- On success the password is set, the person is signed in (session cookies), and the response is `{ isSignedIn, profile }`, where `profile` is the `/api/auth/me` body. If only that last sign-in step fails, `isSignedIn` is `false` and the person signs in normally.
-- Codes are issued by admins only, for active teachers and students only, when an account is created without a password (`POST /api/teachers`, `POST /api/students` return `setupCode`) or with `POST /api/users/{userId}/setup-code`. They are 12 characters (≈60 bits), valid for 7 days, single-use, stored only as a SHA-256 hash, and a new code replaces the old one.
+- On success the password is set, the administrator is signed in (session cookies), and the response is `{ isSignedIn, profile }`, where `profile` is the `/api/auth/me` body. If only that last sign-in step fails, `isSignedIn` is `false` and they sign in normally.
+- Codes exist for **administrator accounts only** (migration 15): issued by `POST /api/admins` (returned as `setupCode`) or `POST /api/users/{userId}/setup-code`. They are 12 characters (≈60 bits), valid for 7 days, single-use, stored only as a SHA-256 hash, and a new code replaces the old one. A code row for any other account never matches.
 - The code is consumed atomically before the password is set, so two requests can't both use it. If setting the password fails, the code is restored.
 - Five wrong guesses against an account's code invalidate it.
 
@@ -239,10 +274,13 @@ suites (`phase3-matrix`, `people`, `attendance`, `results`, `workflow`).
      Route Handlers still validate with `getUser()`.
 10. **Server-only.** All of the modules above import `server-only`.
 
-**Rate limiting:** there is no application-level limiter. The login endpoint
-relies on Supabase Auth's built-in limits and maps them to 429. Add an
-app-level limiter (e.g. per IP + email, in a shared store) before production if
-stricter limits are needed.
+**Rate limiting:** there is no application-level limiter. The sign-in endpoints
+rely on Supabase Auth's built-in limits and map them to 429. Those limits count
+per client IP, and every sign-in reaches Supabase from the server, so they are
+shared by everyone (student sign-in uses the token-verification limit). Before
+production, raise them in the Supabase dashboard to suit the school's morning
+peak, and add an app-level limiter (per IP, in a shared store), above all for
+student sign-in, where admission numbers are easy to guess.
 
 ## Testing
 

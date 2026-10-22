@@ -45,17 +45,17 @@ beforeEach(() => {
 describe('teachers', () => {
   it('creates through provisioning with the role fixed to TEACHER and the admin as actor', async () => {
     db.respondTo('teachers.select', { data: { id: 't' } });
-    const result = await callRoute(teachers.POST, { body: { email: 'T@Example.com', fullName: 'T', employeeCode: 'E1' } });
+    const result = await callRoute(teachers.POST, { body: { email: 'T@Example.com', fullName: 'T', phone: '+91 98765-43210', employeeCode: 'E1' } });
     expect(result.status).toBe(201);
     expect(provisionAccount).toHaveBeenCalledWith(
-      expect.objectContaining({ role: 'TEACHER', email: 't@example.com', profile: expect.objectContaining({ employeeCode: 'E1' }) }),
+      expect.objectContaining({ role: 'TEACHER', email: 't@example.com', phone: '9876543210', profile: expect.objectContaining({ employeeCode: 'E1' }) }),
       { actorUserId: admin.id },
     );
   });
 
   it('rejects client-supplied role, status or ids in the body', async () => {
     for (const extra of [{ role: 'ADMIN' }, { isActive: false }, { userId: ID(9) }]) {
-      const result = await callRoute(teachers.POST, { body: { email: 't@x.co', fullName: 'T', employeeCode: 'E', ...extra } });
+      const result = await callRoute(teachers.POST, { body: { email: 't@x.co', fullName: 'T', phone: '9876543210', employeeCode: 'E', ...extra } });
       expect(result.status).toBe(422);
     }
     expect(provisionAccount).not.toHaveBeenCalled();

@@ -22,7 +22,7 @@ import type { DbClient } from '@/types/supabase';
 const idRowSchema = z.object({ id: z.uuid() });
 
 /** THE `students.id` OF AN APPLICATION USER, IF ANY. */
-async function findStudentIdByUserId(client: DbClient, userId: string): Promise<FunctionResult<string | null>> {
+export async function findStudentIdByUserId(client: DbClient, userId: string): Promise<FunctionResult<string | null>> {
   try {
     const result = await client.from('students').select('id').eq('userId', userId).maybeSingle();
     return functionSuccess(parseRow('students.findByUserId', result, idRowSchema)?.id ?? null);

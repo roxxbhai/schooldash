@@ -4,7 +4,8 @@ import { createClient } from '@supabase/supabase-js';
 import { NextRequest } from 'next/server';
 import { randomBytes } from 'node:crypto';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { POST as login } from '@/app/api/auth/login/route';
+import { POST as adminLogin } from '@/app/api/auth/admin/login/route';
+import { POST as studentLogin } from '@/app/api/auth/student/login/route';
 import { POST as logout } from '@/app/api/auth/logout/route';
 import { GET as me } from '@/app/api/auth/me/route';
 import { provisionAccount } from '@/functions/provisioning';
@@ -45,8 +46,9 @@ const email = (label: string) => `it-${run}-${label}@example.com`;
 const password = () => `It-${randomBytes(18).toString('base64url')}`;
 
 const accounts = {
-  student: { email: email('student'), password: password(), userId: '', authUserId: '', studentId: '' },
-  other: { email: email('other'), password: password(), userId: '', authUserId: '', studentId: '' },
+  student: { email: email('student'), password: password(), admissionNumber: `IT-${run}-student`, userId: '', authUserId: '', studentId: '' },
+  other: { email: email('other'), password: password(), admissionNumber: `IT-${run}-other`, userId: '', authUserId: '', studentId: '' },
+  admin: { email: email('admin'), password: password(), userId: '', authUserId: '' },
   inactive: { email: email('inactive'), password: password(), userId: '', authUserId: '' },
   unprovisioned: { email: email('unprovisioned'), password: password(), authUserId: '' },
 };
@@ -69,9 +71,11 @@ async function json(response: Response) {
   return { status: response.status, body: await response.json() };
 }
 
-async function signIn(account: { email: string; password: string }) {
+/** STUDENTS SIGN IN WITH THEIR ADMISSION NUMBER; EVERYONE ELSE HERE IS AN ADMINISTRATOR (EMAIL + PASSWORD). */
+async function signIn(account: { email: string; password: string; admissionNumber?: string }) {
   state.cookies = fakeCookieStore();
-  return json(await login(post('/api/auth/login', { email: account.email, password: account.password })));
+  if (account.admissionNumber) return json(await studentLogin(post('/api/auth/student/login', { admissionNumber: account.admissionNumber })));
+  return json(await adminLogin(post('/api/auth/admin/login', { email: account.email, password: account.password })));
 }
 
 function decodeSessionCookie(value: string) {
@@ -93,13 +97,17 @@ beforeAll(async () => {
       fullName: `IT ${label}`,
       role: 'STUDENT',
       password: account.password,
-      profile: { admissionNumber: `IT-${run}-${label}` },
+      profile: { admissionNumber: account.admissionNumber },
     }));
     createdAuthIds.add(created.authUserId);
     account.userId = created.userId;
     account.authUserId = created.authUserId;
     account.studentId = (await db.query('select id from public.students where "userId" = $1', [created.userId])).rows[0].id;
   }
+
+  const activeAdmin = unwrapResult(await provisionAccount({ email: accounts.admin.email, fullName: 'IT admin', role: 'ADMIN', password: accounts.admin.password }));
+  createdAuthIds.add(activeAdmin.authUserId);
+  accounts.admin.userId = activeAdmin.userId;
 
   const inactive = unwrapResult(await provisionAccount({
     email: accounts.inactive.email,
@@ -153,7 +161,7 @@ beforeEach(() => {
 // --- authentication -------------------------------------------------------------
 
 describe('login and session (real Supabase Auth)', () => {
-  it('signs in with valid credentials, sets the session cookie, and /me resolves the database role', async () => {
+  it('signs a student in with the admission number alone, sets the session cookie, and /me resolves the database role', async () => {
     const result = await signIn(accounts.student);
     expect(result).toEqual({
       status: 200,
@@ -164,13 +172,32 @@ describe('login and session (real Supabase Auth)', () => {
     expect(await json(await me())).toEqual(result);
   });
 
+  it('signs an administrator in with email and password', async () => {
+    const result = await signIn(accounts.admin);
+    expect(result.status).toBe(200);
+    expect(result.body.data).toMatchObject({ id: accounts.admin.userId, role: 'ADMIN' });
+  });
+
   it('rejects a wrong password with the generic 401', async () => {
-    const result = await signIn({ email: accounts.student.email, password: 'Wrong-password-123' });
+    const result = await signIn({ email: accounts.admin.email, password: 'Wrong-password-123' });
     expect(result).toEqual({
       status: 401,
-      body: { data: null, error: { code: 'INVALID_CREDENTIALS', message: 'Invalid email or password.' } },
+      body: { data: null, error: { code: 'INVALID_CREDENTIALS', message: 'The email or password is incorrect.' } },
     });
     expect(state.cookies.jar.has(SESSION_COOKIE)).toBe(false);
+  });
+
+  it("refuses a student's correct email and password on the administrator sign-in, and discards the session", async () => {
+    const result = await signIn({ email: accounts.student.email, password: accounts.student.password });
+    expect(result.status).toBe(401);
+    expect(result.body.error.code).toBe('INVALID_CREDENTIALS');
+    expect(state.cookies.jar.has(SESSION_COOKIE)).toBe(false);
+  });
+
+  it('rejects an unknown admission number', async () => {
+    const result = await signIn({ email: '', password: '', admissionNumber: `IT-${run}-nobody` });
+    expect(result.status).toBe(401);
+    expect(result.body.error.code).toBe('INVALID_CREDENTIALS');
   });
 
   it('rejects an unknown email with the same 401', async () => {

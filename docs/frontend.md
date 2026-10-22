@@ -8,37 +8,60 @@ calls Supabase directly. The structure follows the root `AGENTS.md`.
 
 | Path | Group | Who |
 | ---- | ----- | --- |
-| `/` | — | Redirects to `/sign-in`. |
-| `/sign-in` | `(auth)` | Public. Anyone already signed in is sent to their home page. |
-| `/account-setup` | `(auth)` | Public. First-time password with an admin-issued setup code (also an admin-issued reset). |
-| `/access-denied` | `(auth)` | Signed-in teachers and students until their portals exist. |
+| `/` | — | Redirects to `/student/sign-in`. |
+| `/student/sign-in` | `(auth)` | Public. Admission number only. |
+| `/teacher/sign-in` | `(auth)` | Public. Mobile number + password. |
+| `/teacher/sign-up` | `(auth)` | Public. A teacher the school added chooses their password, once. |
+| `/admin/sign-in` | `(auth)` | Public. Email + password. There is no admin sign-up. |
+| `/admin/account-setup` | `(auth)` | Public. A new administrator chooses their password with a setup code from another administrator (also an admin-issued reset). |
 | `/admin` and `/admin/*` | `(admin)` | Active admins only. |
+| `/teacher` and `/teacher/*` | `(teacher)` | Active teachers only (Frontend Phase 2): overview, classes, rosters, attendance, marks, timetable, notices, profile. |
+| `/student` and `/student/*` | `(student)` | Active students only (Frontend Phase 3): overview, attendance, timetable, results, notices, profile. Read-only. |
+
+There is no shared sign-in page: each role has its own route. Every sign-in page
+sends someone already signed in to their home page; where the role is unknown
+(`/`, an ended session outside a portal) the fallback is student sign-in. The
+`(auth)` and `(admin)` groups both contain an `admin` folder: `/admin/sign-in` and
+`/admin/account-setup` live in `(auth)`, so the admin gate never wraps them.
 
 Admin pages: dashboard, academic years, classes, subjects, students (+ profile),
 teachers (+ profile), enrollments, teacher assignments, student attendance,
 teacher attendance, exams (+ papers), marks entry, report cards, timetable,
-notices (+ notice page).
+notices (+ notice page), administrators.
 
 The school photographs appear only in `(auth)/layout.tsx` (enforced by
 `tests/frontend-conventions.test.ts`).
 
 ## Authentication and access
 
-- **Session:** the httpOnly Supabase cookies set by `POST /api/auth/login` and
-  `POST /api/auth/setup`. Nothing about the session is stored in browser storage
+- **Session:** the httpOnly Supabase cookies set by the role's sign-in endpoint
+  (`/api/auth/admin/login`, `/api/auth/teacher/login`, `/api/auth/student/login`,
+  or after choosing a password, `/api/auth/teacher/sign-up` and `/api/auth/admin/setup`). Nothing about the session is stored in browser storage
   or Zustand.
-- **Gate:** `src/app/(admin)/admin/layout.tsx` renders `<AdminGate>` inside
-  `<Suspense>`. The gate (a Server Component) calls `getCurrentAppUser` and
-  checks the **database** role: no session → `/sign-in`; inactive or
-  unprovisioned → `/sign-in?reason=…`; not an admin → `/access-denied`;
+- **Gate:** every portal layout (`(admin)/admin`, `(teacher)/teacher`,
+  `(student)/student`) renders `<PortalGate role=…>` inside `<Suspense>`. The gate (a Server Component) calls `getCurrentAppUser` and
+  checks the **database** role: no session → the portal's sign-in; inactive or
+  unprovisioned → that sign-in with `?reason=…`; another role → that role's own home;
   Supabase unreachable → a "portal unavailable" page. Admin pages render only
   inside the gate, so nothing renders before the role is known. The gate awaits
   `connection()` first: the session read must never be prerendered.
+- **Own record:** for teachers and students the gate also resolves their own
+  `teachers.id` / `students.id` on the server (`findTeacherIdByUserId` /
+  `findStudentIdByUserId`, from the session's user id, never from the browser) and
+  hands it to `zustand/portal-session` (`recordId`) through `<PortalSessionSync>`.
+  Pages use it only for filters and labels; the API checks ownership itself.
 - **The gate decides which pages render; it is not the security boundary.**
   Every API route enforces its own permissions, backed by RLS.
 - **Expired session:** any API call answering 401 `UNAUTHORIZED` sends the
-  person to `/sign-in?reason=session-expired` with a full page load, which also
-  discards all in-memory state. Sign-out does the same.
+  person to their portal's sign-in (`signInPathFor`, e.g. `/admin/sign-in`) with
+  `?reason=session-expired`, using a full page load, which also discards all
+  in-memory state. Sign-out does the same, to the role's own sign-in page.
+- **Auth forms** share `src/hooks/use-auth-form.ts` (values, client checks,
+  no double submit, server field errors, one clear message, navigation). Each
+  form passes a `formId` that prefixes its field ids: Next.js keeps the previous
+  page in the document, hidden, after a client navigation, so the teacher sign-in
+  and sign-up forms would otherwise share `id="phone"` and the labels would point
+  at the hidden one.
 
 ## Data flow
 
@@ -49,8 +72,9 @@ The school photographs appear only in `(auth)/layout.tsx` (enforced by
 | Module calls | `src/functions/admin-<module>` | Named calls (`createClass`, `issueSetupCode` …) with try/catch, per `AGENTS.md`. |
 | Loading | `src/hooks/use-async-result`, `use-api-query` | Load on key change or `reload()`; a newer request always wins (stale responses are aborted and ignored). |
 | Saving | `src/hooks/use-mutation` | No double submits; field errors go next to fields, other failures to one message; success toasts only after the server confirms. |
-| Reference data | `src/zustand/reference-data`, `src/functions/reference-data`, `src/hooks/use-reference-data` | Academic years, classes, subjects and teachers, loaded once per session to turn ids into names. Call `refreshReferenceData()` after changing one; refreshes run in the background without blanking the page. |
-| UI state | `src/zustand/admin-shell` | The mobile navigation drawer. |
+| Reference data | `src/zustand/reference-data`, `src/functions/reference-data`, `src/hooks/use-reference-data` | Academic years, classes, subjects and teachers, loaded once per session to turn ids into names. Classes are whatever the person may see (RLS: all for admins, the classes they teach for teachers); the teachers list is admin-only, so outside `/admin` it is never requested and stays empty. Call `refreshReferenceData()` after changing one; refreshes run in the background without blanking the page. |
+| UI state | `src/zustand/portal-shell` | The mobile navigation drawer. |
+| Shell | `components/portal-shell`, `portal-sidebar`, `portal-header`, `constants/portal-shell` | One sidebar + header + drawer for all three portals; each portal is a `PortalConfig` (navigation, role label, home). Components receive the portal's **role name**, never the config, because its icon components cannot be passed from a Server Component. |
 
 Server data is not kept in a global store. Lists that return ids only (enrollments,
 attendance, results, timetable, assignments) resolve names from reference data and,
@@ -69,6 +93,34 @@ import: `import 'server-only';` or `import 'client-only';`. A helper may declare
 side or be pure (no environment, no server APIs, no imports of marked modules). No
 browser code may import a server-only module. `tests/server-only.test.ts` enforces
 all of this by resolving every import.
+
+## Teacher portal
+
+Everything is limited by the API and RLS to what the teacher teaches; the UI only
+mirrors it (hidden papers, class lists), it never decides access.
+
+| Page | Data |
+| ---- | ---- |
+| Overview | Own record and assignments, today's own periods, today's attendance count per class (one `limit=1` count each), upcoming papers of their subjects, latest notices. |
+| My classes | Classes they teach (RLS), their subjects, class-teacher role, students enrolled (one count per class). |
+| Class roster | Roll number, name, admission number only, in roll order, with search. Another class is "not found". |
+| Student | Name, admission number, class, roll; this year's attendance counts in their classes; marks in their own subjects (`components/report-card-browser`, server scope `assignedSubjects`, no totals). No address, parents or date of birth. |
+| Attendance | The admin register (`components/admin-student-attendance`, `role='TEACHER'`): their classes only; `?classId=` opens a class. New records in one all-or-nothing bulk request, corrections one by one. |
+| Marks entry | The admin marks sheet (`components/admin-results`) with `canEnterPaper`: only papers whose class **and** subject they are assigned (the API's rule). |
+| Timetable | Their own periods (`?teacherId=`; RLS alone would also show colleagues' periods in their classes). |
+| Notices | `notice-feed` / `notice-reader`, read-only. |
+| My profile | Own record; own attendance counts and history (admins record it). |
+
+## Student portal (read-only)
+
+| Page | Data |
+| ---- | ---- |
+| Overview | Own record, this year's enrollment, attendance counts per status for the year (four `limit=1` counts), today's periods, the latest started exam's report card, latest notices. |
+| My attendance | Counts per status for a date range plus the day-by-day list (`/api/student-attendance?studentId=`, paged). **Counts only, no percentage:** the school has no rule for how late and leave days count. |
+| My timetable | The class's periods for the current year (`components/timetable-week`, shared with the admin timetable). No teacher names: students cannot read teachers' accounts. |
+| Results | Year → exam → the server's report card. Marks show as soon as they are entered (no publication step in the backend); no grade, percentage or pass/fail; the total only when every subject has a mark. |
+| Notices | `components/notice-feed` / `notice-reader`, shared with the teacher portal. Unpublished or other audiences' notices are a 404, shown as "not found". |
+| My profile | Own record (no login email) and class history; corrections go through the school office. |
 
 ## Design system
 

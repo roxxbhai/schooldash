@@ -12,8 +12,8 @@ import { OptionSelect } from '@/components/option-select';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { TimetableSkeleton, TimetableWeek } from '@/components/timetable-week';
 import { EMPTY_TIMETABLE_FORM, TIMETABLE_FORM_SCHEMA, TIMETABLE_VIEWS, type TimetableForm, type TimetableValues, type TimetableView } from '@/constants/admin-timetable';
 import { ROUTES } from '@/constants/routes';
 import {
@@ -24,7 +24,7 @@ import {
   updateTimetableEntry,
 } from '@/functions/admin-timetable';
 import { refreshReferenceData } from '@/functions/reference-data';
-import { entriesByDay, periodTimeRange, visibleWeekdays } from '@/helpers/admin-timetable';
+import { periodTimeRange } from '@/helpers/admin-timetable';
 import { cn } from '@/helpers/cn';
 import { WEEKDAYS, formatTime, weekdayLabel } from '@/helpers/format';
 import { fieldControlProps, withoutKey, zodFieldErrors } from '@/helpers/forms';
@@ -35,63 +35,6 @@ import { useReferenceData } from '@/hooks/use-reference-data';
 import type { TimetableEntry } from '@/types/timetable';
 
 const DAY_OPTIONS = WEEKDAYS.map((day) => ({ value: String(day.value), label: day.label }));
-
-interface WeekProps {
-  entries: readonly TimetableEntry[];
-  renderPeriod: (entry: TimetableEntry) => React.ReactNode;
-}
-
-/** THE WEEK AS COLUMNS ON WIDE SCREENS AND AS A DAY-BY-DAY LIST BELOW `lg`. */
-function TimetableWeek({ entries, renderPeriod }: WeekProps) {
-  const days = visibleWeekdays(entries);
-  const byDay = entriesByDay(entries);
-
-  return (
-    <>
-      <div className={cn('hidden border bg-card shadow-xs lg:grid', days.length === 7 ? 'lg:grid-cols-7' : 'lg:grid-cols-6')}>
-        {days.map((day) => (
-          <section key={day.value} aria-label={day.label} className='flex min-w-0 flex-col border-r last:border-r-0'>
-            <h3 className='border-b bg-surface-muted px-3 py-2 text-xs font-medium text-muted-foreground'>{day.label}</h3>
-            <div className='flex min-h-48 flex-col gap-2 p-2'>
-              {(byDay.get(day.value) ?? []).map((entry) => (
-                <div key={entry.id}>{renderPeriod(entry)}</div>
-              ))}
-              {!byDay.has(day.value) && <p className='px-1 py-2 text-xs text-muted-foreground'>No periods</p>}
-            </div>
-          </section>
-        ))}
-      </div>
-
-      <div className='flex flex-col gap-4 lg:hidden'>
-        {days.map((day) => (
-          <section key={day.value} aria-label={day.label} className='border bg-card shadow-xs'>
-            <h3 className='flex items-baseline justify-between border-b bg-surface-muted px-4 py-2 text-sm font-medium text-foreground'>
-              {day.label}
-              <span className='text-xs font-normal text-muted-foreground'>{(byDay.get(day.value) ?? []).length || 'No'} periods</span>
-            </h3>
-            {byDay.has(day.value) && (
-              <div className='grid gap-2 p-3 sm:grid-cols-2'>
-                {(byDay.get(day.value) ?? []).map((entry) => (
-                  <div key={entry.id}>{renderPeriod(entry)}</div>
-                ))}
-              </div>
-            )}
-          </section>
-        ))}
-      </div>
-    </>
-  );
-}
-
-function TimetableSkeleton() {
-  return (
-    <div className='grid gap-2 border bg-card p-3 shadow-xs sm:grid-cols-2 lg:grid-cols-6' aria-busy>
-      {Array.from({ length: 12 }, (_, index) => (
-        <Skeleton key={index} className='h-24 w-full' />
-      ))}
-    </div>
-  );
-}
 
 /**
  * THE WEEKLY TIMETABLE, BY CLASS OR BY TEACHER: VIEW, ADD, EDIT AND REMOVE

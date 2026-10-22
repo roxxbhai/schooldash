@@ -5,7 +5,7 @@ import { anonymous, APP, call, signIn } from './helpers/http';
 import type { CookieStore } from './helpers/http';
 import { createClient } from '@supabase/supabase-js';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import { POST as login } from '@/app/api/auth/login/route';
+import { POST as studentLogin } from '@/app/api/auth/student/login/route';
 import { GET as me } from '@/app/api/auth/me/route';
 import { POST as deactivate } from '@/app/api/users/[id]/deactivate/route';
 import { POST as reactivate } from '@/app/api/users/[id]/reactivate/route';
@@ -33,6 +33,7 @@ const SESSION_COOKIE = `sb-${new URL(URL_).hostname.split('.')[0]}-auth-token`;
 let itAdmin: TestAccount;
 let student: TestAccount;
 let teacher: TestAccount;
+const studentAdmissionNumber = `ITS-${Date.now()}`;
 let adminSession: CookieStore;
 let teacherSession: CookieStore;
 
@@ -50,7 +51,7 @@ async function auditCount(entityId: string, action: string) {
 
 beforeAll(async () => {
   itAdmin = await ensureItAdmin();
-  student = await provisionTestAccount('status-student', { role: 'STUDENT', profile: { admissionNumber: `ITS-${Date.now()}` } });
+  student = await provisionTestAccount('status-student', { role: 'STUDENT', profile: { admissionNumber: studentAdmissionNumber } });
   teacher = await provisionTestAccount('status-teacher', { role: 'TEACHER', profile: { employeeCode: `ITT-${Date.now()}` } });
   adminSession = await signIn(harness, itAdmin.email, itAdmin.password);
   teacherSession = await signIn(harness, teacher.email, teacher.password);
@@ -149,11 +150,11 @@ describe('deactivation lifecycle (real Auth sessions)', () => {
 
   it('the student cannot sign in while deactivated', async () => {
     harness.state.cookies = anonymous();
-    const response = await login(
-      new Request(`${APP}/api/auth/login`, {
+    const response = await studentLogin(
+      new Request(`${APP}/api/auth/student/login`, {
         method: 'POST',
         headers: { origin: APP, 'content-type': 'application/json' },
-        body: JSON.stringify({ email: student.email, password: student.password }),
+        body: JSON.stringify({ admissionNumber: studentAdmissionNumber }),
       }),
     );
     expect(response.status).toBe(403);

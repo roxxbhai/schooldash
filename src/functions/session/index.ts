@@ -9,7 +9,7 @@ import { functionFailure, functionSuccess, unwrapResult } from '@/helpers/functi
 import { logServerError } from '@/helpers/logger';
 import { toAppRole } from '@/helpers/roles';
 import { clearSupabaseAuthCookies } from '@/helpers/supabase-server';
-import type { AppUser, AppUserRecord, PasswordCredentials, SessionProfile } from '@/types/auth';
+import type { AppUser, AppUserRecord, PasswordCredentials, SessionProfile, SignInOptions } from '@/types/auth';
 import type { FunctionResult } from '@/types/function-result';
 import type { DbClient } from '@/types/supabase';
 
@@ -131,17 +131,41 @@ export async function signOutCurrentSession(client: DbClient): Promise<FunctionR
 }
 
 /**
+ * THE APPLICATION USER BEHIND A SESSION THAT WAS JUST STARTED ON `client`.
+ * IF THE ACCOUNT IS NOT PROVISIONED OR INACTIVE (403), OR IS NOT `options.role`
+ * (THE SAME 401 AS WRONG CREDENTIALS, SO A SIGN-IN FORM DOES NOT REVEAL OTHER
+ * ROLES' ACCOUNTS), THE NEW SESSION IS DISCARDED FIRST.
+ */
+export async function acceptNewSession(
+  client: DbClient,
+  authUserId: string,
+  options: SignInOptions = {},
+): Promise<FunctionResult<AppUser>> {
+  try {
+    const appUser = await resolveAppUser(client, authUserId);
+    const isWrongRole = appUser.success && options.role !== undefined && appUser.data.role !== options.role;
+    if (appUser.success && !isWrongRole) return appUser;
+    await signOutCurrentSession(client);
+    if (isWrongRole) throw invalidCredentials(options.credentialMessage);
+    return appUser;
+  } catch (error) {
+    return functionFailure(error, 'auth.acceptSession');
+  }
+}
+
+/**
  * SIGNS IN WITH EMAIL + PASSWORD AND RETURNS THE LINKED APPLICATION USER.
  * SESSION COOKIES ARE WRITTEN BY THE CLIENT'S `setAll` HANDLER.
  *
  * EVERY CREDENTIAL FAILURE (WRONG PASSWORD, UNKNOWN OR UNCONFIRMED EMAIL,
- * BANNED USER) IS THE SAME 401, SO RESPONSES DO NOT REVEAL WHICH ACCOUNTS
- * EXIST. IF THE AUTH USER IS VALID BUT NOT PROVISIONED OR INACTIVE, THE NEW
- * SESSION IS DISCARDED BEFORE THE 403 IS RETURNED.
+ * BANNED USER, ANOTHER ROLE'S ACCOUNT) IS THE SAME 401, SO RESPONSES DO NOT
+ * REVEAL WHICH ACCOUNTS EXIST. IF THE AUTH USER IS VALID BUT NOT PROVISIONED
+ * OR INACTIVE, THE NEW SESSION IS DISCARDED BEFORE THE 403 IS RETURNED.
  */
 export async function signInWithPassword(
   client: DbClient,
   credentials: PasswordCredentials,
+  options: SignInOptions = {},
 ): Promise<FunctionResult<AppUser>> {
   try {
     const { data, error } = await client.auth.signInWithPassword(credentials);
@@ -151,13 +175,10 @@ export async function signInWithPassword(
         logServerError('auth.signIn', error);
         throw serviceUnavailable();
       }
-      throw invalidCredentials();
+      throw invalidCredentials(options.credentialMessage);
     }
-    if (!data.user) throw invalidCredentials();
-
-    const appUser = await resolveAppUser(client, data.user.id);
-    if (!appUser.success) await signOutCurrentSession(client);
-    return appUser;
+    if (!data.user) throw invalidCredentials(options.credentialMessage);
+    return await acceptNewSession(client, data.user.id, options);
   } catch (error) {
     return functionFailure(error, 'auth.signIn');
   }

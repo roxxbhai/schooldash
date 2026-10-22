@@ -1,11 +1,11 @@
 import { Suspense } from 'react';
-import { AdminGate } from '@/components/admin-gate';
-import { AdminShellSkeleton } from '@/components/admin-shell-skeleton';
+import { PortalGate } from '@/components/portal-gate';
+import { PortalShellSkeleton } from '@/components/portal-shell-skeleton';
 
 export default function AdminLayout({ children }: LayoutProps<'/admin'>) {
   return (
-    <Suspense fallback={<AdminShellSkeleton />}>
-      <AdminGate>{children}</AdminGate>
+    <Suspense fallback={<PortalShellSkeleton />}>
+      <PortalGate role='ADMIN'>{children}</PortalGate>
     </Suspense>
   );
 }

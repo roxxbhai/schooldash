@@ -15,7 +15,7 @@ Related docs:
 | -------- | ------- | -------- |
 | `NEXT_PUBLIC_SUPABASE_URL` | App (server + browser) | Public |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | App (server + browser). `sb_publishable_…` | Public; RLS applies |
-| `SUPABASE_SECRET_KEY` | `src/helpers/supabase-admin/index.ts` only (provisioning). `sb_secret_…` | **Secret.** Bypasses RLS. Never `NEXT_PUBLIC_`. |
+| `SUPABASE_SECRET_KEY` | `src/helpers/supabase-admin/index.ts` only (used by provisioning, account status, setup codes and sign-in). `sb_secret_…` | **Secret.** Bypasses RLS. Never `NEXT_PUBLIC_`. |
 | `SUPABASE_DB_URL` | Migrations, type generation, integration tests. Never read by the app. | **Secret.** Database password. |
 
 Where to find them in the dashboard:
@@ -89,6 +89,8 @@ Applied (verified with `npm run db:migrations`):
 | `20261016100000_notices_workflow` | Notice lifecycle trigger (draft → published → archived); audiences changeable only on drafts (RLS); column-level INSERT/UPDATE grants; `createNotice` / `setNoticeAudiences` / `publishNotice` (atomic, invoker); audit. |
 | `20261020120000_account_setup_and_search` | `accountSetupCodes` (hashed one-time setup codes, service role only); `issueAccountSetupCode` / `consumeAccountSetupCode` (service role only, invoker, atomic, audited issue); `studentSearchText` / `teacherSearchText` computed fields for `?search=`. |
 | `20261020123000_fix_setup_code_conflict_target` | Replaces `issueAccountSetupCode` with an explicit conflict constraint (the original `on conflict ("userId")` was ambiguous with the parameter name). |
+| `20261021100000_role_specific_sign_in` | Separate sign-in per role. `users."passwordSetAt"` (backfilled for everyone who has a password); teacher phone numbers normalized, format-checked (`usersTeacherPhoneFormat`, NOT VALID) and unique among teachers (`usersTeacherPhoneKey`); `provisionAppUser` stores the phone; setup codes for administrators only (other codes deleted; consume marks the password set); `claimTeacherSignUp` / `resetTeacherSignUp` (service role only; reset deletes the teacher's sessions); teacher search also matches the phone. |
+| `20261021110000_teacher_sign_up_audit_actor` | Teacher sign-up is audited without an actor (self-service), so teachers who signed up stay deletable. |
 
 **To change the schema:**
 
@@ -122,7 +124,15 @@ Applied (verified with `npm run db:migrations`):
 
 ## 4. Auth and session architecture
 
-- **Sign-in method:** email + password through `POST /api/auth/login`.
+- **Sign-in methods** (one endpoint per role, see `docs/auth-and-api.md`):
+  administrators email + password; teachers phone number + password (the server
+  finds the identity's email); students admission number only (the server mints
+  and redeems a one-time magic-link token with the secret key; no email is sent).
+  All of them use the Email provider; the Phone provider is not needed.
+- **Rate limits** (Authentication → Rate Limits) count per client IP, and all
+  sign-ins come from the server, so the limits are shared school-wide. Raise
+  "sign-ins" and "token verifications" before production to cover the morning
+  peak.
 - **Public sign-up is disabled** on the project (Authentication → Sign In /
   Providers → "Allow new users to sign up" = off). This is verified by an
   integration test. Accounts are created only by the provisioning service.
@@ -152,11 +162,12 @@ Applied (verified with `npm run db:migrations`):
 ## 5. Account provisioning and recovery
 
 `src/functions/provisioning/index.ts` → `provisionAccount(input, options)`. It is
-server-only, the only importer of the secret-key client, and never reachable
-from a public route (enforced by a unit test).
+server-only and never reachable from a public route (enforced by a unit test).
+The secret-key client is imported only by this module and by the account-status,
+account-setup and sign-in services (also enforced by a test).
 
 1. Validates input. Students require `admissionNumber`; teachers require
-   `employeeCode`.
+   `employeeCode` and a mobile `phone`.
 2. Finds the Auth user by email. If one exists:
    - Without `linkExistingAuthUser`, it returns 409.
    - With it, it links the existing user (bootstrap and recovery path).

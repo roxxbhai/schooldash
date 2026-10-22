@@ -1,6 +1,7 @@
 'use client';
 
 import { CalendarCheckIcon, SchoolIcon, UsersIcon } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 import { useRef, useState } from 'react';
 import { AttendanceRegister } from '@/components/attendance-register';
 import { AttendanceToolbar } from '@/components/attendance-toolbar';
@@ -12,7 +13,7 @@ import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
-import { ATTENDANCE_SAVE_CONCURRENCY } from '@/constants/admin-attendance';
+import { ATTENDANCE_SAVE_CONCURRENCY, STUDENT_REGISTER_PORTAL_COPY } from '@/constants/admin-attendance';
 import { MAX_BULK_ATTENDANCE_RECORDS } from '@/constants/student-attendance';
 import { createStudentAttendanceBulk, loadStudentRegister, updateStudentAttendance } from '@/functions/admin-student-attendance';
 import { refreshReferenceData } from '@/functions/reference-data';
@@ -42,21 +43,27 @@ import type { StudentAttendance } from '@/types/student-attendance';
 /**
  * THE DAILY STUDENT REGISTER FOR ONE CLASS: MARK, CORRECT AND SAVE. NEW RECORDS GO IN
  * ONE ALL-OR-NOTHING BULK REQUEST; CORRECTIONS ARE PATCHED ONE BY ONE. UNMARKED
- * STUDENTS ARE SIMPLY NOT RECORDED.
+ * STUDENTS ARE SIMPLY NOT RECORDED. SHARED BY THE ADMIN AND TEACHER PORTALS: A
+ * TEACHER'S CLASS LIST IS ALREADY ONLY THE CLASSES THEY TEACH (RLS), AND THE API
+ * REFUSES ANY OTHER. `?classId=` OPENS A CLASS DIRECTLY (E.G. FROM A ROSTER).
  */
-export function AdminStudentAttendance() {
+export function AdminStudentAttendance({ role = 'ADMIN' }: { role?: 'ADMIN' | 'TEACHER' } = {}) {
   const [yearChoice, setYearChoice] = useState<string | null>(null);
   const [classChoice, setClassChoice] = useState<string | null>(null);
   const [attendanceDate, setAttendanceDate] = useState(() => todayInSchool());
   const [isSaving, setIsSaving] = useState(false);
 
   const isSavingRef = useRef(false);
+  const searchParams = useSearchParams();
   const { academicYears, classes, academicYearById, classById, currentAcademicYear, isReady, errorMessage: referenceError } = useReferenceData();
 
+  const copy = STUDENT_REGISTER_PORTAL_COPY[role];
   const today = todayInSchool();
-  const selectedYearId = yearChoice ?? currentAcademicYear?.id ?? null;
+  const linkedClass = classById.get(searchParams.get('classId') ?? '');
+  const selectedYearId = yearChoice ?? linkedClass?.academicYearId ?? currentAcademicYear?.id ?? null;
   const yearClassOptions = classOptions(classes, selectedYearId);
-  const selectedClass = classChoice ? classById.get(classChoice) : undefined;
+  const effectiveClassChoice = classChoice ?? (yearChoice === null ? (linkedClass?.id ?? null) : null);
+  const selectedClass = effectiveClassChoice ? classById.get(effectiveClassChoice) : undefined;
   const classId = selectedClass && selectedClass.academicYearId === selectedYearId ? selectedClass.id : null;
   const classYear = selectedClass ? academicYearById.get(selectedClass.academicYearId) : undefined;
   const isDateValid = isSelectableDate(attendanceDate, today);
@@ -147,10 +154,10 @@ export function AdminStudentAttendance() {
     // WHILE THE YEARS AND CLASSES LOAD, SHOW NOTHING RATHER THAN A MISLEADING "CREATE A YEAR FIRST".
     if (!isReady) return <Skeleton className='h-40 w-full' />;
     if (academicYears.length === 0) {
-      return <EmptyState icon={SchoolIcon} title='Create an academic year first' description='Classes, and so their registers, belong to an academic year.' />;
+      return <EmptyState icon={SchoolIcon} title={copy.noYearTitle} description={copy.noYear} />;
     }
     if (yearClassOptions.length === 0) {
-      return <EmptyState icon={SchoolIcon} title='No classes in this year' description='Add classes from the Classes page, then come back to take attendance.' />;
+      return <EmptyState icon={SchoolIcon} title='No classes in this year' description={copy.noClasses} />;
     }
     return <EmptyState icon={CalendarCheckIcon} title='Choose a class' description='Pick a class and a date to open its register.' />;
   }
@@ -158,7 +165,7 @@ export function AdminStudentAttendance() {
   return (
     <>
       <PageHeader
-        title='Student attendance'
+        title={copy.title}
         description='Mark the daily register for a class. Students you leave unmarked are simply not recorded for the day; they are not counted as absent.'
       />
 
@@ -245,7 +252,7 @@ export function AdminStudentAttendance() {
             isDisabled={isEditingDisabled}
             errorMessage={register.isLoading ? null : register.errorMessage}
             onRetry={register.reload}
-            empty={<EmptyState icon={UsersIcon} title='No students enrolled' description='Enroll students into this class from the Enrollments page.' />}
+            empty={<EmptyState icon={UsersIcon} title='No students enrolled' description={copy.noStudents} />}
             onStatusChange={attendance.setStatus}
             onRemarksChange={attendance.setRemarks}
           />

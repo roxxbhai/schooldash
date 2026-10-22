@@ -162,7 +162,7 @@ export function AdminReportCards() {
       <article aria-label={`Report card of ${card.student.fullName ?? 'student'}`} className='border bg-card shadow-xs print:border-0 print:shadow-none'>
         <header className='grid gap-4 border-b px-6 py-5 sm:grid-cols-2 print:px-0'>
           <div>
-            <p className='text-xs font-medium tracking-wide text-muted-foreground uppercase'>Report card</p>
+            <p className='text-xs font-medium text-muted-foreground uppercase'>Report card</p>
             <h2 className='mt-1 text-2xl font-semibold tracking-tight text-foreground'>{card.student.fullName ?? 'Unknown student'}</h2>
             <p className='mt-1 text-sm text-muted-foreground'>
               Admission number <span className='font-mono text-foreground'>{card.student.admissionNumber}</span>

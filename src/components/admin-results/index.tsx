@@ -14,7 +14,7 @@ import { Panel } from '@/components/panel';
 import { StatusBadge } from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { MARKS_MESSAGES, MAX_BULK_MARKS } from '@/constants/admin-results';
+import { MARKS_MESSAGES, MARKS_PORTAL_COPY, MAX_BULK_MARKS } from '@/constants/admin-results';
 import { API_PATHS } from '@/constants/api-client';
 import { loadExamPapers } from '@/functions/admin-exam-detail';
 import { loadYearExams } from '@/functions/admin-exams';
@@ -59,12 +59,20 @@ interface SheetLine {
 
 const EMPTY_SHEET: SheetState = { paperId: null, drafts: {}, serverErrors: {}, saved: {}, formError: null };
 
+interface AdminResultsProps {
+  /** WHOSE PORTAL THIS IS: ONLY THE EMPTY-STATE WORDING DIFFERS. */
+  role?: 'ADMIN' | 'TEACHER';
+  /** THE PAPERS THIS PERSON MAY ENTER MARKS FOR (A TEACHER: THEIR CLASS + SUBJECT ASSIGNMENTS). THE API ENFORCES THE SAME RULE. */
+  canEnterPaper?: (paper: ExamSubject) => boolean;
+}
+
 /**
  * MARKS ENTRY FOR ONE PAPER (A SUBJECT OF AN EXAM FOR ONE CLASS). NEW MARKS ARE
  * SAVED TOGETHER IN ONE REQUEST; CORRECTIONS ONE BY ONE, ONLY FROM THE VERSION
  * LOADED. THERE IS NO ABSENT STATE: A BLANK FIELD IS "NOT ENTERED", AND 0 IS A MARK.
+ * SHARED BY THE ADMIN AND TEACHER PORTALS; TEACHERS SEE ONLY THE PAPERS THEY TEACH.
  */
-export function AdminResults() {
+export function AdminResults({ role = 'ADMIN', canEnterPaper }: AdminResultsProps = {}) {
   const [selection, setSelection] = useState<Selection | null>(null);
   const [sheetState, setSheetState] = useState<SheetState>(EMPTY_SHEET);
 
@@ -76,7 +84,7 @@ export function AdminResults() {
   );
 
   const isPreselecting = selection === null && preselectedPaperId !== null && preselected.isLoading;
-  const preselectedPaper = selection === null ? preselected.data : null;
+  const preselectedPaper = selection === null && preselected.data && (canEnterPaper?.(preselected.data) ?? true) ? preselected.data : null;
   const current: Selection =
     selection ??
     (preselectedPaper
@@ -95,7 +103,8 @@ export function AdminResults() {
   // A LIST STILL SHOWING FROM THE PREVIOUS CHOICE WHILE THE NEXT ONE LOADS IS IGNORED.
   const exams = (examsQuery.data ?? []).filter((candidate) => candidate.academicYearId === current.yearId);
   const exam = exams.find((candidate) => candidate.id === current.examId) ?? null;
-  const papers = (papersQuery.data ?? []).filter((candidate) => candidate.examId === current.examId);
+  const papers = (papersQuery.data ?? []).filter((candidate) => candidate.examId === current.examId && (canEnterPaper?.(candidate) ?? true));
+  const copy = MARKS_PORTAL_COPY[role];
   const classIdsWithPapers = new Set(papers.map((candidate) => candidate.classId));
   const classChoices = sortClasses([...classIdsWithPapers].flatMap((classId) => classById.get(classId) ?? []));
   const paperChoices = papers
@@ -262,9 +271,9 @@ export function AdminResults() {
         </FormAlert>
       );
     if (papersQuery.data && !papersQuery.isLoading && papers.length === 0) {
-      return <EmptyState icon={FileTextIcon} title='No papers in this exam yet' description='Add papers on the exam page before entering marks.' />;
+      return <EmptyState icon={FileTextIcon} title='No papers in this exam yet' description={copy.noPapers} />;
     }
-    if (!paper) return <EmptyState icon={FileTextIcon} title='Choose a class and paper' description='Only classes with papers in this exam are listed.' />;
+    if (!paper) return <EmptyState icon={FileTextIcon} title='Choose a class and paper' description={copy.choosePaper} />;
     return (
       <Panel
         title={paperTitle}
@@ -314,7 +323,7 @@ export function AdminResults() {
             isLoading={sheetQuery.isLoading}
             errorMessage={sheetQuery.errorMessage}
             onRetry={sheetQuery.reload}
-            empty={<EmptyState icon={UsersIcon} title='No students in this class' description='Enroll students into the class to enter their marks.' />}
+            empty={<EmptyState icon={UsersIcon} title='No students in this class' description={copy.noStudents} />}
           />
         </div>
       </Panel>

@@ -17,7 +17,10 @@ vi.mock('next/headers', () => ({ cookies: async () => state.cookieStore }));
 vi.mock('next/server', () => ({ connection: async () => {} }));
 
 import { GET as me } from '@/app/api/auth/me/route';
-import { POST as login } from '@/app/api/auth/login/route';
+import { POST as login } from '@/app/api/auth/admin/login/route';
+import { POST as studentLogin } from '@/app/api/auth/student/login/route';
+import { POST as teacherLogin } from '@/app/api/auth/teacher/login/route';
+import { POST as teacherSignUp } from '@/app/api/auth/teacher/sign-up/route';
 import { POST as logout } from '@/app/api/auth/logout/route';
 
 const SUPABASE_URL = 'https://example.supabase.co';
@@ -29,6 +32,7 @@ const USER_ID = '22222222-2222-4222-8222-222222222222';
 const ACCESS_TOKEN = 'fake-access-token-7c1d';
 const REFRESH_TOKEN = 'fake-refresh-token-9e4b';
 const PASSWORD = 'correct-horse-battery-staple';
+const MAGIC_TOKEN = 'fake-magic-link-token-3f8a';
 
 const authUserJson = (metadata: Record<string, unknown> = {}) => ({
   id: AUTH_ID,
@@ -108,7 +112,7 @@ beforeEach(() => {
 afterEach(() => {
   // Secrets must never reach logs, whichever test ran.
   const logged = consoleSpies.flatMap((spy) => spy.mock.calls.flat()).map(String).join('\n');
-  for (const secret of [PASSWORD, ACCESS_TOKEN, REFRESH_TOKEN, 'test-service-key']) {
+  for (const secret of [PASSWORD, ACCESS_TOKEN, REFRESH_TOKEN, MAGIC_TOKEN, 'test-service-key']) {
     expect(logged).not.toContain(secret);
   }
   consoleSpies.splice(0).forEach((spy) => spy.mockRestore());
@@ -130,7 +134,7 @@ function postRequest(path: string, body?: unknown, headers: Record<string, strin
 
 async function read(response: Response) {
   const text = await response.text();
-  for (const secret of [PASSWORD, ACCESS_TOKEN, REFRESH_TOKEN, 'test-service-key']) {
+  for (const secret of [PASSWORD, ACCESS_TOKEN, REFRESH_TOKEN, MAGIC_TOKEN, 'test-service-key']) {
     expect(text, 'response leaks a secret').not.toContain(secret);
   }
   return { status: response.status, body: JSON.parse(text) };
@@ -139,6 +143,10 @@ async function read(response: Response) {
 const supabaseCalls = () => requests.map((r) => `${r.method} ${new URL(r.url).pathname}`);
 const sentServiceKey = () =>
   requests.some((r) => [...r.headers.values()].some((v) => v.includes('test-service-key')));
+
+/** THE APPLICATION `users` ROW RETURNED FOR THE SIGNED-IN IDENTITY. */
+const appUserRow = (role: string, isActive = true) =>
+  json([{ id: USER_ID, authUserId: AUTH_ID, role, isActive, fullName: 'Asha Verma', email: 'asha@example.com' }]);
 
 // --- GET /api/auth/me -----------------------------------------------------------
 
@@ -246,16 +254,20 @@ describe('GET /api/auth/me', () => {
   });
 });
 
-// --- POST /api/auth/login -------------------------------------------------------
+// --- POST /api/auth/admin/login -------------------------------------------------
 
-describe('POST /api/auth/login', () => {
+describe('POST /api/auth/admin/login', () => {
   const credentials = { email: 'asha@example.com', password: PASSWORD };
 
+  beforeEach(() => {
+    routes['GET /rest/v1/users'] = () => appUserRow('admin');
+  });
+
   it('signs in, sets the session cookie, and returns the session profile', async () => {
-    const { status, body } = await read(await login(postRequest('/api/auth/login', credentials)));
+    const { status, body } = await read(await login(postRequest('/api/auth/admin/login', credentials)));
 
     expect(status).toBe(200);
-    expect(body).toEqual({ data: { id: USER_ID, role: 'STUDENT', isActive: true, fullName: 'Asha Verma', email: 'asha@example.com' }, error: null });
+    expect(body).toEqual({ data: { id: USER_ID, role: 'ADMIN', isActive: true, fullName: 'Asha Verma', email: 'asha@example.com' }, error: null });
     expect(state.cookieStore.jar.get(SESSION_COOKIE)).toMatch(/^base64-/);
 
     const tokenRequest = requests.find((r) => new URL(r.url).pathname === '/auth/v1/token')!;
@@ -265,7 +277,7 @@ describe('POST /api/auth/login', () => {
   });
 
   it('trims the email before authenticating', async () => {
-    await login(postRequest('/api/auth/login', { ...credentials, email: '  asha@example.com ' }));
+    await login(postRequest('/api/auth/admin/login', { ...credentials, email: '  asha@example.com ' }));
     const tokenRequest = requests.find((r) => new URL(r.url).pathname === '/auth/v1/token')!;
     expect((await tokenRequest.json()).email).toBe('asha@example.com');
   });
@@ -277,7 +289,7 @@ describe('POST /api/auth/login', () => {
     ['an empty password', { email: 'asha@example.com', password: '' }, 'password'],
     ['a non-string password', { email: 'asha@example.com', password: 12345 }, 'password'],
   ])('rejects %s with 422 before contacting Supabase', async (_label, payload, field) => {
-    const { status, body } = await read(await login(postRequest('/api/auth/login', payload)));
+    const { status, body } = await read(await login(postRequest('/api/auth/admin/login', payload)));
     expect(status).toBe(422);
     expect(body.error.code).toBe('VALIDATION_ERROR');
     expect(body.error.details.map((d: { path: string }) => d.path)).toContain(field);
@@ -285,14 +297,14 @@ describe('POST /api/auth/login', () => {
   });
 
   it('does not echo the submitted password in validation errors', async () => {
-    const response = await login(postRequest('/api/auth/login', { email: 'bad', password: PASSWORD }));
+    const response = await login(postRequest('/api/auth/admin/login', { email: 'bad', password: PASSWORD }));
     await read(response); // asserts no secrets in the body
   });
 
   it('rejects client-supplied roles or ids instead of honouring them', async () => {
     for (const extra of [{ role: 'ADMIN' }, { userId: USER_ID }, { isActive: true }]) {
       const { status, body } = await read(
-        await login(postRequest('/api/auth/login', { ...credentials, ...extra })),
+        await login(postRequest('/api/auth/admin/login', { ...credentials, ...extra })),
       );
       expect(status).toBe(422);
       expect(body.error.code).toBe('VALIDATION_ERROR');
@@ -301,20 +313,20 @@ describe('POST /api/auth/login', () => {
   });
 
   it('rejects malformed JSON with 400 INVALID_JSON', async () => {
-    const { status, body } = await read(await login(postRequest('/api/auth/login', '{oops')));
+    const { status, body } = await read(await login(postRequest('/api/auth/admin/login', '{oops')));
     expect(status).toBe(400);
     expect(body.error.code).toBe('INVALID_JSON');
   });
 
   it('rejects form-encoded bodies with 400', async () => {
-    const request = postRequest('/api/auth/login', 'email=a&password=b', {
+    const request = postRequest('/api/auth/admin/login', 'email=a&password=b', {
       'content-type': 'application/x-www-form-urlencoded',
     });
     expect((await login(request)).status).toBe(400);
   });
 
   it('rejects cross-site requests with 403 before reading the body', async () => {
-    const request = postRequest('/api/auth/login', credentials, { origin: 'https://evil.example' });
+    const request = postRequest('/api/auth/admin/login', credentials, { origin: 'https://evil.example' });
     const { status, body } = await read(await login(request));
     expect(status).toBe(403);
     expect(body.error.code).toBe('CSRF_REJECTED');
@@ -328,19 +340,29 @@ describe('POST /api/auth/login', () => {
   ])('returns the same safe 401 for a %s', async (_label, status, code) => {
     routes['POST /auth/v1/token'] = () => json({ code: status, error_code: code, msg: 'detail' }, status);
 
-    const response = await read(await login(postRequest('/api/auth/login', credentials)));
+    const response = await read(await login(postRequest('/api/auth/admin/login', credentials)));
     expect(response.status).toBe(401);
     expect(response.body).toEqual({
       data: null,
-      error: { code: 'INVALID_CREDENTIALS', message: 'Invalid email or password.' },
+      error: { code: 'INVALID_CREDENTIALS', message: 'The email or password is incorrect.' },
     });
     expect(state.cookieStore.jar.has(SESSION_COOKIE)).toBe(false);
+  });
+
+  it.each(['teacher', 'student'])('refuses a %s account with the same 401 and discards its session', async (role) => {
+    routes['GET /rest/v1/users'] = () => appUserRow(role);
+
+    const { status, body } = await read(await login(postRequest('/api/auth/admin/login', credentials)));
+    expect(status).toBe(401);
+    expect(body.error).toEqual({ code: 'INVALID_CREDENTIALS', message: 'The email or password is incorrect.' });
+    expect(state.cookieStore.jar.has(SESSION_COOKIE)).toBe(false);
+    expect(supabaseCalls()).toEqual(['POST /auth/v1/token', 'GET /rest/v1/users', 'POST /auth/v1/logout']);
   });
 
   it('maps Supabase Auth rate limiting to 429', async () => {
     routes['POST /auth/v1/token'] = () =>
       json({ code: 429, error_code: 'over_request_rate_limit', msg: 'slow down' }, 429);
-    const { status, body } = await read(await login(postRequest('/api/auth/login', credentials)));
+    const { status, body } = await read(await login(postRequest('/api/auth/admin/login', credentials)));
     expect(status).toBe(429);
     expect(body.error.code).toBe('RATE_LIMITED');
   });
@@ -349,13 +371,13 @@ describe('POST /api/auth/login', () => {
     routes['POST /auth/v1/token'] = () => {
       throw new TypeError('fetch failed');
     };
-    expect((await login(postRequest('/api/auth/login', credentials))).status).toBe(503);
+    expect((await login(postRequest('/api/auth/admin/login', credentials))).status).toBe(503);
   });
 
   it('refuses unprovisioned Auth users, discards their session, and creates nothing', async () => {
     routes['GET /rest/v1/users'] = () => json([]);
 
-    const { status, body } = await read(await login(postRequest('/api/auth/login', credentials)));
+    const { status, body } = await read(await login(postRequest('/api/auth/admin/login', credentials)));
     expect(status).toBe(403);
     expect(body.error.code).toBe('ACCOUNT_NOT_PROVISIONED');
     expect(state.cookieStore.jar.has(SESSION_COOKIE)).toBe(false);
@@ -371,7 +393,7 @@ describe('POST /api/auth/login', () => {
     routes['GET /rest/v1/users'] = () =>
       json([{ id: USER_ID, authUserId: AUTH_ID, role: 'teacher', isActive: false, fullName: 'Asha Verma', email: 'asha@example.com' }]);
 
-    const { status, body } = await read(await login(postRequest('/api/auth/login', credentials)));
+    const { status, body } = await read(await login(postRequest('/api/auth/admin/login', credentials)));
     expect(status).toBe(403);
     expect(body.error.code).toBe('ACCOUNT_INACTIVE');
     expect(state.cookieStore.jar.has(SESSION_COOKIE)).toBe(false);
@@ -379,7 +401,169 @@ describe('POST /api/auth/login', () => {
 
   it('returns 503 when Supabase is not configured', async () => {
     vi.stubEnv('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY', '');
-    expect((await login(postRequest('/api/auth/login', credentials))).status).toBe(503);
+    expect((await login(postRequest('/api/auth/admin/login', credentials))).status).toBe(503);
+    expect(requests).toEqual([]);
+  });
+});
+
+// --- POST /api/auth/teacher/login -------------------------------------------------
+
+describe('POST /api/auth/teacher/login', () => {
+  const phoneLookups = () => requests.filter((r) => new URL(r.url).searchParams.has('phone'));
+
+  beforeEach(() => {
+    // THE SAME PATH ANSWERS THE PHONE LOOKUP (SECRET KEY) AND THE SESSION'S OWN users ROW.
+    routes['GET /rest/v1/users'] = (req) =>
+      new URL(req.url).searchParams.get('phone') === 'eq.9876543210' ? json([{ email: 'asha@example.com' }]) : appUserRow('teacher');
+  });
+
+  it('finds the identity by the normalized phone number, then signs in with the password', async () => {
+    const { status, body } = await read(await teacherLogin(postRequest('/api/auth/teacher/login', { phone: '+91 98765-43210', password: PASSWORD })));
+
+    expect(status).toBe(200);
+    expect(body.data).toMatchObject({ id: USER_ID, role: 'TEACHER' });
+    expect(state.cookieStore.jar.get(SESSION_COOKIE)).toMatch(/^base64-/);
+    const lookup = new URL(phoneLookups()[0].url).searchParams;
+    expect(lookup.get('role')).toBe('eq.teacher');
+    const tokenRequest = requests.find((r) => new URL(r.url).pathname === '/auth/v1/token')!;
+    expect(await tokenRequest.json()).toMatchObject({ email: 'asha@example.com', password: PASSWORD });
+  });
+
+  it('gives an unknown number the same 401 as a wrong password, without trying to sign in', async () => {
+    routes['GET /rest/v1/users'] = () => json([]);
+    const { status, body } = await read(await teacherLogin(postRequest('/api/auth/teacher/login', { phone: '9123456780', password: PASSWORD })));
+    expect(status).toBe(401);
+    expect(body.error).toEqual({ code: 'INVALID_CREDENTIALS', message: 'The phone number or password is incorrect.' });
+    expect(supabaseCalls()).not.toContain('POST /auth/v1/token');
+  });
+
+  it('returns the same 401 for a wrong password', async () => {
+    routes['POST /auth/v1/token'] = () => json({ code: 400, error_code: 'invalid_credentials', msg: 'detail' }, 400);
+    const { status, body } = await read(await teacherLogin(postRequest('/api/auth/teacher/login', { phone: '9876543210', password: PASSWORD })));
+    expect(status).toBe(401);
+    expect(body.error.message).toBe('The phone number or password is incorrect.');
+  });
+
+  it.each([
+    ['a number that is too short', { phone: '98765', password: PASSWORD }, 'phone'],
+    ['a landline-style number', { phone: '0141 2345678', password: PASSWORD }, 'phone'],
+    ['an email instead of a phone', { email: 'asha@example.com', password: PASSWORD }, 'phone'],
+  ])('rejects %s with 422 before contacting Supabase', async (_label, payload, field) => {
+    const { status, body } = await read(await teacherLogin(postRequest('/api/auth/teacher/login', payload)));
+    expect(status).toBe(422);
+    expect(body.error.details.map((d: { path: string }) => d.path)).toContain(field);
+    expect(requests).toEqual([]);
+  });
+});
+
+// --- POST /api/auth/teacher/sign-up -----------------------------------------------
+
+describe('POST /api/auth/teacher/sign-up', () => {
+  const NEW_PASSWORD = 'a long and memorable sentence';
+
+  beforeEach(() => {
+    routes['POST /rest/v1/rpc/claimTeacherSignUp'] = () => json({ status: 'claimed', userId: USER_ID, authUserId: AUTH_ID, email: 'asha@example.com' });
+    routes[`PUT /auth/v1/admin/users/${AUTH_ID}`] = () => json(authUserJson());
+    routes['GET /rest/v1/users'] = () => appUserRow('teacher');
+  });
+
+  it('claims the sign-up, sets the password with the secret key, and signs the teacher in', async () => {
+    const { status, body } = await read(await teacherSignUp(postRequest('/api/auth/teacher/sign-up', { phone: '098765 43210', password: NEW_PASSWORD })));
+
+    expect(status).toBe(200);
+    expect(body.data).toMatchObject({ isSignedIn: true, profile: { role: 'TEACHER' } });
+    expect(state.cookieStore.jar.get(SESSION_COOKIE)).toMatch(/^base64-/);
+    const claim = requests.find((r) => r.url.includes('claimTeacherSignUp'))!;
+    expect(await claim.json()).toEqual({ phone: '9876543210' });
+    const update = requests.find((r) => r.method === 'PUT')!;
+    expect(await update.json()).toMatchObject({ password: NEW_PASSWORD });
+  });
+
+  it.each([
+    ['notFound', 404, 'NOT_FOUND'],
+    ['inactive', 403, 'ACCOUNT_INACTIVE'],
+    ['alreadySignedUp', 409, 'CONFLICT'],
+  ])('answers a %s claim with %i and sets no password', async (claimStatus, status, code) => {
+    routes['POST /rest/v1/rpc/claimTeacherSignUp'] = () => json({ status: claimStatus });
+    const result = await read(await teacherSignUp(postRequest('/api/auth/teacher/sign-up', { phone: '9876543210', password: NEW_PASSWORD })));
+    expect(result.status).toBe(status);
+    expect(result.body.error.code).toBe(code);
+    expect(requests.some((r) => r.method === 'PUT')).toBe(false);
+  });
+
+  it('releases the claim when the password is rejected as weak', async () => {
+    routes[`PUT /auth/v1/admin/users/${AUTH_ID}`] = () =>
+      json({ code: 422, error_code: 'weak_password', msg: 'weak', weak_password: { reasons: ['pwned'] } }, 422);
+    routes['PATCH /rest/v1/users'] = () => new Response(null, { status: 204 });
+
+    const { status, body } = await read(await teacherSignUp(postRequest('/api/auth/teacher/sign-up', { phone: '9876543210', password: NEW_PASSWORD })));
+    expect(status).toBe(422);
+    expect(body.error.details[0].path).toBe('password');
+    const release = requests.find((r) => r.method === 'PATCH')!;
+    expect(new URL(release.url).searchParams.get('id')).toBe(`eq.${USER_ID}`);
+    expect(await release.json()).toEqual({ passwordSetAt: null });
+  });
+
+  it('requires a password of at least 12 characters', async () => {
+    const { status } = await read(await teacherSignUp(postRequest('/api/auth/teacher/sign-up', { phone: '9876543210', password: 'short' })));
+    expect(status).toBe(422);
+    expect(requests).toEqual([]);
+  });
+});
+
+// --- POST /api/auth/student/login -------------------------------------------------
+
+describe('POST /api/auth/student/login', () => {
+  beforeEach(() => {
+    routes['GET /rest/v1/students'] = (req) =>
+      new URL(req.url).searchParams.get('admissionNumber') === 'eq.EM-2026-014'
+        ? json([{ user: { authUserId: AUTH_ID, email: 'asha@example.com', isActive: true } }])
+        : json([]);
+    routes['POST /auth/v1/admin/generate_link'] = () =>
+      json({ ...authUserJson(), action_link: 'x', email_otp: '000000', hashed_token: MAGIC_TOKEN, redirect_to: '', verification_type: 'magiclink' });
+    routes['POST /auth/v1/verify'] = () => json(sessionJson());
+    routes['GET /rest/v1/users'] = () => appUserRow('student');
+  });
+
+  it('signs in with the admission number alone, redeeming a one-time token on the request client', async () => {
+    const { status, body } = await read(await studentLogin(postRequest('/api/auth/student/login', { admissionNumber: '  EM-2026-014 ' })));
+
+    expect(status).toBe(200);
+    expect(body.data).toMatchObject({ id: USER_ID, role: 'STUDENT' });
+    expect(state.cookieStore.jar.get(SESSION_COOKIE)).toMatch(/^base64-/);
+    const link = requests.find((r) => r.url.includes('generate_link'))!;
+    expect(await link.json()).toMatchObject({ type: 'magiclink', email: 'asha@example.com' });
+    const verify = requests.find((r) => r.url.includes('/verify'))!;
+    expect(verify.headers.get('authorization') ?? '').not.toContain('test-service-key');
+    expect(await verify.json()).toMatchObject({ token_hash: MAGIC_TOKEN });
+  });
+
+  it('answers an unknown admission number with 401 and mints nothing', async () => {
+    const { status, body } = await read(await studentLogin(postRequest('/api/auth/student/login', { admissionNumber: 'EM-0000' })));
+    expect(status).toBe(401);
+    expect(body.error.code).toBe('INVALID_CREDENTIALS');
+    expect(supabaseCalls()).toEqual(['GET /rest/v1/students']);
+  });
+
+  it('refuses a deactivated student before minting a token', async () => {
+    routes['GET /rest/v1/students'] = () => json([{ user: { authUserId: AUTH_ID, email: 'asha@example.com', isActive: false } }]);
+    const { status, body } = await read(await studentLogin(postRequest('/api/auth/student/login', { admissionNumber: 'EM-2026-014' })));
+    expect(status).toBe(403);
+    expect(body.error.code).toBe('ACCOUNT_INACTIVE');
+    expect(supabaseCalls()).toEqual(['GET /rest/v1/students']);
+  });
+
+  it('refuses an identity that is not a student and discards the new session', async () => {
+    routes['GET /rest/v1/users'] = () => appUserRow('admin');
+    const { status } = await read(await studentLogin(postRequest('/api/auth/student/login', { admissionNumber: 'EM-2026-014' })));
+    expect(status).toBe(401);
+    expect(state.cookieStore.jar.has(SESSION_COOKIE)).toBe(false);
+  });
+
+  it('rejects anything but an admission number with 422', async () => {
+    for (const payload of [{}, { admissionNumber: '' }, { admissionNumber: 'EM-1', password: 'x' }]) {
+      expect((await studentLogin(postRequest('/api/auth/student/login', payload))).status).toBe(422);
+    }
     expect(requests).toEqual([]);
   });
 });

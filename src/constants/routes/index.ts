@@ -3,9 +3,11 @@ import type { AppRole } from '@/types/auth';
 /** EVERY PAGE PATH IN ONE PLACE; COMPONENTS NEVER HARDCODE PATHS. */
 export const ROUTES = {
   home: '/',
-  signIn: '/sign-in',
-  accountSetup: '/account-setup',
-  accessDenied: '/access-denied',
+  adminSignIn: '/admin/sign-in',
+  adminAccountSetup: '/admin/account-setup',
+  teacherSignIn: '/teacher/sign-in',
+  teacherSignUp: '/teacher/sign-up',
+  studentSignIn: '/student/sign-in',
   admin: {
     overview: '/admin',
     academicYears: '/admin/academic-years',
@@ -22,14 +24,40 @@ export const ROUTES = {
     reportCards: '/admin/report-cards',
     timetable: '/admin/timetable',
     notices: '/admin/notices',
+    administrators: '/admin/administrators',
+  },
+  teacher: {
+    overview: '/teacher',
+    classes: '/teacher/classes',
+    students: '/teacher/students',
+    attendance: '/teacher/attendance',
+    marks: '/teacher/marks',
+    timetable: '/teacher/timetable',
+    notices: '/teacher/notices',
+    profile: '/teacher/profile',
+  },
+  student: {
+    overview: '/student',
+    profile: '/student/profile',
+    attendance: '/student/attendance',
+    timetable: '/student/timetable',
+    results: '/student/results',
+    notices: '/student/notices',
   },
 } as const;
 
-/** WHERE EACH ROLE LANDS AFTER SIGNING IN. TEACHER AND STUDENT PORTALS ARE LATER PHASES. */
+/** WHERE EACH ROLE LANDS AFTER SIGNING IN. */
 export const ROLE_HOME_PATHS: Record<AppRole, string> = {
   ADMIN: ROUTES.admin.overview,
-  TEACHER: ROUTES.accessDenied,
-  STUDENT: ROUTES.accessDenied,
+  TEACHER: ROUTES.teacher.overview,
+  STUDENT: ROUTES.student.overview,
+};
+
+/** EACH ROLE'S OWN SIGN-IN PAGE. */
+export const ROLE_SIGN_IN_PATHS: Record<AppRole, string> = {
+  ADMIN: ROUTES.adminSignIn,
+  TEACHER: ROUTES.teacherSignIn,
+  STUDENT: ROUTES.studentSignIn,
 };
 
 /** WHY A USER WAS SENT BACK TO SIGN-IN; SHOWN AS A NOTICE ABOVE THE FORM. */
