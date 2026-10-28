@@ -21,10 +21,11 @@ function Toaster({ ...props }: ToasterProps) {
           '--normal-bg': 'var(--popover)',
           '--normal-text': 'var(--popover-foreground)',
           '--normal-border': 'var(--border)',
-          '--border-radius': '0px',
+          '--border-radius': '0.875rem',
         } as React.CSSProperties
       }
-      toastOptions={{ classNames: { toast: 'cn-toast shadow-md', description: 'text-muted-foreground' } }}
+      // ROUNDED LIKE A MENU, WITH THE FLOATING SHADOW (ITS HAIRLINE RING REPLACES SONNER'S BORDER).
+      toastOptions={{ classNames: { toast: 'cn-toast rounded-xl! border-0! shadow-md!', description: 'text-muted-foreground' } }}
       {...props}
     />
   );

@@ -219,7 +219,7 @@ export function AdminStudentAttendance({ role = 'ADMIN' }: { role?: 'ADMIN' | 'T
         </FormField>
       </div>
 
-      {!classId && <div className='border bg-card shadow-xs'>{renderEmpty()}</div>}
+      {!classId && <div className='rounded-xl bg-card shadow-xs'>{renderEmpty()}</div>}
 
       {classId && (
         <>

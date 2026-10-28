@@ -31,7 +31,7 @@ export function TeacherTimetable() {
 
   function renderPeriod(entry: TimetableEntry) {
     return (
-      <div className='border bg-card px-3 py-2'>
+      <div className='rounded-xl bg-card shadow-xs px-3 py-2'>
         <p className='text-xs text-muted-foreground tabular-nums'>
           {formatTime(entry.startTime)}–{formatTime(entry.endTime)}
         </p>
@@ -61,9 +61,9 @@ export function TeacherTimetable() {
       {isLoading ? (
         <TimetableSkeleton />
       ) : !yearId ? (
-        <EmptyState icon={CalendarClockIcon} title='No current academic year' description="The school office hasn't set the current academic year yet." className='border bg-card shadow-xs' />
+        <EmptyState icon={CalendarClockIcon} title='No current academic year' description="The school office hasn't set the current academic year yet." className='rounded-xl bg-card shadow-xs' />
       ) : timetable.data && timetable.data.length === 0 ? (
-        <EmptyState icon={CalendarClockIcon} title='No periods yet' description='The school office hasn’t timetabled any periods for you.' className='border bg-card shadow-xs' />
+        <EmptyState icon={CalendarClockIcon} title='No periods yet' description='The school office hasn’t timetabled any periods for you.' className='rounded-xl bg-card shadow-xs' />
       ) : timetable.data ? (
         <TimetableWeek entries={timetable.data} renderPeriod={renderPeriod} today={isoWeekday(todayInSchool())} />
       ) : null}

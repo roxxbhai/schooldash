@@ -55,7 +55,7 @@ export function TeacherStudent() {
     return (
       <>
         <BackLink href={ROUTES.teacher.classes} label='My classes' />
-        <div className='border bg-card shadow-xs'>
+        <div className='rounded-xl bg-card shadow-xs'>
           <ListSkeleton rows={4} />
         </div>
       </>
@@ -81,7 +81,7 @@ export function TeacherStudent() {
     return (
       <>
         <BackLink href={ROUTES.teacher.classes} label='My classes' />
-        <div className='border bg-card shadow-xs'>
+        <div className='rounded-xl bg-card shadow-xs'>
           <EmptyState
             icon={UserRoundXIcon}
             title='Student not found'

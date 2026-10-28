@@ -14,9 +14,9 @@ export function PromotionSelectionBar({ promotion }: { promotion: ClassPromotion
     <div
       role='region'
       aria-label='Selected students'
-      className='mb-3 flex flex-wrap items-center gap-3 border border-primary/30 bg-secondary px-4 py-2.5 transition-opacity duration-150 ease-out starting:opacity-0'
+      className='mb-3 flex flex-wrap items-center gap-3 rounded-xl bg-card px-4 py-2.5 shadow-sm transition-[opacity,translate] duration-200 ease-out starting:translate-y-1 starting:opacity-0'
     >
-      <p className='text-sm font-medium text-secondary-foreground' aria-live='polite'>
+      <p className='text-sm font-medium text-foreground' aria-live='polite'>
         {pluralize(count, 'student')} selected
       </p>
       <div className='ml-auto flex items-center gap-2'>

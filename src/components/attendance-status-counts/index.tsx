@@ -16,7 +16,7 @@ export function AttendanceStatusCounts({ counts, isLoading, label }: AttendanceS
   return (
     <dl className='grid grid-cols-2 gap-3 md:grid-cols-4' aria-label={label}>
       {ATTENDANCE_STATUS_OPTIONS.map((option) => (
-        <div key={option.value} className='border bg-card px-4 py-3 shadow-xs'>
+        <div key={option.value} className='rounded-xl bg-card shadow-xs px-4 py-3'>
           <dt>
             <StatusBadge tone={option.tone}>{option.label}</StatusBadge>
           </dt>

@@ -61,7 +61,7 @@ export function SetupCodeDialog({ setupCode, personName, onClose, note }: SetupC
         <div className='flex flex-col gap-2'>
           <p
             aria-label='Setup code'
-            className='border bg-surface-muted px-4 py-5 text-center tabular-nums text-2xl font-semibold tracking-[0.2em] break-all text-foreground select-all sm:text-3xl'
+            className='rounded-xl bg-surface-muted px-4 py-5 text-center tabular-nums text-2xl font-semibold tracking-[0.2em] break-all text-foreground select-all sm:text-3xl'
           >
             {setupCode?.code}
           </p>

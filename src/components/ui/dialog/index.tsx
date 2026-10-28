@@ -32,8 +32,9 @@ function DialogClose({
 }
 
 /** ENTER 180MS, EXIT 120MS, STRONG EASE-OUT. ADDED ONLY WHEN ANIMATED (tailwind-merge CAN'T OVERRIDE tw-animate CLASSES). */
-const OVERLAY_ANIMATION = 'ease-out data-open:duration-180 data-closed:duration-120 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0';
-const CONTENT_ANIMATION = `${OVERLAY_ANIMATION} data-open:zoom-in-95 data-closed:zoom-out-95`;
+const OVERLAY_ANIMATION = 'ease-out data-open:duration-200 data-closed:duration-140 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0';
+// THE PANEL GROWS FROM 96% AND RISES 8PX AS IT FADES IN; IT LEAVES A LITTLE FASTER THAN IT ARRIVED.
+const CONTENT_ANIMATION = `${OVERLAY_ANIMATION} data-open:zoom-in-96 data-open:slide-in-from-bottom-2 data-closed:zoom-out-97`;
 
 function DialogOverlay({
   className,
@@ -45,7 +46,7 @@ function DialogOverlay({
   return (
     <DialogPrimitive.Overlay
       data-slot='dialog-overlay'
-      className={cn('fixed inset-0 isolate z-50 bg-sidebar/40', isAnimated && OVERLAY_ANIMATION, className)}
+      className={cn('fixed inset-0 isolate z-50 bg-sidebar/30 backdrop-blur-[2px]', isAnimated && OVERLAY_ANIMATION, className)}
       {...props}
     />
   );
@@ -68,7 +69,7 @@ function DialogContent({
       <DialogPrimitive.Content
         data-slot='dialog-content'
         className={cn(
-          'fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-none border bg-popover p-6 text-sm/relaxed text-popover-foreground shadow-lg outline-none sm:max-w-sm',
+          'fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-2xl bg-popover p-6 text-sm/relaxed text-popover-foreground shadow-lg outline-none sm:max-w-sm',
           isAnimated && CONTENT_ANIMATION,
           className
         )}

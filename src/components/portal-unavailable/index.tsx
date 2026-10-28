@@ -22,7 +22,7 @@ export function PortalUnavailable({ message }: PortalUnavailableProps) {
 
   return (
     <main className='flex min-h-dvh flex-col items-center justify-center bg-background px-6 py-16'>
-      <div className='w-full max-w-md border bg-card p-8 shadow-sm'>
+      <div className='w-full max-w-md rounded-xl bg-card shadow-sm p-8'>
         <SchoolWordmark size='sm' />
         <ServerCrashIcon aria-hidden className='mt-8 size-6 text-muted-foreground' />
         <h1 className='mt-3 text-2xl font-semibold tracking-tight'>The portal is unavailable</h1>

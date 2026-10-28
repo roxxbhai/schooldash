@@ -14,7 +14,7 @@ interface EmptyStateProps {
 export function EmptyState({ title, description, icon: Icon = InboxIcon, action, className }: EmptyStateProps) {
   return (
     <div className={cn('flex flex-col items-center px-6 py-12 text-center', className)}>
-      <span aria-hidden className='flex size-10 items-center justify-center bg-muted text-muted-foreground'>
+      <span aria-hidden className='flex size-11 items-center justify-center rounded-full bg-surface-muted text-muted-foreground shadow-[inset_0_0_0_1px_rgb(0_0_0/0.06)]'>
         <Icon className='size-5' />
       </span>
       <p className='mt-4 text-base font-medium text-foreground'>{title}</p>

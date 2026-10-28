@@ -115,14 +115,14 @@ export function AdminReportCards() {
   function renderReport() {
     if (!studentId || !examId) {
       return (
-        <div className='border bg-card'>
+        <div className='rounded-xl bg-card shadow-xs'>
           <EmptyState icon={UserRoundSearchIcon} title='Choose an exam and a student' description='Pick the academic year, exam, class and student above.' />
         </div>
       );
     }
     if (cardQuery.isLoading) {
       return (
-        <div aria-busy className='flex flex-col gap-3 border bg-card p-6'>
+        <div aria-busy className='flex flex-col gap-3 rounded-xl bg-card shadow-xs p-6'>
           <Skeleton className='h-7 w-64' />
           <Skeleton className='h-5 w-96 max-w-full' />
           <Skeleton className='mt-4 h-48 w-full' />
@@ -142,7 +142,7 @@ export function AdminReportCards() {
     }
     if (!card) {
       return (
-        <div className='border bg-card'>
+        <div className='rounded-xl bg-card shadow-xs'>
           <EmptyState
             icon={FileTextIcon}
             title='No report card for this exam'
@@ -155,7 +155,7 @@ export function AdminReportCards() {
     const { summary } = card;
     const isTotalShown = summary.complete && summary.totalMarksObtained !== null && summary.totalMaxMarks !== null;
     return (
-      <article aria-label={`Report card of ${card.student.fullName ?? 'student'}`} className='border bg-card shadow-xs'>
+      <article aria-label={`Report card of ${card.student.fullName ?? 'student'}`} className='rounded-xl bg-card shadow-xs'>
         <header className='grid gap-4 border-b px-6 py-5 sm:grid-cols-2'>
           <div>
             <p className='text-xs font-medium text-muted-foreground uppercase'>Report card</p>
@@ -190,7 +190,7 @@ export function AdminReportCards() {
             empty={<EmptyState icon={FileTextIcon} title='No subjects configured' description="This exam has no papers for the student's class yet." />}
           />
 
-          <dl className='mt-5 grid gap-4 border bg-surface-muted p-4 sm:grid-cols-2'>
+          <dl className='mt-5 grid gap-4 rounded-xl bg-surface-muted p-4 sm:grid-cols-2'>
             <div>
               <dt className='text-sm text-muted-foreground'>Subjects with marks</dt>
               <dd className='mt-0.5 text-lg font-semibold text-foreground tabular-nums'>
@@ -227,7 +227,7 @@ export function AdminReportCards() {
           description='Marks for one student and exam as entered. Percentages, grades and pass/fail are not calculated.'
         />
 
-        <div className='mb-6 grid gap-4 border bg-card p-5 shadow-xs sm:grid-cols-2 xl:grid-cols-4'>
+        <div className='mb-6 grid gap-4 rounded-xl bg-card shadow-xs p-5 sm:grid-cols-2 xl:grid-cols-4'>
           <FormField id='report-year' label='Academic year'>
             <OptionSelect
               id='report-year'

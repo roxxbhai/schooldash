@@ -343,7 +343,7 @@ export function AdminResults({ role = 'ADMIN', canEnterPaper }: AdminResultsProp
         </FormAlert>
       )}
 
-      <div className='mb-6 grid gap-4 border bg-card p-5 shadow-xs sm:grid-cols-2 xl:grid-cols-4'>
+      <div className='mb-6 grid gap-4 rounded-xl bg-card shadow-xs p-5 sm:grid-cols-2 xl:grid-cols-4'>
         <FormField id='marks-year' label='Academic year'>
           <OptionSelect
             id='marks-year'

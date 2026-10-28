@@ -163,7 +163,7 @@ export function AdminExamDetail() {
     return (
       <>
         {backLink}
-        <div className='border bg-card'>
+        <div className='rounded-xl bg-card shadow-xs'>
           <EmptyState
             icon={ClipboardListIcon}
             title='Exam not found'

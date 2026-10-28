@@ -46,7 +46,7 @@ export function NoticeFeed({ basePath }: NoticeFeedProps) {
         </FormAlert>
       )}
 
-      <div className='border bg-card shadow-xs'>
+      <div className='rounded-xl bg-card shadow-xs'>
         {notices === null ? (
           list.errorMessage ? null : <ListSkeleton rows={4} />
         ) : notices.length === 0 ? (

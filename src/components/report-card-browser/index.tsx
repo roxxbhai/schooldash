@@ -134,7 +134,7 @@ export function ReportCardBrowser({ studentId }: ReportCardBrowserProps) {
       )}
 
       {hasNoClass ? (
-        <EmptyState icon={AwardIcon} title='No results yet' description='Results appear once the student is in a class.' className='border bg-card shadow-xs' />
+        <EmptyState icon={AwardIcon} title='No results yet' description='Results appear once the student is in a class.' className='rounded-xl bg-card shadow-xs' />
       ) : (
         <>
           <div className='mb-4 grid gap-3 sm:grid-cols-2 lg:max-w-2xl'>
@@ -154,7 +154,7 @@ export function ReportCardBrowser({ studentId }: ReportCardBrowserProps) {
           </div>
 
           {hasNoExams ? (
-            <EmptyState icon={AwardIcon} title='No exams yet' description='No exams have been set for this class and year.' className='border bg-card shadow-xs' />
+            <EmptyState icon={AwardIcon} title='No exams yet' description='No exams have been set for this class and year.' className='rounded-xl bg-card shadow-xs' />
           ) : (
             <DataTable
               label={reportCard ? `${reportCard.exam.name} report card` : 'Report card'}

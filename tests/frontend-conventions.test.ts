@@ -21,10 +21,15 @@ const uiFiles = [...filesUnder('components'), ...filesUnder('app')].filter((file
 const read = (file: string) => readFileSync(path.join(root, file), 'utf8');
 
 describe('frontend conventions', () => {
-  it('uses square corners only (no rounded-* utilities other than rounded-none / rounded-[inherit])', () => {
-    const offenders = uiFiles.flatMap((file) =>
-      [...read(file).matchAll(/\brounded-(?!none\b|\[inherit\])[\w[\]/.-]+/g)].map((match) => `${file}: ${match[0]}`),
-    );
+  it('uses the soft corner scale: real radius tokens, and square corners only where a control sits flat inside another', () => {
+    const tokens = [...read('app/globals.css').matchAll(/--radius-(?:xs|sm|md|lg|xl|2xl|3xl|4xl):\s*([^;]+);/g)].map((match) => match[1].trim());
+    expect(tokens).toHaveLength(8);
+    expect(tokens.filter((value) => value === '0px' || value === '0')).toEqual([]);
+
+    // THE INPUT GROUP'S INNER INPUT/TEXTAREA (THE GROUP DRAWS THE ROUNDED FIELD), THE UNDERLINED TAB LIST,
+    // AND THE ⌘K PALETTE'S SEARCH FIELD (FLAT ACROSS THE TOP OF THE ROUNDED DIALOG).
+    const flatInside = new Set(['components/ui/input-group/index.tsx', 'components/ui/tabs/index.tsx', 'components/ui/command/index.tsx']);
+    const offenders = uiFiles.filter((file) => !flatInside.has(file) && /\brounded-none\b/.test(read(file)));
     expect(offenders).toEqual([]);
   });
 

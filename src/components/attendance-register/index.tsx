@@ -53,7 +53,7 @@ export function AttendanceRegister({
   const isFirstLoad = isLoading && rows === null;
 
   return (
-    <div className='border bg-card shadow-xs'>
+    <div className='rounded-xl bg-card shadow-xs'>
       {errorMessage && (
         <div className='border-b p-4'>
           <FormAlert tone='error' title="Couldn't load this register">

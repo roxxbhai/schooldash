@@ -130,7 +130,7 @@ export function AdminTeacherDetail() {
     return (
       <>
         <BackLink href={ROUTES.admin.teachers} label='Teachers' />
-        <div className='border bg-card shadow-xs'>
+        <div className='rounded-xl bg-card shadow-xs'>
           <EmptyState
             icon={UserRoundXIcon}
             title='Teacher not found'
@@ -206,7 +206,7 @@ export function AdminTeacherDetail() {
             {isReady && classTeacherOf.length > 0 && (
               <ul className='mt-2 flex flex-wrap gap-2'>
                 {classTeacherOf.map((schoolClass) => (
-                  <li key={schoolClass.id} className='border bg-surface-muted px-2.5 py-1 text-sm'>
+                  <li key={schoolClass.id} className='rounded-full bg-surface-muted px-3 py-1 text-sm'>
                     <span className='font-medium text-foreground'>{classLabel(schoolClass)}</span>
                     <span className='ml-2 text-muted-foreground'>{academicYearById.get(schoolClass.academicYearId)?.name}</span>
                   </li>
@@ -240,7 +240,7 @@ export function AdminTeacherDetail() {
             )}
             {assignments.data && isReady && assignmentRows.length > 0 && (
               <>
-                <ul className='mt-2 divide-y border'>
+                <ul className='mt-2 divide-y divide-border/70 overflow-hidden rounded-xl bg-card shadow-xs'>
                   {assignmentRows.map((assignment) => (
                     <li key={assignment.id} className='flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 px-3 py-2.5 text-sm'>
                       <span className='font-medium text-foreground'>{subjectLabel(subjectById.get(assignment.subjectId))}</span>

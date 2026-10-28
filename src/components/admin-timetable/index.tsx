@@ -201,7 +201,7 @@ export function AdminTimetable() {
         type='button'
         onClick={() => openEdit(entry)}
         aria-label={`Edit ${subject}, ${isClassView ? '' : `class ${schoolClass}, `}${weekdayLabel(entry.dayOfWeek)} ${periodTimeRange(entry)}`}
-        className='flex w-full flex-col gap-0.5 border border-l-2 border-l-primary bg-card px-2.5 py-2 text-left transition-colors outline-none hover:bg-secondary focus-visible:ring-2 focus-visible:ring-ring/50'
+        className='flex w-full flex-col gap-0.5 rounded-lg border-l-[3px] border-l-primary bg-card px-2.5 py-2 text-left shadow-xs transition-[background-color,box-shadow,scale] duration-150 ease-out outline-none hover:bg-secondary hover:shadow-sm focus-visible:ring-2 focus-visible:ring-ring/50 active:scale-[0.98]'
       >
         <span className='tabular-nums text-xs text-muted-foreground'>{periodTimeRange(entry)}</span>
         <span className='line-clamp-2 text-sm font-medium text-foreground'>{subject}</span>
@@ -217,7 +217,7 @@ export function AdminTimetable() {
     if (isClassView && !selectedClassId) {
       return (
         <EmptyState
-          className='border bg-card'
+          className='rounded-xl bg-card shadow-xs'
           icon={CalendarClockIcon}
           title={academicYears.length === 0 ? 'Create an academic year first' : 'No classes in this year'}
           description='A timetable belongs to a class. Add the classes for this year first.'
@@ -234,7 +234,7 @@ export function AdminTimetable() {
     if (!isClassView && !teacherChoice) {
       return (
         <EmptyState
-          className='border bg-card'
+          className='rounded-xl bg-card shadow-xs'
           icon={UserRoundIcon}
           title={teachers.length === 0 ? 'No teachers yet' : 'Choose a teacher'}
           description={teachers.length === 0 ? 'Add teachers to see their weekly periods.' : 'Pick a teacher above to see their week across every class they teach.'}
@@ -255,7 +255,7 @@ export function AdminTimetable() {
     if (entries.length === 0) {
       return (
         <EmptyState
-          className='border bg-card'
+          className='rounded-xl bg-card shadow-xs'
           icon={CalendarClockIcon}
           title={isClassView ? `No periods for ${classLabel(selectedClass)} yet` : 'No periods for this teacher'}
           description={

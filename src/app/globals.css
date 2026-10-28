@@ -22,38 +22,44 @@
  * COMPONENTS USE THE TAILWIND UTILITIES THESE GENERATE (bg-primary,
  * text-muted-foreground, shadow-sm …) AND NEVER HARDCODE HEX VALUES.
  *
- * PALETTE SAMPLED FROM THE APPROVED DASHBOARD REFERENCE: DEEP NAVY CHROME,
- * WHITE SURFACES ON A COOL GREY PAGE, A RESTRAINED GOLD ACCENT, AND SOFT
- * TINTED STATUS COLOURS. LIGHT MODE ONLY.
+ * NAVY IS THE BRAND: THE SIDEBAR, PRIMARY ACTIONS, LINKS AND KEYBOARD FOCUS.
+ * EVERYTHING ELSE SITS ON CALM, SLIGHTLY WARM NEUTRALS (NO BLUE-TINTED GREYS,
+ * NO GOLD), WITH SOFT TINTED STATUS COLOURS USED ONLY FOR MEANING. LIGHT MODE ONLY.
+ *
+ * FEEL: SOFT CORNERS, DEPTH FROM SOFT NEUTRAL SHADOWS WITH A HAIRLINE RING
+ * INSTEAD OF HARD BORDERS, AND QUICK, CALM MOTION ON HOVER, PRESS AND OPEN.
  */
 
 :root {
   /* SURFACES */
-  --background: #f5f6f8;
-  --foreground: #0f1b2d;
+  --background: #f7f7f5;
+  --foreground: #1f1f1d;
   --card: #ffffff;
-  --card-foreground: #0f1b2d;
+  --card-foreground: #1f1f1d;
   --popover: #ffffff;
-  --popover-foreground: #0f1b2d;
-  --surface-muted: #f0f3f7;
+  --popover-foreground: #1f1f1d;
+  --surface-muted: #f1f1ef;
 
   /* BRAND */
   --primary: #0b3164;
-  --primary-hover: #082650;
+  --primary-hover: #174477;
+  --primary-pressed: #08264d;
   --primary-foreground: #ffffff;
-  --secondary: #e9eef6;
-  --secondary-foreground: #0b3164;
-  --brand-gold: #c9a13b;
+  --secondary: #eeeeeb;
+  --secondary-foreground: #30302e;
 
-  /* NEUTRALS */
-  --muted: #f0f3f7;
-  --muted-foreground: #5b6678;
-  --accent: #e9f0fb;
-  --accent-foreground: #0b3164;
-  --border: #e2e6ec;
-  --border-strong: #cfd5de;
-  --input: #cfd5de;
-  --ring: #0a6bca;
+  /* NEUTRALS (WARM, NEVER BLUE-TINTED) */
+  --muted: #f1f1ef;
+  --muted-foreground: #626262;
+  --accent: #f0f0ed;
+  --accent-foreground: #242422;
+  --border: #e4e4e0;
+  --border-strong: #c8c8c2;
+  --border-hover: #afafa8;
+  --input: #d2d2cc;
+  --placeholder: #777772;
+  /* KEYBOARD FOCUS AND FOCUSED FIELDS: THE BRAND NAVY. */
+  --ring: #0b3164;
 
   /* STATUS (TEXT COLOUR / TINTED BACKGROUND) */
   --success: #15803d;
@@ -64,11 +70,11 @@
   --destructive-hover: #912018;
   --destructive-soft: #fdecec;
   --info: #0a5fb4;
-  --info-soft: #e9f0fb;
+  --info-soft: #eef3fa;
 
   /* SIDEBAR (NAVY CHROME) */
   --sidebar: #10284a;
-  --sidebar-foreground: #c9d3e3;
+  --sidebar-foreground: #d6dfeb;
   --sidebar-primary: #ffffff;
   --sidebar-primary-foreground: #10284a;
   --sidebar-accent: #1d3a61;
@@ -79,13 +85,13 @@
 
   /* CHARTS */
   --chart-1: #0b3164;
-  --chart-2: #0a6bca;
+  --chart-2: #4f6d93;
   --chart-3: #15803d;
-  --chart-4: #c9a13b;
+  --chart-4: #8a8a84;
   --chart-5: #b42318;
 
-  /* SQUARE CORNERS EVERYWHERE */
-  --radius: 0px;
+  /* BASE RADIUS (SHADCN'S --radius); THE FULL SCALE IS BELOW. */
+  --radius: 0.625rem;
 }
 
 @theme inline {
@@ -110,18 +116,19 @@
   --text-2xs--line-height: 1rem;
   --text-xs: 0.75rem;
   --text-xs--line-height: 1rem;
-  --text-sm: 0.8125rem;
+  --text-sm: 0.875rem;
   --text-sm--line-height: 1.25rem;
-  --text-base: 0.875rem;
-  --text-base--line-height: 1.375rem;
+  --text-base: 0.9375rem;
+  --text-base--line-height: 1.5rem;
   --text-lg: 1rem;
   --text-lg--line-height: 1.5rem;
   --text-xl: 1.125rem;
   --text-xl--line-height: 1.625rem;
   --text-2xl: 1.375rem;
-  --text-2xl--line-height: 1.75rem;
+  --text-2xl--line-height: 1.875rem;
   --text-3xl: 1.75rem;
-  --text-3xl--line-height: 2.125rem;
+  --text-3xl--line-height: 2.25rem;
+  --text-3xl--letter-spacing: -0.02em;
   --text-4xl: 2rem;
   --text-4xl--line-height: 2.5rem;
 
@@ -134,16 +141,18 @@
   --color-surface-muted: var(--surface-muted);
   --color-primary: var(--primary);
   --color-primary-hover: var(--primary-hover);
+  --color-primary-pressed: var(--primary-pressed);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
-  --color-brand-gold: var(--brand-gold);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-border: var(--border);
   --color-border-strong: var(--border-strong);
+  --color-border-hover: var(--border-hover);
+  --color-placeholder: var(--placeholder);
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-success: var(--success);
@@ -170,26 +179,34 @@
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
 
-  /* EVERY RADIUS UTILITY RESOLVES TO A SQUARE CORNER. */
-  --radius-xs: 0px;
-  --radius-sm: 0px;
-  --radius-md: 0px;
-  --radius-lg: 0px;
-  --radius-xl: 0px;
-  --radius-2xl: 0px;
-  --radius-3xl: 0px;
-  --radius-4xl: 0px;
+  /*
+   * CORNERS. BUTTONS, BADGES, CHIPS AND THE SEARCH FIELD ARE PILLS (rounded-full);
+   * INPUTS AND MENU ITEMS lg; CARDS, TABLES, MENUS AND TOASTS xl; DIALOGS 2xl.
+   */
+  --radius-xs: 0.25rem;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.625rem;
+  --radius-xl: 0.875rem;
+  --radius-2xl: 1.125rem;
+  --radius-3xl: 1.5rem;
+  --radius-4xl: 2rem;
 
-  /* THREE SHADOW LEVELS, TINTED WITH THE SIDEBAR NAVY. */
-  --shadow-xs: 0 1px 2px 0 rgb(16 40 74 / 0.06);
-  --shadow-sm: 0 1px 3px 0 rgb(16 40 74 / 0.08), 0 1px 2px -1px rgb(16 40 74 / 0.06);
-  --shadow-md: 0 8px 24px -4px rgb(16 40 74 / 0.12), 0 2px 6px -2px rgb(16 40 74 / 0.08);
-  --shadow-lg: 0 16px 40px -8px rgb(16 40 74 / 0.18);
+  /*
+   * DEPTH. FOUR LEVELS IN NEUTRAL BLACK (NEVER NAVY-TINTED). EACH CARRIES A 1PX HAIRLINE RING
+   * (THE LAST LAYER), SO A SURFACE NEEDS NO BORDER: xs RESTING CARDS, TABLES AND FIELDS;
+   * sm RAISED (HOVERED CARDS, PRIMARY BUTTONS); md FLOATING (MENUS, POPOVERS, TOASTS);
+   * lg OVERLAYS (DIALOGS, SHEETS, THE ⌘K PALETTE).
+   */
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.04), 0 0 0 1px rgb(0 0 0 / 0.06);
+  --shadow-sm: 0 2px 6px -1px rgb(0 0 0 / 0.07), 0 1px 2px 0 rgb(0 0 0 / 0.04), 0 0 0 1px rgb(0 0 0 / 0.06);
+  --shadow-md: 0 12px 28px -8px rgb(0 0 0 / 0.14), 0 2px 6px -2px rgb(0 0 0 / 0.05), 0 0 0 1px rgb(0 0 0 / 0.06);
+  --shadow-lg: 0 28px 64px -16px rgb(0 0 0 / 0.24), 0 4px 12px -4px rgb(0 0 0 / 0.06), 0 0 0 1px rgb(0 0 0 / 0.07);
 
-  /* MOTION */
-  --default-transition-duration: 120ms;
-  --default-transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
-  --animate-duration-panel: 180ms;
+  /* MOTION: COLOUR CHANGES 150MS, PRESS AND LIFT 160MS, OPENING PANELS 200-220MS, ALL ease-out. */
+  --default-transition-duration: 150ms;
+  --default-transition-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
+  --animate-duration-panel: 200ms;
 }
 
 /*
@@ -267,6 +284,17 @@
   input[type='checkbox']:not(:disabled),
   input[type='radio']:not(:disabled) {
     cursor: pointer;
+  }
+
+  /*
+   * EVERY HOVER FADES INSTEAD OF SNAPPING. :where() KEEPS THIS AT ZERO SPECIFICITY, SO ANY
+   * transition-* UTILITY ON AN ELEMENT STILL WINS. MENU OPTIONS ARE LEFT OUT ON PURPOSE:
+   * KEYBOARD HIGHLIGHT IN A LIST SHOULD MOVE INSTANTLY.
+   */
+  :where(a, button, summary, label, tr, [role='button'], [role='tab'], [role='checkbox'], [role='combobox']) {
+    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, box-shadow, opacity;
+    transition-duration: 150ms;
+    transition-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
   }
 
   /* TABULAR FIGURES FOR NUMBERS IN TABLES AND METRICS. */

@@ -103,7 +103,7 @@ export function StudentOverview() {
           ) : (
             <dl className='grid grid-cols-2 gap-3'>
               {ATTENDANCE_STATUS_OPTIONS.map((option) => (
-                <div key={option.value} className='border px-3 py-2.5'>
+                <div key={option.value} className='rounded-xl bg-surface-muted/70 px-3 py-2.5'>
                   <dt>
                     <StatusBadge tone={option.tone}>{option.label}</StatusBadge>
                   </dt>

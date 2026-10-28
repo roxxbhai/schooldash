@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import { SignOutButton } from '@/components/sign-out-button';
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { PORTALS } from '@/constants/portal-shell';
+import { PORTALS, RAIL_TOOLTIP_OFFSET } from '@/constants/portal-shell';
 import { SCHOOL } from '@/constants/school';
 import { cn } from '@/helpers/cn';
 import { findActiveNavigationItem } from '@/helpers/portal-shell';
@@ -55,7 +55,7 @@ function SidebarContent({ role, profile, isCollapsed }: SidebarContentProps) {
         {portal.sections.map((section) => (
           <div key={section.label} className='mb-5 last:mb-0'>
             <p className={cn('px-2 pb-1.5 tabular-nums text-2xs text-sidebar-foreground/60 uppercase', COLLAPSIBLE_LABEL)}>{section.label}</p>
-            <ul className='flex flex-col gap-px'>
+            <ul className='flex flex-col gap-1'>
               {section.items.map((item) => {
                 const isActive = item === activeItem;
                 const Icon = item.icon;
@@ -68,16 +68,20 @@ function SidebarContent({ role, profile, isCollapsed }: SidebarContentProps) {
                           onClick={closeDrawer}
                           aria-current={isActive ? 'page' : undefined}
                           className={cn(
-                            'flex h-9 items-center gap-2.5 px-2.5 text-sm transition-colors outline-none',
+                            'flex h-9 items-center gap-2.5 rounded-lg px-2.5 text-sm transition-[color,background-color,box-shadow] duration-150 ease-out outline-none',
                             'focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-inset',
-                            isActive ? 'bg-sidebar-active font-medium text-sidebar-accent-foreground' : 'hover:bg-sidebar-accent/60 hover:text-white active:bg-sidebar-accent',
+                            isActive ? 'bg-sidebar-active font-semibold text-sidebar-accent-foreground' : 'font-medium hover:bg-sidebar-accent hover:text-white',
                           )}
                         >
-                          <Icon aria-hidden className={cn('size-4 shrink-0', isActive ? 'text-white' : 'text-sidebar-foreground/80')} />
+                          <Icon aria-hidden className={cn('size-4 shrink-0 transition-colors duration-150 ease-out', isActive ? 'text-white' : 'text-sidebar-foreground/80')} />
                           <span className={COLLAPSIBLE_LABEL}>{item.label}</span>
                         </Link>
                       </TooltipTrigger>
-                      {isCollapsed && <TooltipContent side='right'>{item.label}</TooltipContent>}
+                      {isCollapsed && (
+                        <TooltipContent side='right' sideOffset={RAIL_TOOLTIP_OFFSET}>
+                          {item.label}
+                        </TooltipContent>
+                      )}
                     </Tooltip>
                   </li>
                 );
@@ -89,7 +93,7 @@ function SidebarContent({ role, profile, isCollapsed }: SidebarContentProps) {
 
       <div className='shrink-0 border-t border-sidebar-border p-3'>
         <div className='flex items-center gap-3 py-2'>
-          <span aria-hidden className='flex size-9 shrink-0 items-center justify-center bg-sidebar-accent text-sm font-semibold text-white'>
+          <span aria-hidden className='flex size-9 shrink-0 items-center justify-center rounded-full bg-sidebar-accent text-sm font-semibold text-white shadow-[inset_0_0_0_1px_rgb(255_255_255/0.08)]'>
             {initialsOf(profile.fullName)}
           </span>
           <div className={cn('min-w-0', COLLAPSIBLE_LABEL)}>
@@ -132,12 +136,14 @@ export function PortalSidebar({ role, profile }: PortalSidebarProps) {
             onClick={toggleSidebar}
             aria-label={toggleLabel}
             aria-expanded={!isSidebarCollapsed}
-            className='absolute top-4 right-3.5 flex size-8 items-center justify-center text-sidebar-foreground transition-colors outline-none hover:bg-sidebar-accent/60 hover:text-white focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-inset'
+            className='absolute top-4 right-3.5 flex size-8 items-center justify-center rounded-lg text-sidebar-foreground transition-colors duration-150 ease-out outline-none hover:bg-sidebar-accent/70 hover:text-white focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-inset'
           >
             {isSidebarCollapsed ? <PanelLeftOpenIcon aria-hidden className='size-4' /> : <PanelLeftCloseIcon aria-hidden className='size-4' />}
           </button>
         </TooltipTrigger>
-        <TooltipContent side='right'>{toggleLabel}</TooltipContent>
+        <TooltipContent side='right' sideOffset={RAIL_TOOLTIP_OFFSET + 2}>
+          {toggleLabel}
+        </TooltipContent>
       </Tooltip>
     </aside>
   );

@@ -32,7 +32,7 @@ export function NoticeReader({ listPath }: NoticeReaderProps) {
     return (
       <>
         <BackLink href={listPath} label='Notices' />
-        <div className='border bg-card shadow-xs'>
+        <div className='rounded-xl bg-card shadow-xs'>
           <ListSkeleton rows={3} />
         </div>
       </>
@@ -58,7 +58,7 @@ export function NoticeReader({ listPath }: NoticeReaderProps) {
     return (
       <>
         <BackLink href={listPath} label='Notices' />
-        <div className='border bg-card shadow-xs'>
+        <div className='rounded-xl bg-card shadow-xs'>
           <EmptyState
             icon={MegaphoneIcon}
             title='Notice not found'
@@ -77,7 +77,7 @@ export function NoticeReader({ listPath }: NoticeReaderProps) {
   return (
     <>
       <BackLink href={listPath} label='Notices' />
-      <article className='max-w-3xl border bg-card shadow-xs'>
+      <article className='max-w-3xl rounded-xl bg-card shadow-xs'>
         <header className='border-b px-6 py-5'>
           {notice.data.category && <StatusBadge tone='neutral'>{notice.data.category}</StatusBadge>}
           <h1 className='mt-2 text-3xl font-semibold tracking-tight text-foreground'>{notice.data.title}</h1>

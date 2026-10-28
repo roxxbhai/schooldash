@@ -185,7 +185,7 @@ export function AdminNoticeDetail() {
       <>
         <BackLink />
         <EmptyState
-          className='border bg-card'
+          className='rounded-xl bg-card shadow-xs'
           icon={FileQuestionIcon}
           title='Notice not found'
           description='It may have been mistyped, or the link is out of date. Notices are never deleted, so check the full list.'

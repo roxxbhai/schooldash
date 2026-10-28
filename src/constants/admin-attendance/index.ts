@@ -11,12 +11,12 @@ export const ATTENDANCE_STATUS_OPTIONS: readonly AttendanceStatusOption[] = [
 
 /** SELECTED-BUTTON COLOURS PER TONE (SOFT FILL, STRONG TEXT, MATCHING BORDER). */
 export const ATTENDANCE_TONE_SELECTED_CLASSES: Record<StatusTone, string> = {
-  success: 'border-success bg-success-soft text-success',
-  danger: 'border-destructive bg-destructive-soft text-destructive',
-  warning: 'border-warning bg-warning-soft text-warning',
-  info: 'border-info bg-info-soft text-info',
-  neutral: 'border-border bg-muted text-foreground',
-  brand: 'border-primary bg-secondary text-secondary-foreground',
+  success: 'bg-success-soft text-success shadow-xs ring-1 ring-success/35',
+  danger: 'bg-destructive-soft text-destructive shadow-xs ring-1 ring-destructive/30',
+  warning: 'bg-warning-soft text-warning shadow-xs ring-1 ring-warning/30',
+  info: 'bg-info-soft text-info shadow-xs ring-1 ring-info/30',
+  neutral: 'bg-card text-foreground shadow-xs',
+  brand: 'bg-secondary text-secondary-foreground shadow-xs ring-1 ring-primary/30',
 };
 
 export const ATTENDANCE_ROW_STATE_BADGES: Record<AttendanceRowState, { label: string; tone: StatusTone }> = {

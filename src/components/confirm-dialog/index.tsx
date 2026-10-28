@@ -64,7 +64,7 @@ export function ConfirmDialog({
           <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
           <Button
             variant={tone === 'destructive' ? 'destructive' : 'default'}
-            className={cn(tone === 'destructive' && 'bg-destructive text-white hover:bg-destructive-hover', isPending && 'disabled:opacity-100')}
+            className={cn(tone === 'destructive' && 'bg-destructive text-white hover:bg-destructive-hover active:bg-[color-mix(in_oklch,var(--destructive-hover),black_15%)]', isPending && 'disabled:opacity-100')}
             onClick={onConfirm}
             disabled={isPending}
           >

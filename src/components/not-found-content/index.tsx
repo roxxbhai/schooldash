@@ -7,7 +7,7 @@ import { ROUTES } from '@/constants/routes';
 export function NotFoundContent() {
   return (
     <main className='flex min-h-dvh items-center justify-center bg-background px-6 py-16'>
-      <div className='w-full max-w-md border bg-card p-8 shadow-sm'>
+      <div className='w-full max-w-md rounded-xl bg-card shadow-sm p-8'>
         <SchoolWordmark size='sm' />
         <p className='mt-8 tabular-nums text-xs tracking-[0.14em] text-muted-foreground uppercase'>Error 404</p>
         <h1 className='mt-2 text-2xl font-semibold tracking-tight'>Page not found</h1>

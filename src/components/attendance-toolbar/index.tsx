@@ -34,7 +34,7 @@ export function AttendanceToolbar({ counts, pendingCount, isSaving, isDisabled, 
   }
 
   return (
-    <div className='sticky bottom-0 z-10 mt-4 flex flex-col gap-3 border bg-card px-4 py-3 shadow-sm lg:flex-row lg:items-center lg:justify-between'>
+    <div className='sticky bottom-0 z-10 mt-4 flex flex-col gap-3 rounded-xl bg-card shadow-sm px-4 py-3 lg:flex-row lg:items-center lg:justify-between'>
       <ul aria-label='Totals' className='flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm'>
         {ATTENDANCE_STATUS_OPTIONS.map((option) => (
           <li key={option.value} className='flex items-center gap-1.5'>

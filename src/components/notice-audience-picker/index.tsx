@@ -87,7 +87,7 @@ export function NoticeAudiencePicker({ id, value, onChange, error, isDisabled = 
   return (
     <fieldset
       id={id}
-      className='flex flex-col gap-4 border p-4'
+      className='flex flex-col gap-4 rounded-xl border border-border/80 p-4'
       aria-invalid={error ? true : undefined}
       aria-describedby={error ? `${id}-error` : `${id}-summary`}
       disabled={isDisabled}
@@ -98,7 +98,7 @@ export function NoticeAudiencePicker({ id, value, onChange, error, isDisabled = 
         <p className='text-xs font-medium text-muted-foreground'>Everyone with a role</p>
         <div className='grid gap-2 sm:grid-cols-2'>
           {AUDIENCE_ROLES.map((option) => (
-            <label key={option.role} htmlFor={`${id}-role-${option.role}`} className='flex cursor-pointer items-start gap-2.5 border bg-card p-3 hover:bg-surface-muted'>
+            <label key={option.role} htmlFor={`${id}-role-${option.role}`} className='flex cursor-pointer items-start gap-2.5 rounded-xl bg-card p-3 shadow-xs hover:bg-surface-muted has-data-checked:shadow-[0_0_0_1.5px_var(--primary)]'>
               <Checkbox
                 id={`${id}-role-${option.role}`}
                 checked={value.roles.includes(option.role)}
@@ -152,16 +152,16 @@ export function NoticeAudiencePicker({ id, value, onChange, error, isDisabled = 
           </Button>
         </div>
         {shownClasses.length === 0 ? (
-          <p className='border border-dashed px-3 py-4 text-center text-sm text-muted-foreground'>
+          <p className='rounded-xl border border-dashed px-3 py-4 text-center text-sm text-muted-foreground'>
             {yearClasses.length === 0 ? 'No classes in this academic year.' : 'No classes match this class and section.'}
           </p>
         ) : (
-          <div className='scrollbar-subtle grid max-h-56 grid-cols-2 gap-1 overflow-y-auto border bg-card p-2 sm:grid-cols-4'>
+          <div className='scrollbar-subtle grid max-h-56 grid-cols-2 gap-1 overflow-y-auto rounded-xl bg-card p-2 shadow-xs sm:grid-cols-4'>
             {shownClasses.map((schoolClass) => (
               <label
                 key={schoolClass.id}
                 htmlFor={`${id}-class-${schoolClass.id}`}
-                className='flex cursor-pointer items-center gap-2 px-2 py-1.5 text-sm hover:bg-surface-muted'
+                className='flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-surface-muted'
               >
                 <Checkbox
                   id={`${id}-class-${schoolClass.id}`}
@@ -194,7 +194,7 @@ export function NoticeAudiencePicker({ id, value, onChange, error, isDisabled = 
         {value.students.length > 0 && (
           <ul aria-label='Students added' className='scrollbar-subtle flex max-h-40 flex-wrap gap-1.5 overflow-y-auto'>
             {value.students.map((student) => (
-              <li key={student.id} className='flex max-w-full items-center gap-1 border bg-card py-0.5 pr-0.5 pl-2 text-sm'>
+              <li key={student.id} className='flex max-w-full items-center gap-1 rounded-full bg-card py-0.5 pr-0.5 pl-3 text-sm shadow-xs transition-opacity duration-150 ease-out starting:opacity-0'>
                 <span className='truncate'>{audienceStudentLabel(student)}</span>
                 <Button
                   type='button'

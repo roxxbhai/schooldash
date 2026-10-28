@@ -17,11 +17,11 @@ interface StatusBadgeProps {
   className?: string;
 }
 
-/** A SQUARE, TINTED LABEL FOR A STATE (ACTIVE, DRAFT, PRESENT …). COLOUR IS NEVER THE ONLY SIGNAL: THE TEXT SAYS IT TOO. */
+/** A TINTED PILL FOR A STATE (ACTIVE, DRAFT, PRESENT …). COLOUR IS NEVER THE ONLY SIGNAL: THE TEXT SAYS IT TOO. */
 export function StatusBadge({ tone, children, className }: StatusBadgeProps) {
   return (
-    <span className={cn('inline-flex h-5 items-center gap-1 px-1.5 text-xs font-medium whitespace-nowrap', TONE_CLASSES[tone], className)}>
-      <span aria-hidden className='size-1.5 bg-current' />
+    <span className={cn('inline-flex h-5 items-center gap-1.5 rounded-full pr-2 pl-1.5 text-xs font-medium whitespace-nowrap', TONE_CLASSES[tone], className)}>
+      <span aria-hidden className='size-1.5 rounded-full bg-current' />
       {children}
     </span>
   );

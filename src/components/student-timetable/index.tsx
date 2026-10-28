@@ -35,7 +35,7 @@ export function StudentTimetable() {
 
   function renderPeriod(entry: TimetableEntry) {
     return (
-      <div className='border bg-card px-3 py-2'>
+      <div className='rounded-xl bg-card shadow-xs px-3 py-2'>
         <p className='text-xs text-muted-foreground tabular-nums'>
           {formatTime(entry.startTime)}–{formatTime(entry.endTime)}
         </p>
@@ -65,11 +65,11 @@ export function StudentTimetable() {
       {isLoading ? (
         <TimetableSkeleton />
       ) : !yearId ? (
-        <EmptyState icon={CalendarClockIcon} title='No current academic year' description="The school office hasn't set the current academic year yet." className='border bg-card shadow-xs' />
+        <EmptyState icon={CalendarClockIcon} title='No current academic year' description="The school office hasn't set the current academic year yet." className='rounded-xl bg-card shadow-xs' />
       ) : timetable.data && !timetable.data.enrollment ? (
-        <EmptyState icon={CalendarClockIcon} title='Not in a class yet' description='Your timetable appears once the school office adds you to a class.' className='border bg-card shadow-xs' />
+        <EmptyState icon={CalendarClockIcon} title='Not in a class yet' description='Your timetable appears once the school office adds you to a class.' className='rounded-xl bg-card shadow-xs' />
       ) : timetable.data && timetable.data.entries.length === 0 ? (
-        <EmptyState icon={CalendarClockIcon} title='No periods yet' description="Your class's timetable hasn't been set up yet." className='border bg-card shadow-xs' />
+        <EmptyState icon={CalendarClockIcon} title='No periods yet' description="Your class's timetable hasn't been set up yet." className='rounded-xl bg-card shadow-xs' />
       ) : timetable.data ? (
         <TimetableWeek entries={timetable.data.entries} renderPeriod={renderPeriod} today={isoWeekday(todayInSchool())} />
       ) : null}

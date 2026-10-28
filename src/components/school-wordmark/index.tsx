@@ -9,16 +9,16 @@ interface SchoolWordmarkProps {
 }
 
 /**
- * TYPOGRAPHIC SCHOOL MARK, USED UNTIL AN OFFICIAL CREST IS SUPPLIED: A GOLD
- * RULE, THE SCHOOL NAME IN GEIST SANS, AND THE SCHOOL TYPE AND TOWN IN SMALL
- * MONO CAPITALS.
+ * TYPOGRAPHIC SCHOOL MARK, USED UNTIL AN OFFICIAL CREST IS SUPPLIED: A NAVY
+ * RULE (WHITE ON DARK BACKGROUNDS), THE SCHOOL NAME, AND THE SCHOOL TYPE AND
+ * TOWN IN SMALL CAPITALS.
  */
 export function SchoolWordmark({ tone = 'default', size = 'md', className }: SchoolWordmarkProps) {
   const isInverse = tone === 'inverse';
 
   return (
     <div className={cn('flex items-stretch gap-3', className)}>
-      <span aria-hidden className={cn('w-1 shrink-0 bg-brand-gold', size === 'lg' ? 'w-1.5' : 'w-1')} />
+      <span aria-hidden className={cn('w-1 shrink-0 rounded-full', isInverse ? 'bg-white/80' : 'bg-primary', size === 'lg' ? 'w-1.5' : 'w-1')} />
       <div className='flex flex-col justify-center'>
         <span
           className={cn(

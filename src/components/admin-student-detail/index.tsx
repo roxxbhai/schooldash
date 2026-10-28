@@ -160,7 +160,7 @@ export function AdminStudentDetail() {
     return (
       <>
         <BackLink href={ROUTES.admin.students} label='Students' />
-        <div className='border bg-card shadow-xs'>
+        <div className='rounded-xl bg-card shadow-xs'>
           <EmptyState
             icon={UserRoundXIcon}
             title='Student not found'
@@ -328,7 +328,7 @@ export function AdminStudentDetail() {
                       {yearExams.length === 0 ? (
                         <p className='mt-1 text-sm text-muted-foreground'>No exams in this year yet.</p>
                       ) : (
-                        <ul className='mt-2 divide-y border'>
+                        <ul className='mt-2 divide-y divide-border/70 overflow-hidden rounded-xl bg-card shadow-xs'>
                           {yearExams.map((exam) => (
                             <li key={exam.id} className='flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-3 py-2 text-sm'>
                               <div className='min-w-0'>

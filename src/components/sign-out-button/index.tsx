@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { RAIL_TOOLTIP_OFFSET } from '@/constants/portal-shell';
 import { useSignOut } from '@/hooks/use-sign-out';
 import { cn } from '@/helpers/cn';
 import type { AppRole } from '@/types/auth';
@@ -34,7 +35,7 @@ export function SignOutButton({ role, variant = 'outline', tooltip, className }:
       disabled={isSigningOut}
       className={cn(
         isSidebar &&
-          'justify-start overflow-hidden px-[9px] text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-white focus-visible:ring-sidebar-ring focus-visible:ring-offset-0 focus-visible:ring-inset',
+          'justify-start overflow-hidden rounded-lg px-[9px] text-sidebar-foreground hover:bg-sidebar-accent/70 hover:text-white font-medium focus-visible:outline-sidebar-ring focus-visible:-outline-offset-2',
         className,
       )}
     >
@@ -51,7 +52,9 @@ export function SignOutButton({ role, variant = 'outline', tooltip, className }:
       {tooltip ? (
         <Tooltip>
           <TooltipTrigger asChild>{button}</TooltipTrigger>
-          <TooltipContent side='right'>{tooltip}</TooltipContent>
+          <TooltipContent side='right' sideOffset={RAIL_TOOLTIP_OFFSET}>
+            {tooltip}
+          </TooltipContent>
         </Tooltip>
       ) : (
         button

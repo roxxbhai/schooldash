@@ -50,9 +50,10 @@ export function DataTable<T>({
   const isFirstLoad = isLoading && rows === null;
 
   return (
-    <div className='border bg-card shadow-xs'>
+    // overflow-hidden CLIPS THE HEADER FILL AND ROW HOVERS TO THE ROUNDED CORNERS.
+    <div className='overflow-hidden rounded-xl bg-card shadow-xs'>
       {errorMessage && (
-        <div className='border-b p-4'>
+        <div className='border-b border-border/70 p-4'>
           <FormAlert tone='error' title="Couldn't load this list">
             <span>{errorMessage}</span>
             {onRetry && (
@@ -65,14 +66,14 @@ export function DataTable<T>({
         </div>
       )}
 
-      <div className={cn('relative overflow-x-auto', isLoading && rows !== null && 'opacity-60 transition-opacity')} aria-busy={isLoading}>
+      <div className={cn('relative overflow-x-auto transition-opacity duration-200 ease-out', isLoading && rows !== null && 'opacity-60')} aria-busy={isLoading}>
         <Table aria-label={label}>
           <TableHeader className='bg-surface-muted'>
             <TableRow className='hover:bg-transparent'>
               {columns.map((column) => (
                 <TableHead
                   key={column.key}
-                  className={cn('h-10 px-4 text-xs font-medium text-muted-foreground', column.align === 'right' && 'text-right', column.className)}
+                  className={cn('h-10 px-4 text-xs font-semibold text-muted-foreground', column.align === 'right' && 'text-right', column.className)}
                 >
                   {column.header}
                 </TableHead>

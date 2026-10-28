@@ -30,7 +30,7 @@ const FADE_IN = 'transition-opacity duration-200 ease-out starting:opacity-0';
 /** A QUIET CARD: A SMALL TITLE ROW, NO DIVIDER UNDER IT. */
 function Section({ title, aside, className, children }: SectionProps) {
   return (
-    <section className={cn('border bg-card shadow-xs', className)}>
+    <section className={cn('rounded-xl bg-card shadow-xs', className)}>
       <div className='flex items-baseline justify-between gap-3 px-5 pt-4 pb-3'>
         <h2 className='text-[0.9375rem] leading-snug font-semibold tracking-[-0.01em] text-foreground'>{title}</h2>
         {aside && <div className='shrink-0 text-xs text-muted-foreground'>{aside}</div>}
@@ -42,8 +42,8 @@ function Section({ title, aside, className, children }: SectionProps) {
 
 function AttentionRow({ item, isPrimary }: { item: AttentionItem; isPrimary: boolean }) {
   return (
-    <li className='flex items-center gap-3 border-t px-5 py-3'>
-      <span aria-hidden className={cn('size-1.5 shrink-0', item.tone === 'warning' ? 'bg-warning' : 'bg-info')} />
+    <li className='flex items-center gap-3 border-t border-border/60 px-5 py-3'>
+      <span aria-hidden className={cn('size-2 shrink-0 rounded-full ring-4', item.tone === 'warning' ? 'bg-warning ring-warning-soft' : 'bg-info ring-info-soft')} />
       <div className='min-w-0 flex-1'>
         <p className='text-sm leading-snug font-medium text-foreground'>
           <span className='sr-only'>{item.tone === 'warning' ? 'Needs action: ' : 'To review: '}</span>
@@ -60,7 +60,7 @@ function AttentionRow({ item, isPrimary }: { item: AttentionItem; isPrimary: boo
 
 function DoneRow({ item }: { item: DoneItem }) {
   return (
-    <li className='flex items-center gap-3 border-t px-5 py-2.5'>
+    <li className='flex items-center gap-3 border-t border-border/60 px-5 py-2.5'>
       <CheckIcon aria-hidden className='size-3.5 shrink-0 text-success' strokeWidth={2.5} />
       <div className='min-w-0 flex-1'>
         <p className='text-sm leading-snug text-muted-foreground'>{item.title}</p>
@@ -86,14 +86,14 @@ function AttentionSection({ overview, isLoading }: { overview: TodayOverview | n
       {isLoading ? (
         <ul aria-hidden>
           {[0, 1, 2].map((row) => (
-            <li key={row} className='flex items-center gap-3 border-t px-5 py-3.5'>
-              <Skeleton className='h-9 flex-1' />
-              <Skeleton className='h-8 w-24' />
+            <li key={row} className='flex items-center gap-3 border-t border-border/60 px-5 py-3.5'>
+              <Skeleton className='h-9 flex-1 rounded-lg' />
+              <Skeleton className='h-8 w-24 rounded-full' />
             </li>
           ))}
         </ul>
       ) : attention.length === 0 ? (
-        <div className={cn('border-t px-5 py-8 text-center', FADE_IN)}>
+        <div className={cn('border-t border-border/60 px-5 py-8 text-center', FADE_IN)}>
           <p className='text-[0.9375rem] font-medium text-foreground'>You&apos;re all caught up</p>
           <p className='mt-0.5 text-sm text-muted-foreground'>Nothing needs you right now.</p>
         </div>
@@ -111,7 +111,7 @@ function AttentionSection({ overview, isLoading }: { overview: TodayOverview | n
             type='button'
             onClick={toggleDone}
             aria-expanded={isDoneOpen}
-            className='flex w-full items-center gap-1.5 border-t px-5 py-2.5 text-left text-xs text-muted-foreground transition-colors hover:text-foreground'
+            className='flex w-full items-center gap-1.5 border-t border-border/60 px-5 py-2.5 text-left text-xs text-muted-foreground transition-colors hover:text-foreground'
           >
             <ChevronRightIcon aria-hidden className={cn('size-3 transition-transform duration-220 ease-in-out', isDoneOpen && 'rotate-90')} />
             {pluralize(done.length, 'thing')} done
@@ -135,8 +135,8 @@ function UpcomingSection({ items, isLoading }: { items: UpcomingItem[]; isLoadin
     <Section title='Coming up'>
       {isLoading ? (
         <div className='flex flex-col gap-3 px-5 pb-5' aria-hidden>
-          <Skeleton className='h-10 w-full' />
-          <Skeleton className='h-10 w-full' />
+          <Skeleton className='h-10 w-full rounded-lg' />
+          <Skeleton className='h-10 w-full rounded-lg' />
         </div>
       ) : items.length === 0 ? (
         <p className={cn('px-5 pb-5 text-sm text-muted-foreground', FADE_IN)}>
@@ -150,8 +150,8 @@ function UpcomingSection({ items, isLoading }: { items: UpcomingItem[]; isLoadin
           {items.map((item) => {
             const block = dateBlock(item.date);
             return (
-              <li key={item.id} className='border-t first:border-t-0'>
-                <Link href={item.href} className='grid grid-cols-[2.75rem_minmax(0,1fr)] items-start gap-3 px-3 py-2.5 transition-colors hover:bg-surface-muted active:bg-muted'>
+              <li key={item.id}>
+                <Link href={item.href} className='grid grid-cols-[2.75rem_minmax(0,1fr)] items-start gap-3 rounded-lg px-3 py-2.5 transition-[background-color,scale] duration-150 ease-out hover:bg-surface-muted active:scale-[0.99] active:bg-muted'>
                   <span className='pt-0.5 text-center leading-none'>
                     <span className='block text-2xs font-semibold tracking-[0.06em] text-muted-foreground uppercase'>{block.month}</span>
                     <span className='mt-1 block text-lg font-semibold tracking-[-0.02em] text-foreground tabular-nums'>{block.day}</span>
@@ -220,10 +220,10 @@ function SnapshotSection({ snapshot }: { snapshot: ExamSnapshot }) {
                 <span className='truncate text-muted-foreground' title={subject.label}>
                   {subject.label}
                 </span>
-                <span aria-hidden className='relative h-1.5 bg-muted'>
+                <span aria-hidden className='relative h-1.5 overflow-hidden rounded-full bg-muted'>
                   <span
                     className={cn(
-                      'absolute inset-y-0 left-0 bg-primary',
+                      'absolute inset-y-0 left-0 rounded-full bg-primary',
                       subject.belowPassCount > 0 && 'after:absolute after:inset-y-0 after:right-0 after:w-1 after:bg-warning',
                     )}
                     style={{ width: `${Math.min(100, subject.averagePercent)}%` }}
@@ -280,7 +280,7 @@ function YearCountsStrip({ overview }: { overview: TodayOverview }) {
   ];
 
   return (
-    <nav aria-label='This year' className={cn('flex flex-wrap gap-x-6 gap-y-2 border bg-card px-5 py-3.5 text-sm shadow-xs xl:col-span-2', FADE_IN)}>
+    <nav aria-label='This year' className={cn('flex flex-wrap gap-x-6 gap-y-2 rounded-xl bg-card shadow-xs px-5 py-3.5 text-sm xl:col-span-2', FADE_IN)}>
       {entries.map((entry) => (
         <Link key={entry.href} href={entry.href} className='text-muted-foreground transition-colors hover:text-primary'>
           <span className='font-semibold text-foreground tabular-nums'>{entry.value === null ? '—' : formatNumber(entry.value)}</span>{' '}

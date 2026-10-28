@@ -22,7 +22,7 @@ function TableHeader({ className, ...props }: React.ComponentProps<'thead'>) {
   return (
     <thead
       data-slot='table-header'
-      className={cn('[&_tr]:border-b', className)}
+      className={cn('[&_tr]:border-b [&_tr]:border-border/70', className)}
       {...props}
     />
   );
@@ -56,7 +56,8 @@ function TableRow({ className, ...props }: React.ComponentProps<'tr'>) {
     <tr
       data-slot='table-row'
       className={cn(
-        'border-b transition-colors hover:bg-muted/50 has-aria-expanded:bg-muted/50 data-[state=selected]:bg-muted',
+        // ROWS ARE DIVIDED BY A LIGHT LINE; THE HOVER IS A SOFT NEUTRAL (THE PAGE TONE) THAT FADES IN AND OUT.
+        'border-b border-border/80 transition-colors duration-[120ms] ease-out hover:bg-background has-aria-expanded:bg-background data-[state=selected]:bg-muted',
         className
       )}
       {...props}

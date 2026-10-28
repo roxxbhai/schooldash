@@ -9,12 +9,12 @@ interface PanelProps {
   children: React.ReactNode;
 }
 
-/** A WHITE SECTION WITH AN OPTIONAL TITLE ROW; THE PORTAL'S CARD. */
+/** A WHITE, SOFTLY RAISED SECTION WITH AN OPTIONAL TITLE ROW; THE PORTAL'S CARD. */
 export function Panel({ title, description, actions, className, bodyClassName, children }: PanelProps) {
   return (
-    <section className={cn('border bg-card shadow-xs', className)}>
+    <section className={cn('rounded-xl bg-card shadow-xs', className)}>
       {(title || actions) && (
-        <div className='flex flex-wrap items-start justify-between gap-3 border-b px-5 py-4'>
+        <div className='flex flex-wrap items-start justify-between gap-3 border-b border-border/70 px-5 py-4'>
           <div className='min-w-0'>
             {title && <h2 className='text-xl font-semibold tracking-tight text-foreground'>{title}</h2>}
             {description && <div className='mt-0.5 text-sm text-muted-foreground'>{description}</div>}

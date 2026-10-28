@@ -15,7 +15,7 @@ interface RouteErrorProps {
  */
 export function RouteError({ retry, digest }: RouteErrorProps) {
   return (
-    <div role='alert' className='mx-auto max-w-lg border bg-card p-8 shadow-xs'>
+    <div role='alert' className='mx-auto max-w-lg rounded-xl bg-card shadow-xs p-8'>
       <TriangleAlertIcon aria-hidden className='size-6 text-warning' />
       <h1 className='mt-3 text-2xl font-semibold tracking-tight'>This page ran into a problem</h1>
       <p className='mt-2 text-base text-muted-foreground'>

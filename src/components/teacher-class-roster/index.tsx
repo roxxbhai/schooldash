@@ -80,7 +80,7 @@ export function TeacherClassRoster() {
     return (
       <>
         <BackLink href={ROUTES.teacher.classes} label='My classes' />
-        <div className='border bg-card shadow-xs'>
+        <div className='rounded-xl bg-card shadow-xs'>
           <EmptyState
             icon={SchoolIcon}
             title='Class not found'
@@ -137,7 +137,7 @@ export function TeacherClassRoster() {
       </div>
 
       {!isReady ? (
-        <div className='border bg-card shadow-xs'>
+        <div className='rounded-xl bg-card shadow-xs'>
           <ListSkeleton rows={5} />
         </div>
       ) : (

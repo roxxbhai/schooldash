@@ -91,14 +91,14 @@ export function CommandPalette({ role }: CommandPaletteProps) {
         type='button'
         onClick={openPalette}
         aria-keyshortcuts={modifier === 'mac' ? 'Meta+K' : 'Control+K'}
-        className='hidden h-8 w-72 items-center xl:w-80 gap-2 border bg-card px-2.5 text-sm text-muted-foreground transition-[border-color,scale] duration-150 ease-out hover:border-border-strong active:scale-[0.99] md:flex'
+        className='hidden h-9 w-72 items-center gap-2 rounded-lg bg-card pr-1.5 pl-3 text-sm text-muted-foreground shadow-xs transition-[box-shadow,color,scale] duration-150 ease-out hover:text-foreground hover:shadow-sm active:scale-[0.99] md:flex xl:w-80'
       >
         <SearchIcon aria-hidden className='size-3.5 opacity-70' />
         <span className='flex-1 text-left'>Search or jump to…</span>
         {modifier && (
           <span className='flex items-center gap-0.5' aria-hidden>
-            <kbd className='min-w-5 border bg-background px-1 py-px text-center font-sans text-2xs text-muted-foreground'>{modifier === 'mac' ? '⌘' : 'Ctrl'}</kbd>
-            <kbd className='min-w-5 border bg-background px-1 py-px text-center font-sans text-2xs text-muted-foreground'>K</kbd>
+            <kbd className='min-w-5 rounded-[5px] bg-surface-muted px-1.5 py-px text-center font-sans text-2xs text-muted-foreground shadow-[inset_0_-1px_0_rgb(0_0_0/0.08)]'>{modifier === 'mac' ? '⌘' : 'Ctrl'}</kbd>
+            <kbd className='min-w-5 rounded-[5px] bg-surface-muted px-1.5 py-px text-center font-sans text-2xs text-muted-foreground shadow-[inset_0_-1px_0_rgb(0_0_0/0.08)]'>K</kbd>
           </span>
         )}
       </button>
@@ -109,18 +109,17 @@ export function CommandPalette({ role }: CommandPaletteProps) {
       <CommandDialog
         open={isOpen}
         onOpenChange={handleOpenChange}
-        // OPENED BY ⌘K MANY TIMES A DAY: APPEARS AND DISAPPEARS INSTANTLY, NO ANIMATION.
-        isAnimated={false}
+        // A QUICK FADE AND A SLIGHT SCALE-UP: PRESENT, BUT NEVER IN THE WAY OF SOMETHING OPENED MANY TIMES A DAY.
         title='Search or jump to'
         description={role === 'ADMIN' ? 'Find a page, a student or a teacher.' : 'Find a page.'}
-        className='top-[16vh] border-border bg-popover/95 shadow-[0_24px_60px_-16px_rgb(16_40_74/0.35)] backdrop-blur-lg sm:max-w-xl'
+        className='top-[16vh] bg-popover shadow-lg data-open:duration-160 data-closed:duration-120 sm:max-w-xl'
       >
         <Command loop filter={matchCommandItem} className='bg-transparent [&_[data-slot=command-item]>svg:last-child]:hidden'>
           <CommandInput
             value={query}
             onValueChange={setQuery}
             placeholder={role === 'ADMIN' ? 'Search pages, students or teachers…' : 'Search pages…'}
-            className='h-11 text-[0.9375rem]'
+            className='text-[0.9375rem]'
           />
           <CommandList className='max-h-[min(60vh,26rem)] p-1.5'>
             <CommandEmpty className='py-8 text-sm text-muted-foreground'>

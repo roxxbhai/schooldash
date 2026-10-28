@@ -15,7 +15,7 @@ interface AttendanceStatusToggleProps {
 }
 
 /**
- * PRESENT / ABSENT / LATE / ON LEAVE AS A RADIO GROUP OF SQUARE BUTTONS. ONE TAB
+ * PRESENT / ABSENT / LATE / ON LEAVE AS A SEGMENTED PILL (A RADIO GROUP). ONE TAB
  * STOP: THE ARROW KEYS (AND HOME / END) MOVE AND CHOOSE, LIKE NATIVE RADIOS.
  */
 export function AttendanceStatusToggle({ value, onValueChange, label, isDisabled = false, isInvalid = false, className }: AttendanceStatusToggleProps) {
@@ -57,7 +57,7 @@ export function AttendanceStatusToggle({ value, onValueChange, label, isDisabled
       aria-disabled={isDisabled || undefined}
       aria-invalid={isInvalid || undefined}
       onKeyDown={isDisabled ? undefined : handleKeyDown}
-      className={cn('grid grid-cols-4 gap-1', className)}
+      className={cn('grid grid-cols-4 gap-1 rounded-full bg-surface-muted p-1 shadow-[inset_0_1px_2px_rgb(0_0_0/0.06)]', className)}
     >
       {ATTENDANCE_STATUS_OPTIONS.map((option, index) => {
         const isChecked = option.value === value;
@@ -71,10 +71,10 @@ export function AttendanceStatusToggle({ value, onValueChange, label, isDisabled
             disabled={isDisabled}
             onClick={() => onValueChange(option.value)}
             className={cn(
-              'flex min-h-11 min-w-0 items-center justify-center border px-2 text-xs font-medium whitespace-nowrap transition-[color,background-color,border-color,scale] duration-150 ease-out outline-none active:scale-[0.97] sm:px-3 sm:text-sm',
+              'flex min-h-9 min-w-0 items-center justify-center rounded-full px-2 text-xs font-medium whitespace-nowrap transition-[color,background-color,box-shadow,scale] duration-150 ease-out outline-none active:scale-[0.96] sm:px-3 sm:text-sm',
               'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
               'disabled:cursor-not-allowed disabled:opacity-50',
-              isChecked ? ATTENDANCE_TONE_SELECTED_CLASSES[option.tone] : 'border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground',
+              isChecked ? ATTENDANCE_TONE_SELECTED_CLASSES[option.tone] : 'text-muted-foreground hover:bg-card/80 hover:text-foreground',
             )}
           >
             {option.label}

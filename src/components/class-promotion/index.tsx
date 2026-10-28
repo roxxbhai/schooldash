@@ -309,7 +309,7 @@ export function ClassPromotionDialog({ promotion, sourceClass, rows, canCreateCl
           <p className='text-sm font-medium text-foreground'>Students</p>
           {!isGraduating && <p className='text-xs text-muted-foreground'>Roll numbers are kept. Change any before promoting.</p>}
         </div>
-        <ul aria-label='Students to move' className='scrollbar-subtle max-h-80 divide-y overflow-y-auto border'>
+        <ul aria-label='Students to move' className='scrollbar-subtle max-h-80 divide-y divide-border/70 overflow-y-auto rounded-xl bg-card shadow-xs'>
           {students.map((row, index) => {
             const studentId = row.enrollment.studentId;
             const issue = rollIssues[studentId] ?? serverRollIssues[studentId];
@@ -329,7 +329,7 @@ export function ClassPromotionDialog({ promotion, sourceClass, rows, canCreateCl
                       inputMode='numeric'
                       placeholder='—'
                       autoComplete='off'
-                      className='h-8 w-16 shrink-0 text-center tabular-nums'
+                      className='h-8 w-16 shrink-0 rounded-md text-center tabular-nums'
                     />
                   )}
                   <span className='min-w-0 flex-1 truncate text-sm font-medium text-foreground'>{row.student?.user.fullName ?? 'Unknown student'}</span>

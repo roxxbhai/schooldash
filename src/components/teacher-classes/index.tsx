@@ -66,7 +66,7 @@ export function TeacherClasses() {
         </div>
       )}
 
-      <div className='border bg-card shadow-xs'>
+      <div className='rounded-xl bg-card shadow-xs'>
         {isLoading ? (
           <ListSkeleton rows={3} />
         ) : yearClasses.length === 0 ? (
