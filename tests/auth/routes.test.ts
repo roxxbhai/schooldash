@@ -414,7 +414,7 @@ describe('POST /api/auth/teacher/login', () => {
   beforeEach(() => {
     // THE SAME PATH ANSWERS THE PHONE LOOKUP (SECRET KEY) AND THE SESSION'S OWN users ROW.
     routes['GET /rest/v1/users'] = (req) =>
-      new URL(req.url).searchParams.get('phone') === 'eq.9876543210' ? json([{ email: 'asha@example.com' }]) : appUserRow('teacher');
+      new URL(req.url).searchParams.get('phone') === 'eq.9876543210' ? json([{ authUserId: AUTH_ID, email: 'asha@example.com' }]) : appUserRow('teacher');
   });
 
   it('finds the identity by the normalized phone number, then signs in with the password', async () => {
@@ -427,6 +427,19 @@ describe('POST /api/auth/teacher/login', () => {
     expect(lookup.get('role')).toBe('eq.teacher');
     const tokenRequest = requests.find((r) => new URL(r.url).pathname === '/auth/v1/token')!;
     expect(await tokenRequest.json()).toMatchObject({ email: 'asha@example.com', password: PASSWORD });
+  });
+
+  it('signs in a teacher added without an email with the email of their Auth identity', async () => {
+    const placeholder = 'b7d0c1e2-0000-4000-8000-000000000000@no-email.schooldash.invalid';
+    routes['GET /rest/v1/users'] = (req) =>
+      new URL(req.url).searchParams.get('phone') === 'eq.9876543210' ? json([{ authUserId: AUTH_ID, email: null }]) : appUserRow('teacher');
+    routes[`GET /auth/v1/admin/users/${AUTH_ID}`] = () => json({ ...authUserJson(), email: placeholder });
+
+    const { status } = await read(await teacherLogin(postRequest('/api/auth/teacher/login', { phone: '9876543210', password: PASSWORD })));
+
+    expect(status).toBe(200);
+    const tokenRequest = requests.find((r) => new URL(r.url).pathname === '/auth/v1/token')!;
+    expect(await tokenRequest.json()).toMatchObject({ email: placeholder, password: PASSWORD });
   });
 
   it('gives an unknown number the same 401 as a wrong password, without trying to sign in', async () => {
@@ -536,6 +549,18 @@ describe('POST /api/auth/student/login', () => {
     const verify = requests.find((r) => r.url.includes('/verify'))!;
     expect(verify.headers.get('authorization') ?? '').not.toContain('test-service-key');
     expect(await verify.json()).toMatchObject({ token_hash: MAGIC_TOKEN });
+  });
+
+  it('signs in a student added without an email through the email of their Auth identity', async () => {
+    const placeholder = 'c8e1d2f3-0000-4000-8000-000000000000@no-email.schooldash.invalid';
+    routes['GET /rest/v1/students'] = () => json([{ user: { authUserId: AUTH_ID, email: null, isActive: true } }]);
+    routes[`GET /auth/v1/admin/users/${AUTH_ID}`] = () => json({ ...authUserJson(), email: placeholder });
+
+    const { status } = await read(await studentLogin(postRequest('/api/auth/student/login', { admissionNumber: 'EM-2026-014' })));
+
+    expect(status).toBe(200);
+    const link = requests.find((r) => r.url.includes('generate_link'))!;
+    expect(await link.json()).toMatchObject({ type: 'magiclink', email: placeholder });
   });
 
   it('answers an unknown admission number with 401 and mints nothing', async () => {

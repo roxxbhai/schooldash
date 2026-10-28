@@ -85,8 +85,8 @@ export function CommandPalette({ role }: CommandPaletteProps) {
   }, []);
 
   return (
-    // ONE ELEMENT, SO THE HEADER GRID SEES A SINGLE CENTRE CELL (THE DIALOG'S HIDDEN TITLE RENDERS IN HERE TOO).
-    <div className='flex shrink-0 justify-center'>
+    // ONE ELEMENT, SO THE HEADER SEES A SINGLE MIDDLE ITEM (THE DIALOG'S HIDDEN TITLE RENDERS IN HERE TOO).
+    <div className='flex shrink-0 ml-36 justify-center'>
       <button
         type='button'
         onClick={openPalette}
@@ -133,7 +133,7 @@ export function CommandPalette({ role }: CommandPaletteProps) {
                   <CommandItem
                     key={student.id}
                     value={`student:${student.id}`}
-                    keywords={[student.user.fullName, student.admissionNumber, student.user.email]}
+                    keywords={[student.user.fullName, student.admissionNumber, student.user.email ?? '']}
                     onSelect={() => go(`${ROUTES.admin.students}/${encodeURIComponent(student.id)}`)}
                   >
                     <span className='truncate'>{student.user.fullName}</span>
@@ -149,7 +149,7 @@ export function CommandPalette({ role }: CommandPaletteProps) {
                   <CommandItem
                     key={teacher.id}
                     value={`teacher:${teacher.id}`}
-                    keywords={[teacher.user.fullName, teacher.employeeCode, teacher.user.email, teacher.user.phone ?? '']}
+                    keywords={[teacher.user.fullName, teacher.employeeCode, teacher.user.email ?? '', teacher.user.phone ?? '']}
                     onSelect={() => go(`${ROUTES.admin.teachers}/${encodeURIComponent(teacher.id)}`)}
                   >
                     <span className='truncate'>{teacher.user.fullName}</span>

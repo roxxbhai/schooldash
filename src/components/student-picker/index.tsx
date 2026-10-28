@@ -22,6 +22,8 @@ interface StudentPickerProps {
   onChange: (student: Student | null) => void;
   /** STUDENTS TO HIDE FROM THE RESULTS, E.G. THOSE ALREADY ENROLLED. */
   excludeIds?: ReadonlySet<string>;
+  /** SHOWN WHEN EVERY MATCH IS HIDDEN BY `excludeIds`. */
+  allExcludedMessage?: string;
   placeholder?: string;
   isDisabled?: boolean;
   className?: string;
@@ -42,6 +44,7 @@ export function StudentPicker({
   value,
   onChange,
   excludeIds,
+  allExcludedMessage = 'Every match is already enrolled.',
   placeholder = 'Search for a student',
   isDisabled = false,
   className,
@@ -112,7 +115,7 @@ export function StudentPicker({
     if (items.length === 0 && !isSearching) {
       return (
         <p className='px-3 py-6 text-center text-sm text-muted-foreground'>
-          {hiddenCount > 0 ? 'Every match is already enrolled.' : `No active students match "${searchTerm}".`}
+          {hiddenCount > 0 ? allExcludedMessage : `No active students match "${searchTerm}".`}
         </p>
       );
     }

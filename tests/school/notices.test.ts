@@ -105,6 +105,26 @@ describe('creating and targeting', () => {
     expect(db.callsTo('createNotice')).toHaveLength(0);
   });
 
+  it('addresses a notice to individual students, checking that each one exists', async () => {
+    const STUDENT_A = '00000000-0000-4000-8000-000000000031';
+    const STUDENT_B = '00000000-0000-4000-8000-000000000032';
+    seedNotice();
+    db.respondTo('students.select', { data: [{ id: STUDENT_A }, { id: STUDENT_B }] }, { data: [{ id: STUDENT_A }] });
+    await createNotice({ title: 'T', body: 'B', audiences: [{ studentId: STUDENT_A }, { studentId: STUDENT_B }] });
+    expect(db.callsTo('createNotice', 'rpc')[0].payload).toMatchObject({ audiences: [{ studentId: STUDENT_A }, { studentId: STUDENT_B }] });
+
+    const unknown = await createNotice({ title: 'T', body: 'B', audiences: [{ studentId: STUDENT_A }, { studentId: STUDENT_B }] });
+    expect([unknown.status, unknown.body.error?.details?.[0].path]).toEqual([422, 'audiences.1.studentId']);
+    expect(db.callsTo('createNotice')).toHaveLength(1);
+  });
+
+  it('rejects a duplicate student or an audience naming both a class and a student', async () => {
+    const STUDENT_A = '00000000-0000-4000-8000-000000000031';
+    expect((await createNotice({ title: 'T', body: 'B', audiences: [{ studentId: STUDENT_A }, { studentId: STUDENT_A }] })).status).toBe(422);
+    expect((await createNotice({ title: 'T', body: 'B', audiences: [{ classId: CLASS_A, studentId: STUDENT_A }] })).status).toBe(422);
+    expect(db.callsTo('createNotice')).toHaveLength(0);
+  });
+
   it('replaces audiences through the atomic database function', async () => {
     seedNotice();
     await setAudiences({ audiences: [{ role: 'TEACHER' }] });

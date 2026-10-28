@@ -1,4 +1,5 @@
 import 'server-only';
+import { randomUUID } from 'node:crypto';
 import { isAuthApiError } from '@supabase/supabase-js';
 import { z } from 'zod';
 import { PHONE_NUMBER_SCHEMA } from '@/constants/phone';
@@ -53,19 +54,30 @@ const teacherProfileSchema = z.strictObject({
   dateOfJoining: optionalDate,
 });
 
+const emailSchema = z.string().trim().toLowerCase().pipe(z.email());
+
 const baseSchema = {
-  email: z.string().trim().toLowerCase().pipe(z.email()),
   fullName: z.string().trim().min(1).max(200),
   /** INITIAL PASSWORD. OMIT TO CREATE THE IDENTITY WITHOUT ONE (TEACHER SIGN-UP, ADMIN SETUP CODE, OR NONE FOR STUDENTS). */
   password: z.string().min(12).max(72).optional(),
 };
 
+// ADMINS SIGN IN WITH THEIR EMAIL. TEACHERS AND STUDENTS NEVER DO, SO FOR THEM IT IS AN OPTIONAL CONTACT ADDRESS (MIGRATION 19).
 const provisionInputSchema = z.discriminatedUnion('role', [
-  z.strictObject({ ...baseSchema, role: z.literal('ADMIN') }),
+  z.strictObject({ ...baseSchema, role: z.literal('ADMIN'), email: emailSchema }),
   // A TEACHER SIGNS IN WITH THIS NUMBER (MIGRATION 15).
-  z.strictObject({ ...baseSchema, role: z.literal('TEACHER'), phone: PHONE_NUMBER_SCHEMA, profile: teacherProfileSchema }),
-  z.strictObject({ ...baseSchema, role: z.literal('STUDENT'), profile: studentProfileSchema }),
+  z.strictObject({ ...baseSchema, role: z.literal('TEACHER'), email: emailSchema.optional(), phone: PHONE_NUMBER_SCHEMA, profile: teacherProfileSchema }),
+  z.strictObject({ ...baseSchema, role: z.literal('STUDENT'), email: emailSchema.optional(), profile: studentProfileSchema }),
 ]);
+
+/**
+ * SUPABASE AUTH NEEDS AN EMAIL FOR EVERY IDENTITY. AN ACCOUNT WITHOUT ONE GETS A
+ * RANDOM ADDRESS ON THE RESERVED `.invalid` DOMAIN: IT CAN NEVER RECEIVE MAIL OR
+ * CLASH WITH A REAL ADDRESS, AND IT IS NEVER STORED IN `users` OR SHOWN.
+ */
+function placeholderAuthEmail(): string {
+  return `${randomUUID()}@no-email.schooldash.invalid`;
+}
 
 export type ProvisionAccountInput = z.input<typeof provisionInputSchema>;
 
@@ -101,21 +113,25 @@ async function createAccount(rawInput: ProvisionAccountInput, options: Provision
 
   const admin = options.client ?? createSupabaseAdminClient();
 
-  // 1. FIND OR CREATE THE AUTH IDENTITY.
-  const existing = await admin.rpc('findAuthUserIdByEmail', { email: input.email });
-  if (existing.error) throw new DataAccessError('auth.findUserByEmail', existing.error.code);
+  // 1. FIND OR CREATE THE AUTH IDENTITY. WITHOUT AN EMAIL THERE IS NOTHING TO LINK TO, SO A NEW ONE IS ALWAYS CREATED.
+  let existingAuthUserId: string | null = null;
+  if (input.email) {
+    const existing = await admin.rpc('findAuthUserIdByEmail', { email: input.email });
+    if (existing.error) throw new DataAccessError('auth.findUserByEmail', existing.error.code);
+    existingAuthUserId = existing.data;
+  }
 
   let authUserId: string;
   let isAuthUserCreated = false;
 
-  if (existing.data) {
+  if (existingAuthUserId) {
     if (!options.linkExistingAuthUser) {
       throw conflict('An account with this email address already exists.');
     }
-    authUserId = existing.data;
+    authUserId = existingAuthUserId;
   } else {
     const created = await admin.auth.admin.createUser({
-      email: input.email,
+      email: input.email ?? placeholderAuthEmail(),
       password: input.password,
       email_confirm: true,
     });
@@ -133,7 +149,8 @@ async function createAccount(rawInput: ProvisionAccountInput, options: Provision
   // 2. CREATE THE APPLICATION ACCOUNT ATOMICALLY.
   const result = await admin.rpc('provisionAppUser', {
     authUserId,
-    email: input.email,
+    // THE FUNCTION STORES A NULL EMAIL AS "NO EMAIL", BUT THE GENERATED ARGUMENT TYPE IS A NON-NULL STRING.
+    email: (input.email ?? null) as string,
     fullName: input.fullName,
     role: toDbRole(input.role),
     profile: 'profile' in input ? input.profile : {},

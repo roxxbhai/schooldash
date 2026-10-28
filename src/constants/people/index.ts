@@ -5,11 +5,11 @@ import type { SelectOption } from '@/types/reference-labels';
 
 export const FULL_NAME_FIELD = z.string().trim().min(1, { error: 'Enter their full name.' }).max(200, { error: 'Use at most 200 characters.' });
 
-export const EMAIL_FIELD = z
+/** STUDENTS AND TEACHERS DON'T SIGN IN WITH AN EMAIL, SO IT IS OPTIONAL: BLANK, OR A VALID ADDRESS. */
+export const OPTIONAL_EMAIL_FIELD = z
   .string()
   .trim()
-  .min(1, { error: 'Enter the email they will sign in with.' })
-  .pipe(z.email({ error: 'Enter a valid email address, like name@example.com.' }));
+  .pipe(z.union([z.literal(''), z.email({ error: 'Enter a valid email address, like name@example.com.' })]));
 
 export const PHONE_FIELD = z.string().trim().max(30, { error: 'Use at most 30 characters.' });
 

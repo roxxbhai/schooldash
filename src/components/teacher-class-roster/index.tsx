@@ -1,10 +1,13 @@
 'use client';
 
-import { CalendarCheckIcon, PenLineIcon, SchoolIcon, UsersIcon } from 'lucide-react';
+import { ArrowUpRightIcon, CalendarCheckIcon, PenLineIcon, SchoolIcon, UsersIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
 import { BackLink } from '@/components/back-link';
+import { ClassPromotionDialog } from '@/components/class-promotion';
+import { promotionColumns } from '@/components/class-promotion/promotion-columns';
+import { PromotionSelectionBar } from '@/components/class-promotion/selection-bar';
 import { DataTable, type DataTableColumn } from '@/components/data-table';
 import { EmptyState } from '@/components/empty-state';
 import { ListSkeleton } from '@/components/list-skeleton';
@@ -17,6 +20,7 @@ import { loadClassRoster } from '@/functions/teacher-class-roster';
 import { pluralize } from '@/helpers/format';
 import { classLabel } from '@/helpers/reference-labels';
 import { useAsyncResult } from '@/hooks/use-async-result';
+import { useClassPromotion } from '@/hooks/use-class-promotion';
 import { useReferenceData } from '@/hooks/use-reference-data';
 import type { RosterRow } from '@/types/teacher-class-roster';
 import { portalSessionStore } from '@/zustand/portal-session';
@@ -24,6 +28,7 @@ import { portalSessionStore } from '@/zustand/portal-session';
 /**
  * ONE OF THE TEACHER'S CLASSES: ITS STUDENTS IN ROLL ORDER, WITH ONLY WHAT TEACHING
  * NEEDS (ROLL NUMBER, NAME, ADMISSION NUMBER). A CLASS THEY DON'T TEACH IS "NOT FOUND".
+ * THE CLASS TEACHER CAN ALSO SELECT STUDENTS AND PROMOTE THEM TO A LATER YEAR.
  */
 export function TeacherClassRoster() {
   const [search, setSearch] = useState('');
@@ -39,6 +44,7 @@ export function TeacherClassRoster() {
   const roster = useAsyncResult(`class-roster|${classId}`, load);
 
   const schoolClass = classById.get(classId);
+  const isClassTeacher = Boolean(schoolClass && teacherId && schoolClass.classTeacherId === teacherId);
   const year = schoolClass ? academicYearById.get(schoolClass.academicYearId) : undefined;
   const term = search.trim().toLowerCase();
   const rows = (roster.data ?? []).filter(
@@ -48,8 +54,11 @@ export function TeacherClassRoster() {
       (row.student?.admissionNumber ?? '').toLowerCase().includes(term) ||
       String(row.enrollment.rollNumber ?? '') === term,
   );
+  const promotion = useClassPromotion({ classId, rows: roster.data, visibleRows: rows, isEnabled: isClassTeacher });
+  const { selectColumn, nextYearColumn } = promotionColumns<RosterRow>(promotion, academicYearById);
 
   const columns: DataTableColumn<RosterRow>[] = [
+    ...selectColumn,
     { key: 'roll', header: 'Roll', className: 'w-16', cell: (row) => <span className='text-sm tabular-nums'>{row.enrollment.rollNumber ?? '—'}</span> },
     {
       key: 'name',
@@ -59,11 +68,12 @@ export function TeacherClassRoster() {
           <Link href={`${ROUTES.teacher.students}/${row.enrollment.studentId}`} className='font-medium text-foreground underline-offset-3 hover:text-primary hover:underline'>
             {row.student?.user.fullName ?? 'Unknown student'}
           </Link>
-          {row.student && !row.student.user.isActive && <StatusBadge tone='neutral'>Inactive</StatusBadge>}
+          {row.student && !row.student.user.isActive && <StatusBadge tone='neutral'>{row.student.graduatedOn ? 'Graduated' : 'Inactive'}</StatusBadge>}
         </span>
       ),
     },
     { key: 'admission', header: 'Admission number', cell: (row) => <span className='tabular-nums text-sm'>{row.student?.admissionNumber ?? '—'}</span> },
+    ...nextYearColumn,
   ];
 
   if (isReady && !schoolClass) {
@@ -100,6 +110,12 @@ export function TeacherClassRoster() {
         }
         actions={
           <>
+            {isClassTeacher && (
+              <Button variant='outline' onClick={promotion.openForClass} disabled={!promotion.isReady || promotion.eligibleIds.length === 0}>
+                <ArrowUpRightIcon aria-hidden />
+                Promote class
+              </Button>
+            )}
             <Button asChild variant='outline'>
               <Link href={`${ROUTES.teacher.attendance}?classId=${classId}`}>
                 <CalendarCheckIcon aria-hidden />
@@ -125,21 +141,35 @@ export function TeacherClassRoster() {
           <ListSkeleton rows={5} />
         </div>
       ) : (
-        <DataTable
-          label={schoolClass ? `Students of ${classLabel(schoolClass)}` : 'Students'}
-          columns={columns}
-          rows={roster.data ? rows : null}
-          getRowKey={(row) => row.enrollment.id}
-          isLoading={roster.isLoading}
-          errorMessage={roster.errorMessage}
-          onRetry={roster.reload}
-          empty={
-            term ? (
-              <EmptyState icon={UsersIcon} title='No matching students' description='Try a different name, admission number or roll number.' />
-            ) : (
-              <EmptyState icon={UsersIcon} title='No students yet' description='The school office enrolls students into classes.' />
-            )
-          }
+        <>
+          <PromotionSelectionBar promotion={promotion} />
+          <DataTable
+            label={schoolClass ? `Students of ${classLabel(schoolClass)}` : 'Students'}
+            columns={columns}
+            rows={roster.data ? rows : null}
+            getRowKey={(row) => row.enrollment.id}
+            isLoading={roster.isLoading}
+            errorMessage={roster.errorMessage}
+            onRetry={roster.reload}
+            empty={
+              term ? (
+                <EmptyState icon={UsersIcon} title='No matching students' description='Try a different name, admission number or roll number.' />
+              ) : (
+                <EmptyState icon={UsersIcon} title='No students yet' description='The school office enrolls students into classes.' />
+              )
+            }
+          />
+        </>
+      )}
+
+      {schoolClass && roster.data && isClassTeacher && (
+        <ClassPromotionDialog
+          key={promotion.dialogKey}
+          promotion={promotion}
+          sourceClass={schoolClass}
+          rows={roster.data}
+          canCreateClass={false}
+          onFinished={roster.reload}
         />
       )}
     </>

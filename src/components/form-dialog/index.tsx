@@ -17,6 +17,8 @@ interface FormDialogProps {
   /** A FAILURE THAT ISN'T TIED TO ONE FIELD (CONFLICT, PERMISSION, OUTAGE). */
   formError?: string | null;
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
+  /** E.G. WHILE THE FORM HAS NOTHING IT COULD SUBMIT. */
+  isSubmitDisabled?: boolean;
   size?: 'md' | 'lg';
   children: React.ReactNode;
 }
@@ -34,6 +36,7 @@ export function FormDialog({
   isSubmitting,
   formError,
   onSubmit,
+  isSubmitDisabled = false,
   size = 'md',
   children,
 }: FormDialogProps) {
@@ -60,7 +63,7 @@ export function FormDialog({
             <Button type='button' variant='outline' onClick={() => handleOpenChange(false)} disabled={isSubmitting}>
               Cancel
             </Button>
-            <Button type='submit' disabled={isSubmitting}>
+            <Button type='submit' disabled={isSubmitting || isSubmitDisabled}>
               <ButtonLabel stateKey={isSubmitting ? 'pending' : 'idle'}>
                 {isSubmitting && <Loader2Icon className='animate-spin' aria-hidden />}
                 {submitLabel}

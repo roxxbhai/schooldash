@@ -53,6 +53,16 @@ describe('teachers', () => {
     );
   });
 
+  it('creates a teacher without an email (they sign in with their phone number)', async () => {
+    db.respondTo('teachers.select', { data: { id: 't' } });
+    const result = await callRoute(teachers.POST, { body: { fullName: 'T', phone: '9876543210' } });
+    expect(result.status).toBe(201);
+    expect(provisionAccount).toHaveBeenCalledWith(
+      { role: 'TEACHER', email: undefined, fullName: 'T', phone: '9876543210', profile: {} },
+      { actorUserId: admin.id },
+    );
+  });
+
   it('never accepts an employee code from the client (the database generates it)', async () => {
     const created = await callRoute(teachers.POST, { body: { email: 't@x.co', fullName: 'T', phone: '9876543210', employeeCode: 'E1' } });
     expect(created.status).toBe(422);
@@ -107,6 +117,54 @@ describe('students', () => {
       { role: 'STUDENT', email: 's@x.co', fullName: 'S', password: undefined, profile: { admissionNumber: 'A1', dateOfBirth: '2012-05-01' } },
       { actorUserId: admin.id },
     );
+  });
+
+  describe('enrolling while creating', () => {
+    const klass = { id: ID(40), academicYearId: ID(50) };
+    const create = (body: object) => callRoute(students.POST, { body: { fullName: 'S', admissionNumber: 'A1', ...body } });
+
+    it('creates a student without an email', async () => {
+      db.respondTo('students.select', { data: { id: ID(30) } });
+      const result = await create({});
+      expect(result.status).toBe(201);
+      expect(result.body.data).toEqual({ id: ID(30), enrollment: null });
+      expect(vi.mocked(provisionAccount).mock.calls[0][0]).toMatchObject({ role: 'STUDENT', email: undefined });
+      expect(db.callsTo('studentEnrollments', 'insert')).toHaveLength(0);
+    });
+
+    it('enrolls the new student in the class, taking the academic year from the class', async () => {
+      db.respondTo('classes.select', { data: klass });
+      db.respondTo('students.select', { data: { id: ID(30) } });
+      db.respondTo('studentEnrollments.insert', { data: { id: ID(60), classId: ID(40), rollNumber: 7 } });
+      const result = await create({ classId: ID(40), rollNumber: 7 });
+      expect(result.status).toBe(201);
+      expect(db.callsTo('studentEnrollments', 'insert')[0].payload).toEqual({ studentId: ID(30), classId: ID(40), academicYearId: ID(50), rollNumber: 7 });
+      expect(result.body.data.enrollment).toEqual({ id: ID(60), classId: ID(40), rollNumber: 7 });
+      // THE CLASS AND ROLL NUMBER ARE NOT PART OF THE ACCOUNT.
+      expect(vi.mocked(provisionAccount).mock.calls[0][0]).toEqual({ role: 'STUDENT', email: undefined, fullName: 'S', profile: { admissionNumber: 'A1' } });
+    });
+
+    it('checks the class and roll number before creating anything', async () => {
+      db.respondTo('classes.select', { data: null }, { data: klass });
+      const unknownClass = await create({ classId: ID(40) });
+      expect([unknownClass.status, unknownClass.body.error?.details]).toEqual([422, [{ path: 'classId', message: 'Class not found.' }]]);
+
+      db.respondTo('studentEnrollments.select', { data: [{ id: ID(61) }] });
+      const takenRoll = await create({ classId: ID(40), rollNumber: 7 });
+      expect([takenRoll.status, takenRoll.body.error?.details]).toEqual([422, [{ path: 'rollNumber', message: 'This roll number is already used in the class.' }]]);
+
+      expect((await create({ rollNumber: 7 })).status).toBe(422);
+      expect(provisionAccount).not.toHaveBeenCalled();
+    });
+
+    it('keeps the student when the enrollment fails afterwards, with no enrollment', async () => {
+      db.respondTo('classes.select', { data: klass });
+      db.respondTo('students.select', { data: { id: ID(30) } });
+      db.respondTo('studentEnrollments.insert', { error: { code: '23505', message: 'studentEnrollmentsClassRollKey' } });
+      const result = await create({ classId: ID(40) });
+      expect(result.status).toBe(201);
+      expect(result.body.data).toEqual({ id: ID(30), enrollment: null });
+    });
   });
 
   it('rejects role/status fields and malformed values', async () => {

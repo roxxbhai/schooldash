@@ -28,6 +28,9 @@ export const AUDIENCE_ROLES: readonly { role: AppRole; label: string; descriptio
   { role: 'TEACHER', label: 'All teachers', description: 'Every active teacher account.' },
 ];
 
+/** A NOTICE'S SUMMARY NAMES UP TO THIS MANY STUDENTS; MORE ARE COUNTED ("5 students"). */
+export const MAX_NAMED_STUDENTS = 2;
+
 /** "ALL" IN THE CLASS AND SECTION FILTERS OF THE AUDIENCE PICKER. */
 export const ALL_CLASS_FILTER = 'all';
 
@@ -38,8 +41,8 @@ export const NOTICE_CONTENT_SCHEMA = z.object({
 });
 
 export const AUDIENCE_SELECTION_SCHEMA = z
-  .object({ roles: z.array(z.string()), classIds: z.array(z.string()) })
-  .refine((selection) => selection.roles.length + selection.classIds.length <= MAX_NOTICE_AUDIENCES, {
+  .object({ roles: z.array(z.string()), classIds: z.array(z.string()), students: z.array(z.object({ id: z.string() })) })
+  .refine((selection) => selection.roles.length + selection.classIds.length + selection.students.length <= MAX_NOTICE_AUDIENCES, {
     path: ['audiences'],
     error: `Choose at most ${MAX_NOTICE_AUDIENCES} audiences.`,
   });
@@ -50,7 +53,7 @@ export interface NewNoticeForm extends NoticeContentForm {
   audiences: AudienceSelection;
 }
 
-export const EMPTY_AUDIENCE_SELECTION: AudienceSelection = { roles: [], classIds: [] };
+export const EMPTY_AUDIENCE_SELECTION: AudienceSelection = { roles: [], classIds: [], students: [] };
 
 export const EMPTY_NOTICE_CONTENT: NoticeContentForm = { title: '', body: '', category: '' };
 

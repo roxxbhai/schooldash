@@ -28,7 +28,8 @@ const appUserRowSchema = z.object({
   role: z.enum(DB_USER_ROLES),
   isActive: z.boolean(),
   fullName: z.string(),
-  email: z.string(),
+  // NULL FOR A STUDENT OR TEACHER ADDED WITHOUT AN EMAIL (MIGRATION 19).
+  email: z.string().nullable(),
 });
 
 export function toSessionProfile(user: AppUser): SessionProfile {

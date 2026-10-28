@@ -33,6 +33,11 @@ export function classOptions(classes: readonly SchoolClass[], academicYearId: st
   return sortClasses(inYear).map((schoolClass) => ({ value: schoolClass.id, label: classLabel(schoolClass) }));
 }
 
+/** EACH CLASS ONCE, WHATEVER ITS SECTIONS ("Class 5" FOR 5 – A AND 5 – B), IN NATURAL ORDER. THE VALUE IS THE CLASS NAME. */
+export function gradeOptions(classes: readonly SchoolClass[]): SelectOption[] {
+  return [...new Set(sortClasses(classes).map((schoolClass) => schoolClass.name))].map((grade) => ({ value: grade, label: `Class ${grade}` }));
+}
+
 export function subjectOptions(subjects: readonly Subject[]): SelectOption[] {
   return [...subjects]
     .sort((first, second) => first.name.localeCompare(second.name))

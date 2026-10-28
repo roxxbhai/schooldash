@@ -20,14 +20,14 @@ import { loadExamPapers } from '@/functions/admin-exam-detail';
 import { loadExam } from '@/functions/admin-exams';
 import { examDatesLabel } from '@/helpers/admin-exams';
 import { formatDate, formatMarks, pluralize } from '@/helpers/format';
-import { classLabel, classOptions, subjectLabel } from '@/helpers/reference-labels';
+import { classLabel, gradeOptions, subjectLabel } from '@/helpers/reference-labels';
 import { useAsyncResult } from '@/hooks/use-async-result';
 import { useReferenceData } from '@/hooks/use-reference-data';
 import type { ExamSubject } from '@/types/exam-subjects';
 
 /** ONE EXAM: ITS DETAILS AND ITS PAPERS (A SUBJECT FOR A CLASS, WITH MAX AND PASS MARKS). PAPERS ARE NEVER DELETED. */
 export function AdminExamDetail() {
-  const [classChoice, setClassChoice] = useState<string | null>(null);
+  const [gradeChoice, setGradeChoice] = useState<string | null>(null);
   const [isExamFormOpen, setIsExamFormOpen] = useState(false);
   const [editingPaper, setEditingPaper] = useState<ExamSubject | null>(null);
   const [isPaperFormOpen, setIsPaperFormOpen] = useState(false);
@@ -41,17 +41,22 @@ export function AdminExamDetail() {
   const exam = examQuery.data;
   const year = exam ? academicYearById.get(exam.academicYearId) : undefined;
   const dates = exam ? examDatesLabel(exam) : null;
-  const selectedClassId = classChoice === ALL_CLASSES ? null : classChoice;
+  // THE FILTER IS BY CLASS ONLY ("Class 5"): IT SHOWS THE PAPERS OF EVERY SECTION OF THAT CLASS.
+  const selectedGrade = gradeChoice === ALL_CLASSES ? null : gradeChoice;
+  const yearClasses = exam ? classes.filter((schoolClass) => schoolClass.academicYearId === exam.academicYearId) : [];
+  const gradeClasses = selectedGrade ? yearClasses.filter((schoolClass) => schoolClass.name === selectedGrade) : [];
+  // A NEW PAPER STARTS ON THE FILTERED CLASS WHEN IT HAS A SINGLE SECTION.
+  const defaultPaperClassId = gradeClasses.length === 1 ? gradeClasses[0].id : null;
   const papers = papersQuery.data
     ? papersQuery.data
-        .filter((paper) => !selectedClassId || paper.classId === selectedClassId)
+        .filter((paper) => !selectedGrade || classById.get(paper.classId)?.name === selectedGrade)
         .sort(
           (first, second) =>
             classLabel(classById.get(first.classId)).localeCompare(classLabel(classById.get(second.classId)), 'en', { numeric: true }) ||
             subjectLabel(subjectById.get(first.subjectId)).localeCompare(subjectLabel(subjectById.get(second.subjectId))),
         )
     : null;
-  const yearClassCount = exam ? classOptions(classes, exam.academicYearId).length : 0;
+  const yearClassCount = yearClasses.length;
 
   const backLink = (
     <Button asChild variant='link' className='mb-3 h-auto px-0 text-muted-foreground'>
@@ -212,9 +217,9 @@ export function AdminExamDetail() {
         <div className='w-full sm:w-64'>
           <OptionSelect
             aria-label='Class'
-            value={selectedClassId}
-            onValueChange={(value) => setClassChoice(value ?? ALL_CLASSES)}
-            options={classOptions(classes, exam.academicYearId)}
+            value={selectedGrade}
+            onValueChange={(value) => setGradeChoice(value ?? ALL_CLASSES)}
+            options={gradeOptions(yearClasses)}
             placeholder='Class'
             emptyLabel='All classes'
             isDisabled={!isReady}
@@ -232,7 +237,7 @@ export function AdminExamDetail() {
           empty={
             <EmptyState
               icon={FileTextIcon}
-              title={yearClassCount === 0 ? 'No classes in this year' : selectedClassId ? 'No papers for this class' : 'No papers yet'}
+              title={yearClassCount === 0 ? 'No classes in this year' : selectedGrade ? 'No papers for this class' : 'No papers yet'}
               description={
                 yearClassCount === 0
                   ? `Create the classes of ${year?.name ?? 'this year'} before adding papers.`
@@ -258,7 +263,7 @@ export function AdminExamDetail() {
         onOpenChange={setIsPaperFormOpen}
         exam={exam}
         paper={editingPaper}
-        defaultClassId={selectedClassId}
+        defaultClassId={defaultPaperClassId}
         onSaved={handlePaperSaved}
       />
     </>

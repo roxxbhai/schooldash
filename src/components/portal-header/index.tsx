@@ -5,8 +5,8 @@ import { usePathname } from 'next/navigation';
 import { CommandPalette } from '@/components/command-palette';
 import { Button } from '@/components/ui/button';
 import { PORTALS } from '@/constants/portal-shell';
-import { findActiveNavigationItem, findSectionLabel } from '@/helpers/portal-shell';
-import { formatLongToday } from '@/helpers/format';
+import { formatShortToday } from '@/helpers/format';
+import { findActiveNavigationItem } from '@/helpers/portal-shell';
 import { useReferenceData } from '@/hooks/use-reference-data';
 import { portalShellStore } from '@/zustand/portal-shell';
 import type { PortalRole } from '@/types/portal-shell';
@@ -16,7 +16,7 @@ interface PortalHeaderProps {
 }
 
 /**
- * TOP BAR: DRAWER BUTTON (SMALL SCREENS), WHERE YOU ARE, SEARCH (⌘K), THE CURRENT ACADEMIC YEAR AND TODAY.
+ * TOP BAR: DRAWER BUTTON (SMALL SCREENS), THE CURRENT PAGE, SEARCH (⌘K), THE CURRENT ACADEMIC YEAR AND TODAY.
  * A TRANSLUCENT LAYER: CONTENT SCROLLS UNDER IT, BLURRED. THE ACCOUNT AND SIGN-OUT LIVE IN THE SIDEBAR.
  */
 export function PortalHeader({ role }: PortalHeaderProps) {
@@ -28,16 +28,14 @@ export function PortalHeader({ role }: PortalHeaderProps) {
 
   const portal = PORTALS[role];
   const activeItem = findActiveNavigationItem(pathname, portal);
-  const sectionLabel = findSectionLabel(activeItem, portal);
 
   function openNavigation() {
     setIsNavigationOpen(true);
   }
 
   return (
-    // FROM md UP, THREE COLUMNS WITH EQUAL OUTER TRACKS KEEP THE SEARCH FIELD IN THE TRUE CENTRE.
-    <header className='sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-border/70 bg-background/75 px-4 backdrop-blur-lg backdrop-saturate-150 md:grid md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:gap-6 lg:px-8 print:hidden'>
-      <div className='flex min-w-0 flex-1 items-center gap-2'>
+    <header className='sticky top-0 z-20 flex h-16 items-center justify-between gap-6 border-b border-border/70 bg-background/75 px-4 backdrop-blur-lg backdrop-saturate-150 lg:px-8 print:hidden'>
+      <div className='flex min-w-0 items-center gap-2'>
         <Button
           variant='ghost'
           size='icon'
@@ -48,18 +46,12 @@ export function PortalHeader({ role }: PortalHeaderProps) {
         >
           <MenuIcon />
         </Button>
-        {sectionLabel && (
-          <>
-            <span className='shrink-0 text-xs font-medium text-muted-foreground uppercase'>{sectionLabel}</span>
-            <span aria-hidden className='h-4 w-px shrink-0 bg-border' />
-          </>
-        )}
         <span className='truncate text-base font-medium text-foreground'>{activeItem?.label ?? portal.roleLabel}</span>
       </div>
 
       <CommandPalette role={role} />
 
-      <div className='hidden items-center justify-end gap-5 lg:flex'>
+      <div className='hidden shrink-0 items-center gap-5 lg:flex'>
         <p className='flex items-center gap-1.5 text-sm'>
           <span className='text-xs font-medium text-muted-foreground uppercase'>Academic year</span>
           <span aria-hidden className='text-muted-foreground'>-</span>
@@ -67,7 +59,7 @@ export function PortalHeader({ role }: PortalHeaderProps) {
         </p>
         <span aria-hidden className='h-6 w-px bg-border' />
         <p className='text-sm text-muted-foreground' suppressHydrationWarning>
-          {formatLongToday()}
+          {formatShortToday()}
         </p>
       </div>
     </header>

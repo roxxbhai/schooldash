@@ -20,7 +20,8 @@ import type { Teacher } from '@/types/teachers';
  */
 
 const createTeacherSchema = z.strictObject({
-  email: emailSchema,
+  // OPTIONAL: TEACHERS SIGN IN WITH THEIR PHONE NUMBER (MIGRATION 19).
+  email: emailSchema.optional(),
   fullName: fullNameSchema,
   phone: PHONE_NUMBER_SCHEMA,
   qualification: z.string().trim().min(1).max(200).optional(),

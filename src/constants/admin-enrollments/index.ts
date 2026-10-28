@@ -4,7 +4,7 @@ import { z } from 'zod';
 const MAX_ROLL_NUMBER = 100000;
 
 /** A TEXT BOX VALUE → A ROLL NUMBER, OR NULL WHEN LEFT EMPTY. */
-const ROLL_NUMBER_FIELD = z
+export const ROLL_NUMBER_FIELD = z
   .string()
   .trim()
   .refine((value) => value === '' || (/^\d+$/.test(value) && Number(value) >= 1 && Number(value) <= MAX_ROLL_NUMBER), {

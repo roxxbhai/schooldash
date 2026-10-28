@@ -1,16 +1,20 @@
 'use client';
 
+import { XIcon } from 'lucide-react';
 import { useState } from 'react';
 import { OptionSelect } from '@/components/option-select';
+import { StudentPicker } from '@/components/student-picker';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { FieldError } from '@/components/ui/field';
 import { ALL_CLASS_FILTER, AUDIENCE_ROLES, MAX_NOTICE_AUDIENCES } from '@/constants/admin-notices';
+import { audienceStudentLabel } from '@/helpers/admin-notices';
 import { pluralize } from '@/helpers/format';
-import { academicYearOptions, classLabel, sortClasses } from '@/helpers/reference-labels';
+import { academicYearOptions, classLabel, gradeOptions as toGradeOptions, sortClasses } from '@/helpers/reference-labels';
 import { useReferenceData } from '@/hooks/use-reference-data';
 import type { AudienceSelection } from '@/types/admin-notices';
 import type { AppRole } from '@/types/auth';
+import type { Student } from '@/types/students';
 
 interface NoticeAudiencePickerProps {
   id: string;
@@ -21,8 +25,8 @@ interface NoticeAudiencePickerProps {
 }
 
 /**
- * WHO A NOTICE IS ADDRESSED TO: WHOLE ROLES AND/OR INDIVIDUAL CLASSES. THE NOTICE
- * REACHES THE UNION OF EVERYTHING CHOSEN. CLASSES ARE LISTED ONE ACADEMIC YEAR AT
+ * WHO A NOTICE IS ADDRESSED TO: WHOLE ROLES, INDIVIDUAL CLASSES AND/OR INDIVIDUAL
+ * STUDENTS. THE NOTICE REACHES THE UNION OF EVERYTHING CHOSEN. CLASSES ARE LISTED ONE ACADEMIC YEAR AT
  * A TIME (THE CURRENT ONE FIRST) AND CAN BE NARROWED BY CLASS AND SECTION; CHOICES
  * HIDDEN BY THE FILTERS ARE KEPT.
  */
@@ -35,7 +39,7 @@ export function NoticeAudiencePicker({ id, value, onChange, error, isDisabled = 
 
   const selectedYearId = yearChoice ?? currentAcademicYear?.id ?? academicYears[0]?.id ?? null;
   const yearClasses = sortClasses(classes.filter((schoolClass) => schoolClass.academicYearId === selectedYearId));
-  const gradeOptions = [...new Set(yearClasses.map((schoolClass) => schoolClass.name))].map((grade) => ({ value: grade, label: `Class ${grade}` }));
+  const gradeOptions = toGradeOptions(yearClasses);
   const sectionOptions = [...new Set(yearClasses.map((schoolClass) => schoolClass.section))].sort().map((section) => ({ value: section, label: `Section ${section}` }));
   const shownClasses = yearClasses.filter(
     (schoolClass) =>
@@ -44,7 +48,8 @@ export function NoticeAudiencePicker({ id, value, onChange, error, isDisabled = 
   const isFiltered = gradeFilter !== ALL_CLASS_FILTER || sectionFilter !== ALL_CLASS_FILTER;
   const selectedClassIds = new Set(value.classIds);
   const hiddenClassCount = value.classIds.filter((classId) => !shownClasses.some((schoolClass) => schoolClass.id === classId)).length;
-  const total = value.roles.length + value.classIds.length;
+  const total = value.roles.length + value.classIds.length + value.students.length;
+  const selectedStudentIds = new Set(value.students.map((student) => student.id));
   const isEveryShownClassChosen = shownClasses.length > 0 && shownClasses.every((schoolClass) => selectedClassIds.has(schoolClass.id));
 
   function toggleRole(role: AppRole, isChecked: boolean) {
@@ -61,6 +66,16 @@ export function NoticeAudiencePicker({ id, value, onChange, error, isDisabled = 
     const shownClassIds = new Set(shownClasses.map((schoolClass) => schoolClass.id));
     const kept = value.classIds.filter((classId) => !shownClassIds.has(classId));
     onChange({ ...value, classIds: isEveryShownClassChosen ? kept : [...kept, ...shownClassIds] });
+  }
+
+  function addStudent(student: Student | null) {
+    if (!student || selectedStudentIds.has(student.id)) return;
+    const added = { id: student.id, fullName: student.user.fullName, admissionNumber: student.admissionNumber };
+    onChange({ ...value, students: [...value.students, added] });
+  }
+
+  function removeStudent(studentId: string) {
+    onChange({ ...value, students: value.students.filter((student) => student.id !== studentId) });
   }
 
   function handleYearChange(yearId: string | null) {
@@ -158,6 +173,42 @@ export function NoticeAudiencePicker({ id, value, onChange, error, isDisabled = 
               </label>
             ))}
           </div>
+        )}
+      </div>
+
+      <div className='flex flex-col gap-2'>
+        <div>
+          <p className='text-xs font-medium text-muted-foreground'>Individual students</p>
+          <p className='text-xs text-muted-foreground'>Reaches only the students you add. Search by name or admission number.</p>
+        </div>
+        <StudentPicker
+          id={`${id}-student`}
+          aria-label='Add a student'
+          value={null}
+          onChange={addStudent}
+          excludeIds={selectedStudentIds}
+          allExcludedMessage='Every match is already added.'
+          placeholder='Add a student'
+          isDisabled={isDisabled}
+        />
+        {value.students.length > 0 && (
+          <ul aria-label='Students added' className='scrollbar-subtle flex max-h-40 flex-wrap gap-1.5 overflow-y-auto'>
+            {value.students.map((student) => (
+              <li key={student.id} className='flex max-w-full items-center gap-1 border bg-card py-0.5 pr-0.5 pl-2 text-sm'>
+                <span className='truncate'>{audienceStudentLabel(student)}</span>
+                <Button
+                  type='button'
+                  variant='ghost'
+                  size='icon-xs'
+                  onClick={() => removeStudent(student.id)}
+                  disabled={isDisabled}
+                  aria-label={`Remove ${audienceStudentLabel(student)}`}
+                >
+                  <XIcon aria-hidden />
+                </Button>
+              </li>
+            ))}
+          </ul>
         )}
       </div>
 

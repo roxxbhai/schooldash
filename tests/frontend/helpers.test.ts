@@ -14,7 +14,14 @@ import { formatDate, formatMarks, formatTime, initialsOf, isoWeekday, pluralize,
 import { fieldControlProps, withoutKey, zodFieldErrors } from '@/helpers/forms';
 import { formatPhone, normalizePhone } from '@/helpers/phone';
 import { portalRoleFor, signInPathFor } from '@/helpers/routes';
-import { classLabel, sortClasses, teacherOptions } from '@/helpers/reference-labels';
+import { classLabel, gradeOptions, sortClasses, teacherOptions } from '@/helpers/reference-labels';
+import { EMPTY_STUDENT_FORM, STUDENT_FORM_SCHEMA } from '@/constants/admin-students';
+import { audienceSummary, selectionFromAudiences, toAudienceInputs } from '@/helpers/admin-notices';
+import type { NoticeAudienceView } from '@/types/admin-notices';
+import { defaultPromotionTarget, firstMoveByStudent, nextGrade, promotionStanding, rollNumberIssues, skippedSummary, yearsAfter } from '@/helpers/class-promotion';
+import type { AcademicYear } from '@/types/academic-years';
+import type { Enrollment } from '@/types/enrollments';
+import type { Student } from '@/types/students';
 import type { SchoolClass } from '@/types/classes';
 import type { Teacher } from '@/types/teachers';
 
@@ -146,6 +153,13 @@ describe('reference labels and navigation', () => {
     expect(sortClasses([classOf('10', 'A'), classOf('2', 'B'), classOf('2', 'A')]).map(classLabel)).toEqual(['2 – A', '2 – B', '10 – A']);
   });
 
+  it('offers each class once, whatever its sections', () => {
+    expect(gradeOptions([classOf('10', 'A'), classOf('2', 'B'), classOf('2', 'A')])).toEqual([
+      { value: '2', label: 'Class 2' },
+      { value: '10', label: 'Class 10' },
+    ]);
+  });
+
   it('offers only active teachers, plus the current value even if inactive', () => {
     const teacher = (id: string, fullName: string, isActive: boolean) =>
       ({ id, employeeCode: id.toUpperCase(), user: { fullName, email: '', phone: null, isActive } }) as Teacher;
@@ -163,5 +177,106 @@ describe('reference labels and navigation', () => {
     expect(findActiveNavigationItem('/admin', PORTALS.TEACHER)).toBeNull();
     expect(findActiveNavigationItem('/student/notices/abc', PORTALS.STUDENT)?.label).toBe('Notices');
     expect(findActiveNavigationItem('/student', PORTALS.STUDENT)?.label).toBe('Overview');
+  });
+});
+
+describe('new students and student notice audiences', () => {
+  it('takes a student without an email, and checks the email and roll number when given', () => {
+    const base = { ...EMPTY_STUDENT_FORM, fullName: 'Asha', admissionNumber: 'A1' };
+    expect(STUDENT_FORM_SCHEMA.parse(base)).toMatchObject({ email: '', classId: null, rollNumber: null });
+    expect(STUDENT_FORM_SCHEMA.safeParse({ ...base, email: 'nope' }).success).toBe(false);
+    expect(STUDENT_FORM_SCHEMA.parse({ ...base, classId: 'c1', rollNumber: ' 7 ' })).toMatchObject({ classId: 'c1', rollNumber: 7 });
+    expect(STUDENT_FORM_SCHEMA.safeParse({ ...base, classId: 'c1', rollNumber: '0' }).success).toBe(false);
+  });
+
+  const student = (n: number): NoticeAudienceView => ({
+    id: `a${n}`,
+    role: null,
+    classId: null,
+    studentId: `s${n}`,
+    student: { fullName: `Student ${n}`, admissionNumber: `ADM${n}` },
+  });
+  const allTeachers: NoticeAudienceView = { id: 'r', role: 'TEACHER', classId: null, studentId: null, student: null };
+
+  it('names a couple of students, and counts more', () => {
+    expect(audienceSummary([allTeachers, student(2), student(1)], new Map())).toBe('All teachers · Student 1 (ADM1) · Student 2 (ADM2)');
+    expect(audienceSummary([allTeachers, student(1), student(2), student(3)], new Map())).toBe('All teachers · 3 students');
+  });
+
+  it('round-trips students between the API and the picker', () => {
+    const selection = selectionFromAudiences([allTeachers, student(1)]);
+    expect(selection.students).toEqual([{ id: 's1', fullName: 'Student 1', admissionNumber: 'ADM1' }]);
+    expect(toAudienceInputs(selection)).toEqual([{ role: 'TEACHER' }, { studentId: 's1' }]);
+  });
+});
+
+describe('class promotion', () => {
+  const later = (id: string, name: string, section: string, academicYearId = 'y2') => ({ id, academicYearId, name, section });
+  const source = { name: '5', section: 'A' };
+
+  it('moves a class to the next class with the same section, offers to create it, and graduates class 12', () => {
+    const classes = [later('c6b', '6', 'B'), later('c6a', '6', 'A'), later('c6a-other', '6', 'A', 'y3')];
+    expect(defaultPromotionTarget({ sourceClass: source, academicYearId: 'y2', classes, canCreateClass: false })).toEqual({ kind: 'class', classId: 'c6a' });
+    expect(defaultPromotionTarget({ sourceClass: { name: '5', section: 'C' }, academicYearId: 'y2', classes, canCreateClass: true })).toEqual({
+      kind: 'newClass',
+      academicYearId: 'y2',
+      name: '6',
+      section: 'C',
+    });
+    expect(defaultPromotionTarget({ sourceClass: { name: '5', section: 'C' }, academicYearId: 'y2', classes, canCreateClass: false })).toBeNull();
+    expect(defaultPromotionTarget({ sourceClass: { name: '12', section: 'A' }, academicYearId: null, classes, canCreateClass: false })).toEqual({ kind: 'graduate' });
+    expect(defaultPromotionTarget({ sourceClass: source, academicYearId: null, classes, canCreateClass: true })).toBeNull();
+    expect([nextGrade('1'), nextGrade('11'), nextGrade('12')]).toEqual(['2', '12', null]);
+  });
+
+  it('offers only later years, earliest first', () => {
+    const year = (id: string, startDate: string) => ({ id, startDate }) as AcademicYear;
+    const years = [year('y3', '2028-04-01'), year('y1', '2026-03-26'), year('y2', '2027-04-01')];
+    expect(yearsAfter(years, years[1]).map((candidate) => candidate.id)).toEqual(['y2', 'y3']);
+    expect(yearsAfter(years, undefined)).toEqual([]);
+  });
+
+  it('flags roll numbers that are invalid, taken or given twice, and accepts empty ones', () => {
+    const issues = rollNumberIssues(
+      [
+        { studentId: 'a', rollNumber: '1' },
+        { studentId: 'b', rollNumber: '4' },
+        { studentId: 'c', rollNumber: '4' },
+        { studentId: 'd', rollNumber: 'x' },
+        { studentId: 'e', rollNumber: '' },
+        { studentId: 'f', rollNumber: ' 7 ' },
+      ],
+      new Set([1]),
+    );
+    expect(Object.keys(issues).sort()).toEqual(['a', 'b', 'c', 'd']);
+    expect(issues.a).toBe('Roll number 1 is already taken in that class.');
+    expect(issues.b).toBe('Roll number 4 is given to more than one student.');
+  });
+
+  it('knows who can still move: not someone who moved on, graduated or is inactive', () => {
+    const row = (studentId: string, user: { isActive: boolean }, graduatedOn: string | null = null) => ({
+      enrollment: { studentId } as Enrollment,
+      student: { id: studentId, graduatedOn, user } as Student,
+    });
+    const moves = firstMoveByStudent([
+      { studentId: 'moved', classId: 'c6a', academicYearId: 'y2' },
+      { studentId: 'moved', classId: 'c7a', academicYearId: 'y3' },
+    ]);
+    expect(promotionStanding(row('s1', { isActive: true }), moves)).toEqual({ kind: 'eligible' });
+    expect(promotionStanding(row('moved', { isActive: true }), moves)).toEqual({ kind: 'moved', move: { studentId: 'moved', classId: 'c6a', academicYearId: 'y2' } });
+    expect(promotionStanding(row('g', { isActive: false }, '2027-03-31'), moves)).toEqual({ kind: 'graduated', graduatedOn: '2027-03-31' });
+    expect(promotionStanding(row('i', { isActive: false }), moves)).toEqual({ kind: 'unavailable', reason: 'inactive' });
+    expect(promotionStanding({ enrollment: { studentId: 'x' } as Enrollment, student: null }, moves)).toEqual({ kind: 'unavailable', reason: 'unknown' });
+  });
+
+  it('summarizes skipped students by reason', () => {
+    expect(skippedSummary([])).toBeNull();
+    expect(
+      skippedSummary([
+        { studentId: 'a', reason: 'inactive' },
+        { studentId: 'b', reason: 'alreadyEnrolled', classId: 'c' },
+        { studentId: 'c', reason: 'inactive' },
+      ]),
+    ).toBe('3 students skipped: 2 inactive, 1 already enrolled in that year.');
   });
 });

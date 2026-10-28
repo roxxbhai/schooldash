@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { EMAIL_FIELD, FULL_NAME_FIELD, OPTIONAL_DATE_FIELD } from '@/constants/people';
+import { ROLL_NUMBER_FIELD } from '@/constants/admin-enrollments';
+import { FULL_NAME_FIELD, OPTIONAL_DATE_FIELD, OPTIONAL_EMAIL_FIELD } from '@/constants/people';
 import type { SelectOption } from '@/types/reference-labels';
 
 export const GENDER_OPTIONS: SelectOption[] = [
@@ -33,10 +34,15 @@ export const STUDENT_PROFILE_FIELDS = z.object({
   address: z.string().trim().max(500, { error: 'Use at most 500 characters.' }),
 });
 
-/** A NEW STUDENT. NO PASSWORD: THE STUDENT CHOOSES ONE WITH A ONE-TIME SETUP CODE. */
-export const STUDENT_FORM_SCHEMA = STUDENT_PROFILE_FIELDS.extend({ email: EMAIL_FIELD });
+/** A NEW STUDENT. NO PASSWORD: THEY SIGN IN WITH THEIR ADMISSION NUMBER. OPTIONALLY ENROLLED IN A CLASS RIGHT AWAY. */
+export const STUDENT_FORM_SCHEMA = STUDENT_PROFILE_FIELDS.extend({
+  email: OPTIONAL_EMAIL_FIELD,
+  classId: z.string().nullable(),
+  rollNumber: ROLL_NUMBER_FIELD,
+});
 
 export type StudentForm = z.input<typeof STUDENT_FORM_SCHEMA>;
+export type StudentValues = z.output<typeof STUDENT_FORM_SCHEMA>;
 
 export const EMPTY_STUDENT_FORM: StudentForm = {
   fullName: '',
@@ -49,4 +55,6 @@ export const EMPTY_STUDENT_FORM: StudentForm = {
   fatherName: '',
   motherName: '',
   address: '',
+  classId: null,
+  rollNumber: '',
 };

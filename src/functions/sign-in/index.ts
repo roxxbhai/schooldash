@@ -23,7 +23,8 @@ import type { DbClient } from '@/types/supabase';
  *
  * SUPABASE AUTH IDENTIFIES EVERYONE BY EMAIL. TEACHERS AND STUDENTS NEVER TYPE
  * IT: THE SERVER LOOKS IT UP (SECRET-KEY CLIENT) FROM THE PHONE OR ADMISSION
- * NUMBER. A SIGN-IN FORM ONLY ACCEPTS ITS OWN ROLE; ANY OTHER ACCOUNT GETS THE
+ * NUMBER. AN ACCOUNT ADDED WITHOUT AN EMAIL (MIGRATION 19) HAS A PLACEHOLDER
+ * ADDRESS ONLY ON ITS AUTH IDENTITY, WHICH IS READ FROM AUTH INSTEAD. A SIGN-IN FORM ONLY ACCEPTS ITS OWN ROLE; ANY OTHER ACCOUNT GETS THE
  * SAME 401 AS WRONG CREDENTIALS.
  *
  * STUDENTS HAVE NO PASSWORD. THE SERVER MINTS A ONE-TIME MAGIC-LINK TOKEN FOR
@@ -31,10 +32,10 @@ import type { DbClient } from '@/types/supabase';
  * KNOWS AN ADMISSION NUMBER CAN SIGN IN AS THAT STUDENT, BY DESIGN.
  */
 
-const teacherLookupSchema = z.object({ email: z.string() }).nullable();
-const studentLookupSchema = z.array(z.object({ user: z.object({ authUserId: z.uuid(), email: z.string(), isActive: z.boolean() }) }));
+const teacherLookupSchema = z.object({ authUserId: z.uuid(), email: z.string().nullable() }).nullable();
+const studentLookupSchema = z.array(z.object({ user: z.object({ authUserId: z.uuid(), email: z.string().nullable(), isActive: z.boolean() }) }));
 const claimSchema = z.discriminatedUnion('status', [
-  z.object({ status: z.literal('claimed'), userId: z.uuid(), authUserId: z.uuid(), email: z.string() }),
+  z.object({ status: z.literal('claimed'), userId: z.uuid(), authUserId: z.uuid(), email: z.string().nullable() }),
   z.object({ status: z.literal('notFound') }),
   z.object({ status: z.literal('inactive') }),
   z.object({ status: z.literal('alreadySignedUp') }),
@@ -53,6 +54,15 @@ function toAuthAdminError(error: AuthError, operation: string): Error {
     return serviceUnavailable();
   }
   return new DataAccessError(operation, error.code ?? 'UNKNOWN');
+}
+
+/** THE EMAIL SUPABASE AUTH KNOWS THIS ACCOUNT BY: THE STORED ONE, OR THE AUTH IDENTITY'S OWN WHEN NONE IS STORED. */
+async function authEmail(admin: DbClient, account: { authUserId: string; email: string | null }): Promise<string> {
+  if (account.email) return account.email;
+  const { data, error } = await admin.auth.admin.getUserById(account.authUserId);
+  if (error) throw toAuthAdminError(error, 'auth.findIdentityEmail');
+  if (!data.user.email) throw new DataAccessError('auth.findIdentityEmail', 'NO_EMAIL');
+  return data.user.email;
 }
 
 /** ADMINS: EMAIL + PASSWORD. */
@@ -75,13 +85,13 @@ export async function signInTeacher(
     const teacher = teacherLookupSchema.parse(
       await rpcResult(
         'auth.findTeacherByPhone',
-        admin.from('users').select('email').eq('role', 'teacher').eq('phone', credentials.phone).maybeSingle(),
+        admin.from('users').select('authUserId, email').eq('role', 'teacher').eq('phone', credentials.phone).maybeSingle(),
       ),
     );
     if (!teacher) throw invalidCredentials(SIGN_IN_FAILURE_MESSAGES.TEACHER);
     return await signInWithPassword(
       client,
-      { email: teacher.email, password: credentials.password },
+      { email: await authEmail(admin, teacher), password: credentials.password },
       { role: 'TEACHER', credentialMessage: SIGN_IN_FAILURE_MESSAGES.TEACHER },
     );
   } catch (error) {
@@ -118,7 +128,7 @@ export async function signUpTeacher(
         throw conflict(TEACHER_ALREADY_SIGNED_UP_MESSAGE);
     }
 
-    const { error } = await admin.auth.admin.updateUserById(claim.authUserId, { password: credentials.password });
+    const { data: updated, error } = await admin.auth.admin.updateUserById(claim.authUserId, { password: credentials.password });
     if (error) {
       await releaseSignUpClaim(admin, claim.userId);
       if (isAuthWeakPasswordError(error)) {
@@ -127,7 +137,9 @@ export async function signUpTeacher(
       throw toAuthAdminError(error, 'auth.setTeacherPassword');
     }
 
-    const signedIn = await signInWithPassword(client, { email: claim.email, password: credentials.password }, { role: 'TEACHER' });
+    // THE UPDATED IDENTITY CARRIES ITS EMAIL, SO A TEACHER WITHOUT A STORED ONE NEEDS NO EXTRA LOOKUP.
+    const email = claim.email ?? updated.user.email ?? '';
+    const signedIn = await signInWithPassword(client, { email, password: credentials.password }, { role: 'TEACHER' });
     if (!signedIn.success) {
       logServerError('auth.teacherSignUpSignIn', new Error(signedIn.message));
       return functionSuccess({ isSignedIn: false, profile: null });
@@ -167,7 +179,7 @@ export async function signInStudent(
     if (!student.isActive) throw accountInactive();
 
     // A ONE-TIME TOKEN FOR THIS IDENTITY, REDEEMED STRAIGHT AWAY ON THE REQUEST CLIENT. NO EMAIL IS SENT.
-    const link = await admin.auth.admin.generateLink({ type: 'magiclink', email: student.email });
+    const link = await admin.auth.admin.generateLink({ type: 'magiclink', email: await authEmail(admin, student) });
     if (link.error) throw toAuthAdminError(link.error, 'auth.studentToken');
     const verified = await client.auth.verifyOtp({ type: 'email', token_hash: link.data.properties.hashed_token });
     if (verified.error) throw toAuthAdminError(verified.error, 'auth.studentSession');

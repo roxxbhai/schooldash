@@ -10,6 +10,8 @@ const LOCALE = 'en-IN';
 const DATE_FORMAT = new Intl.DateTimeFormat(LOCALE, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
 const LONG_DATE_FORMAT = new Intl.DateTimeFormat(LOCALE, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: SCHOOL_TIME_ZONE });
 const DATE_TIME_FORMAT = new Intl.DateTimeFormat(LOCALE, { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: SCHOOL_TIME_ZONE });
+const SHORT_DATE_FORMAT = new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: SCHOOL_TIME_ZONE });
+const SHORT_WEEKDAY_FORMAT = new Intl.DateTimeFormat('en-GB', { weekday: 'short', timeZone: SCHOOL_TIME_ZONE });
 const ISO_DATE_IN_SCHOOL_ZONE = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: SCHOOL_TIME_ZONE });
 const NUMBER_FORMAT = new Intl.NumberFormat(LOCALE);
 const MARKS_FORMAT = new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 2 });
@@ -49,6 +51,11 @@ export function formatDateTime(timestamp: string | null | undefined): string {
 /** "Tuesday, 20 October 2026" FOR TODAY IN SCHOOL TIME. */
 export function formatLongToday(now = new Date()): string {
   return LONG_DATE_FORMAT.format(now);
+}
+
+/** "28/10/2026, Wed" FOR TODAY IN SCHOOL TIME. */
+export function formatShortToday(now = new Date()): string {
+  return `${SHORT_DATE_FORMAT.format(now)}, ${SHORT_WEEKDAY_FORMAT.format(now)}`;
 }
 
 /** TODAY'S CALENDAR DATE IN SCHOOL TIME, AS "YYYY-MM-DD". */

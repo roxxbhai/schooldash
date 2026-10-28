@@ -1,6 +1,6 @@
 'use client';
 
-import { FileTextIcon, PrinterIcon, RefreshCwIcon, UserRoundSearchIcon } from 'lucide-react';
+import { FileTextIcon, RefreshCwIcon, UserRoundSearchIcon } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { DataTable, type DataTableColumn } from '@/components/data-table';
@@ -30,7 +30,7 @@ interface Selection {
 }
 
 /**
- * ONE STUDENT'S REPORT CARD FOR ONE EXAM, READY TO PRINT. IT SHOWS ONLY WHAT THE
+ * ONE STUDENT'S REPORT CARD FOR ONE EXAM. IT SHOWS ONLY WHAT THE
  * API RETURNS: NO PERCENTAGE, GRADE OR PASS/FAIL (NO RULE FOR THEM IS DEFINED),
  * AND TOTALS ONLY ONCE EVERY SUBJECT HAS A MARK. OPENS FROM ?studentId=&examId=.
  */
@@ -112,10 +112,6 @@ export function AdminReportCards() {
     { key: 'remarks', header: 'Remarks', cell: (subject) => <span className='text-sm'>{subject.remarks ?? '—'}</span> },
   ];
 
-  function printReport() {
-    window.print();
-  }
-
   function renderReport() {
     if (!studentId || !examId) {
       return (
@@ -159,8 +155,8 @@ export function AdminReportCards() {
     const { summary } = card;
     const isTotalShown = summary.complete && summary.totalMarksObtained !== null && summary.totalMaxMarks !== null;
     return (
-      <article aria-label={`Report card of ${card.student.fullName ?? 'student'}`} className='border bg-card shadow-xs print:border-0 print:shadow-none'>
-        <header className='grid gap-4 border-b px-6 py-5 sm:grid-cols-2 print:px-0'>
+      <article aria-label={`Report card of ${card.student.fullName ?? 'student'}`} className='border bg-card shadow-xs'>
+        <header className='grid gap-4 border-b px-6 py-5 sm:grid-cols-2'>
           <div>
             <p className='text-xs font-medium text-muted-foreground uppercase'>Report card</p>
             <h2 className='mt-1 text-2xl font-semibold tracking-tight text-foreground'>{card.student.fullName ?? 'Unknown student'}</h2>
@@ -180,7 +176,7 @@ export function AdminReportCards() {
           </dl>
         </header>
 
-        <div className='p-6 print:px-0'>
+        <div className='p-6'>
           {card.scope === 'assignedSubjects' && (
             <FormAlert tone='info' className='mb-4'>
               Only the subjects you teach are shown, so totals are not available.
@@ -194,7 +190,7 @@ export function AdminReportCards() {
             empty={<EmptyState icon={FileTextIcon} title='No subjects configured' description="This exam has no papers for the student's class yet." />}
           />
 
-          <dl className='mt-5 grid gap-4 border bg-surface-muted p-4 sm:grid-cols-2 print:bg-transparent'>
+          <dl className='mt-5 grid gap-4 border bg-surface-muted p-4 sm:grid-cols-2'>
             <div>
               <dt className='text-sm text-muted-foreground'>Subjects with marks</dt>
               <dd className='mt-0.5 text-lg font-semibold text-foreground tabular-nums'>
@@ -225,16 +221,10 @@ export function AdminReportCards() {
 
   return (
     <>
-      <div className='print:hidden'>
+      <div>
         <PageHeader
           title='Report cards'
           description='Marks for one student and exam as entered. Percentages, grades and pass/fail are not calculated.'
-          actions={
-            <Button onClick={printReport} disabled={!card || cardQuery.isLoading}>
-              <PrinterIcon aria-hidden />
-              Print
-            </Button>
-          }
         />
 
         <div className='mb-6 grid gap-4 border bg-card p-5 shadow-xs sm:grid-cols-2 xl:grid-cols-4'>

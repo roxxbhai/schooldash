@@ -37,20 +37,34 @@ export async function findNotice(client: DbClient, id: string, isAdminView: bool
   }
 }
 
-/** CLASS AUDIENCES MUST REFERENCE EXISTING CLASSES (422 ON THE EXACT ENTRY); ROLES BECOME DATABASE VALUES. */
+/** THE IDS OF `ids` THAT EXIST IN `table`. ONE QUERY; NONE WHEN THE LIST IS EMPTY. */
+async function existingIds(client: DbClient, table: 'classes' | 'students', ids: string[]): Promise<Set<string>> {
+  if (ids.length === 0) return new Set();
+  const rows = await many<{ id: string }>(`${table}.exist`, client.from(table).select('id').in('id', ids), NOTICE_ERRORS);
+  return new Set(rows.map((row) => row.id));
+}
+
+/** THE AUDIENCE AS THE DATABASE FUNCTIONS EXPECT IT: ROLES BECOME DATABASE VALUES. */
+function toAudienceRow(audience: AudienceInput): AudienceRow {
+  if ('role' in audience) return { audienceRole: toDbRole(audience.role) };
+  if ('classId' in audience) return { classId: audience.classId };
+  return { studentId: audience.studentId };
+}
+
+/** CLASS AND STUDENT AUDIENCES MUST REFERENCE EXISTING RECORDS (422 ON THE EXACT ENTRY). */
 export async function toAudienceRows(client: DbClient, audiences: AudienceInput[]): Promise<FunctionResult<AudienceRow[]>> {
   try {
-    const classIds = audiences.flatMap((audience) => ('classId' in audience ? [audience.classId] : []));
-    const existingClassIds = new Set<string>();
-    if (classIds.length > 0) {
-      const rows = await many<{ id: string }>('classes.exist', client.from('classes').select('id').in('id', classIds), NOTICE_ERRORS);
-      for (const row of rows) existingClassIds.add(row.id);
-    }
-    const issues = audiences.flatMap((audience, index) =>
-      'classId' in audience && !existingClassIds.has(audience.classId) ? [{ path: `audiences.${index}.classId`, message: 'Class not found.' }] : [],
-    );
+    const [existingClassIds, existingStudentIds] = await Promise.all([
+      existingIds(client, 'classes', audiences.flatMap((audience) => ('classId' in audience ? [audience.classId] : []))),
+      existingIds(client, 'students', audiences.flatMap((audience) => ('studentId' in audience ? [audience.studentId] : []))),
+    ]);
+    const issues = audiences.flatMap((audience, index) => {
+      if ('classId' in audience && !existingClassIds.has(audience.classId)) return [{ path: `audiences.${index}.classId`, message: 'Class not found.' }];
+      if ('studentId' in audience && !existingStudentIds.has(audience.studentId)) return [{ path: `audiences.${index}.studentId`, message: 'Student not found.' }];
+      return [];
+    });
     if (issues.length > 0) throw validationError(issues);
-    return functionSuccess(audiences.map((audience) => ('role' in audience ? { audienceRole: toDbRole(audience.role) } : { classId: audience.classId })));
+    return functionSuccess(audiences.map(toAudienceRow));
   } catch (error) {
     return functionFailure(error, 'notices.audiences');
   }

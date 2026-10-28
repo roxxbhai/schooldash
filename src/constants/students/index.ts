@@ -2,7 +2,7 @@ import { z } from 'zod';
 import type { DbErrorContext } from '@/types/supabase';
 
 const STUDENT_FIELDS =
-  'id, userId, admissionNumber, admissionDate, dateOfBirth, gender, bloodGroup, fatherName, motherName, address, createdAt, updatedAt';
+  'id, userId, admissionNumber, admissionDate, dateOfBirth, gender, bloodGroup, fatherName, motherName, address, graduatedOn, createdAt, updatedAt';
 export const STUDENT_COLUMNS = `${STUDENT_FIELDS}, user:users!studentsUserFkey(fullName, email, phone, isActive)`;
 /** INNER JOIN ON THE ACCOUNT, SO A LIST CAN BE FILTERED BY `user.isActive`. */
 export const STUDENT_COLUMNS_FILTERABLE = `${STUDENT_FIELDS}, user:users!studentsUserFkey!inner(fullName, email, phone, isActive)`;

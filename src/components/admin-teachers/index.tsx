@@ -189,7 +189,7 @@ export function AdminTeachers() {
             autoComplete='off'
           />
         </FormField>
-        <FormField id='email' label='Email' description='For school records. It cannot be changed later.' error={create.fieldErrors.email} isRequired>
+        <FormField id='email' label='Email' description='Optional. For school records; it cannot be changed later.' error={create.fieldErrors.email}>
           <Input
             {...fieldControlProps('email', create.fieldErrors.email, true)}
             type='email'

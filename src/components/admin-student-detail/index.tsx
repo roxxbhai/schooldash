@@ -183,7 +183,7 @@ export function AdminStudentDetail() {
         title={student.user.fullName}
         description={
           <span className='flex flex-wrap items-center gap-3'>
-            <AccountStatusBadge isActive={student.user.isActive} />
+            <AccountStatusBadge isActive={student.user.isActive} graduatedOn={student.graduatedOn} />
             <span className='tabular-nums text-sm'>{student.admissionNumber}</span>
           </span>
         }
@@ -214,6 +214,7 @@ export function AdminStudentDetail() {
                 { label: 'Phone', value: student.user.phone, isMono: true },
                 { label: 'Admission date', value: student.admissionDate ? formatDate(student.admissionDate) : null, isMono: true },
                 { label: 'Date of birth', value: student.dateOfBirth ? formatDate(student.dateOfBirth) : null, isMono: true },
+                ...(student.graduatedOn ? [{ label: 'Graduated on', value: formatDate(student.graduatedOn), isMono: true }] : []),
                 { label: 'Gender', value: student.gender },
                 { label: 'Blood group', value: bloodGroupLabel(student.bloodGroup) },
                 { label: "Father's name", value: student.fatherName },
@@ -391,8 +392,8 @@ export function AdminStudentDetail() {
                 spellCheck={false}
               />
             </FormField>
-            <FormField id='email' label='Email' description="The login email can't be changed.">
-              <Input {...fieldControlProps('email', undefined, true)} value={student.user.email} className='tabular-nums' readOnly disabled />
+            <FormField id='email' label='Email' description="The email can't be changed.">
+              <Input {...fieldControlProps('email', undefined, true)} value={student.user.email ?? ''} placeholder='Not recorded' className='tabular-nums' readOnly disabled />
             </FormField>
             <FormField id='phone' label='Phone' error={save.fieldErrors.phone}>
               <Input

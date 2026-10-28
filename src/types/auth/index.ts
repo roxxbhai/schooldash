@@ -11,7 +11,8 @@ export interface AppUser {
   role: AppRole;
   isActive: true;
   fullName: string;
-  email: string;
+  /** NULL FOR A STUDENT OR TEACHER ADDED WITHOUT ONE. ADMINS ALWAYS HAVE ONE. */
+  email: string | null;
 }
 
 /** THE FIELDS RETURNED TO CLIENTS BY /api/auth/me AND /api/auth/login. */
@@ -20,7 +21,7 @@ export interface SessionProfile {
   role: AppRole;
   isActive: boolean;
   fullName: string;
-  email: string;
+  email: string | null;
 }
 
 export interface PasswordCredentials {
@@ -50,7 +51,7 @@ export interface AppUserRecord {
   role: DbUserRole;
   isActive: boolean;
   fullName: string;
-  email: string;
+  email: string | null;
 }
 
 export interface TeacherAssignmentQuery {

@@ -1,9 +1,12 @@
 'use client';
 
-import { PencilIcon, PlusIcon, UsersIcon } from 'lucide-react';
+import { ArrowUpRightIcon, PencilIcon, PlusIcon, UsersIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
+import { ClassPromotionDialog } from '@/components/class-promotion';
+import { promotionColumns } from '@/components/class-promotion/promotion-columns';
+import { PromotionSelectionBar } from '@/components/class-promotion/selection-bar';
 import { DataTable, type DataTableColumn } from '@/components/data-table';
 import { EmptyState } from '@/components/empty-state';
 import { FormDialog } from '@/components/form-dialog';
@@ -30,15 +33,18 @@ import { formatDate } from '@/helpers/format';
 import { fieldControlProps, withoutKey, zodFieldErrors } from '@/helpers/forms';
 import { academicYearOptions, classLabel, classOptions } from '@/helpers/reference-labels';
 import { useAsyncResult } from '@/hooks/use-async-result';
+import { useClassPromotion } from '@/hooks/use-class-promotion';
 import { useMutation } from '@/hooks/use-mutation';
 import { useReferenceData } from '@/hooks/use-reference-data';
 import type { EnrollmentRow } from '@/types/admin-enrollments';
+import type { PromotionClass } from '@/types/class-promotion';
 import type { Student } from '@/types/students';
 
 /**
  * ENROLLMENTS: WHO IS IN EACH CLASS, WITH ROLL NUMBERS. ONE CLASS PER STUDENT PER
  * ACADEMIC YEAR; ENROLLMENTS ARE NEVER DELETED. `?studentId=` OPENS THE ENROLL
- * DIALOG WITH THAT STUDENT CHOSEN (E.G. RIGHT AFTER ADDING THEM).
+ * DIALOG WITH THAT STUDENT CHOSEN (E.G. RIGHT AFTER ADDING THEM). A CLASS'S
+ * STUDENTS CAN BE SELECTED AND PROMOTED TO A LATER YEAR (CLASS 12 GRADUATES).
  */
 export function AdminEnrollments() {
   // THE QUERY PARAM SEEDS THE INITIAL STATE, SO IT IS READ BEFORE THE STATE BELOW.
@@ -55,13 +61,14 @@ export function AdminEnrollments() {
   const [editForm, setEditForm] = useState<EditEnrollmentForm>(EMPTY_EDIT_ENROLLMENT_FORM);
 
   const router = useRouter();
-  const { academicYears, classes, classById, currentAcademicYear, isReady } = useReferenceData();
+  const { academicYears, academicYearById, classes, classById, currentAcademicYear, isReady } = useReferenceData();
 
   const selectedYearId = yearChoice ?? currentAcademicYear?.id ?? null;
   const yearClassOptions = selectedYearId ? classOptions(classes, selectedYearId) : [];
   const selectedClass = classId ? classById.get(classId) : undefined;
 
   const roster = useAsyncResult<EnrollmentRow[]>(classId ? `enrollments|${classId}` : null, () => loadClassRoster(classId ?? ''));
+  const promotion = useClassPromotion({ classId, rows: roster.data, isEnabled: classId !== null });
   const enrolledIds = new Set((roster.data ?? []).map((row) => row.enrollment.studentId));
   // THE NEXT ROLL NUMBER IN THE CLASS SHOWN ON THE PAGE (THE ONLY ROSTER THAT IS LOADED).
   const nextRollNumber = roster.data ? String(Math.max(0, ...roster.data.map((row) => row.enrollment.rollNumber ?? 0)) + 1) : '';
@@ -91,7 +98,9 @@ export function AdminEnrollments() {
     },
   });
 
+  const { selectColumn, nextYearColumn } = promotionColumns<EnrollmentRow>(promotion, academicYearById);
   const columns: DataTableColumn<EnrollmentRow>[] = [
+    ...selectColumn,
     {
       key: 'roll',
       header: 'Roll no.',
@@ -124,6 +133,7 @@ export function AdminEnrollments() {
       className: 'hidden sm:table-cell',
       cell: (row) => <span className='tabular-nums text-sm'>{formatDate(row.enrollment.enrolledOn)}</span>,
     },
+    ...nextYearColumn,
     {
       key: 'actions',
       header: <span className='sr-only'>Actions</span>,
@@ -136,6 +146,12 @@ export function AdminEnrollments() {
       ),
     },
   ];
+
+  /** AFTER A PROMOTION: SHOW THE CLASS THE STUDENTS MOVED INTO. */
+  function showClass(schoolClass: PromotionClass) {
+    setYearChoice(schoolClass.academicYearId);
+    setClassId(schoolClass.id);
+  }
 
   function handleYearChange(value: string | null) {
     setYearChoice(value);
@@ -225,10 +241,18 @@ export function AdminEnrollments() {
         title='Enrollments'
         description='Each student is enrolled in one class per academic year. Enrollments are kept as history and are never deleted.'
         actions={
-          <Button onClick={openEnroll} disabled={!isReady || yearClassOptions.length === 0}>
-            <PlusIcon aria-hidden />
-            Enroll student
-          </Button>
+          <>
+            {selectedClass && (
+              <Button variant='outline' onClick={promotion.openForClass} disabled={!promotion.isReady || promotion.eligibleIds.length === 0}>
+                <ArrowUpRightIcon aria-hidden />
+                Promote class
+              </Button>
+            )}
+            <Button onClick={openEnroll} disabled={!isReady || yearClassOptions.length === 0}>
+              <PlusIcon aria-hidden />
+              Enroll student
+            </Button>
+          </>
         }
       />
 
@@ -268,22 +292,37 @@ export function AdminEnrollments() {
           />
         </Panel>
       ) : (
-        <DataTable
-          label={`Students enrolled in ${classLabel(selectedClass)}`}
-          columns={columns}
+        <>
+          <PromotionSelectionBar promotion={promotion} />
+          <DataTable
+            label={`Students enrolled in ${classLabel(selectedClass)}`}
+            columns={columns}
+            rows={roster.data}
+            getRowKey={(row) => row.enrollment.id}
+            isLoading={roster.isLoading}
+            errorMessage={roster.errorMessage}
+            onRetry={roster.reload}
+            empty={
+              <EmptyState
+                icon={UsersIcon}
+                title={`No students enrolled in ${classLabel(selectedClass)}`}
+                description='Enroll the students who study in this class this year.'
+                action={<Button onClick={openEnroll}>Enroll student</Button>}
+              />
+            }
+          />
+        </>
+      )}
+
+      {selectedClass && roster.data && (
+        <ClassPromotionDialog
+          key={promotion.dialogKey}
+          promotion={promotion}
+          sourceClass={selectedClass}
           rows={roster.data}
-          getRowKey={(row) => row.enrollment.id}
-          isLoading={roster.isLoading}
-          errorMessage={roster.errorMessage}
-          onRetry={roster.reload}
-          empty={
-            <EmptyState
-              icon={UsersIcon}
-              title={`No students enrolled in ${classLabel(selectedClass)}`}
-              description='Enroll the students who study in this class this year.'
-              action={<Button onClick={openEnroll}>Enroll student</Button>}
-            />
-          }
+          canCreateClass
+          onFinished={roster.reload}
+          onViewClass={showClass}
         />
       )}
 

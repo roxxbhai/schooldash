@@ -145,14 +145,14 @@ isOneToOne: false
                   ]
                 },"noticeAudiences": {
                   Row: {
-                    "audienceRole": Database["public"]['Enums']["userRole"] | null,"classId": string | null,"createdAt": string,"id": string,"noticeId": string
+                    "audienceRole": Database["public"]['Enums']["userRole"] | null,"classId": string | null,"createdAt": string,"id": string,"noticeId": string,"studentId": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "audienceRole"?: Database["public"]['Enums']["userRole"] | null,"classId"?: string | null,"createdAt"?: string,"id"?: string,"noticeId": string
+                    "audienceRole"?: Database["public"]['Enums']["userRole"] | null,"classId"?: string | null,"createdAt"?: string,"id"?: string,"noticeId": string,"studentId"?: string | null
                   }
                   Update: {
-                    "audienceRole"?: Database["public"]['Enums']["userRole"] | null,"classId"?: string | null,"createdAt"?: string,"id"?: string,"noticeId"?: string
+                    "audienceRole"?: Database["public"]['Enums']["userRole"] | null,"classId"?: string | null,"createdAt"?: string,"id"?: string,"noticeId"?: string,"studentId"?: string | null
                   }
                   Relationships: [
                     {
@@ -166,6 +166,12 @@ isOneToOne: false
       columns: ["noticeId"]
 isOneToOne: false
       referencedRelation: "notices"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "noticeAudiences_studentId_fkey"
+      columns: ["studentId"]
+isOneToOne: false
+      referencedRelation: "students"
       referencedColumns: ["id"]
     }
                   ]
@@ -275,14 +281,14 @@ isOneToOne: false
                   ]
                 },"students": {
                   Row: {
-                    "address": string | null,"admissionDate": string | null,"admissionNumber": string,"bloodGroup": string | null,"createdAt": string,"dateOfBirth": string | null,"fatherName": string | null,"gender": string | null,"id": string,"motherName": string | null,"role": Database["public"]['Enums']["userRole"],"updatedAt": string,"userId": string,"studentSearchText": string | null
+                    "address": string | null,"admissionDate": string | null,"admissionNumber": string,"bloodGroup": string | null,"createdAt": string,"dateOfBirth": string | null,"fatherName": string | null,"gender": string | null,"graduatedOn": string | null,"id": string,"motherName": string | null,"role": Database["public"]['Enums']["userRole"],"updatedAt": string,"userId": string,"studentSearchText": string | null
                   }
                   ComputedFields: "studentSearchText"
                   Insert: {
-                    "address"?: string | null,"admissionDate"?: string | null,"admissionNumber": string,"bloodGroup"?: string | null,"createdAt"?: string,"dateOfBirth"?: string | null,"fatherName"?: string | null,"gender"?: string | null,"id"?: string,"motherName"?: string | null,"role"?: Database["public"]['Enums']["userRole"],"updatedAt"?: string,"userId": string
+                    "address"?: string | null,"admissionDate"?: string | null,"admissionNumber": string,"bloodGroup"?: string | null,"createdAt"?: string,"dateOfBirth"?: string | null,"fatherName"?: string | null,"gender"?: string | null,"graduatedOn"?: string | null,"id"?: string,"motherName"?: string | null,"role"?: Database["public"]['Enums']["userRole"],"updatedAt"?: string,"userId": string
                   }
                   Update: {
-                    "address"?: string | null,"admissionDate"?: string | null,"admissionNumber"?: string,"bloodGroup"?: string | null,"createdAt"?: string,"dateOfBirth"?: string | null,"fatherName"?: string | null,"gender"?: string | null,"id"?: string,"motherName"?: string | null,"role"?: Database["public"]['Enums']["userRole"],"updatedAt"?: string,"userId"?: string
+                    "address"?: string | null,"admissionDate"?: string | null,"admissionNumber"?: string,"bloodGroup"?: string | null,"createdAt"?: string,"dateOfBirth"?: string | null,"fatherName"?: string | null,"gender"?: string | null,"graduatedOn"?: string | null,"id"?: string,"motherName"?: string | null,"role"?: Database["public"]['Enums']["userRole"],"updatedAt"?: string,"userId"?: string
                   }
                   Relationships: [
                     {
@@ -431,14 +437,14 @@ isOneToOne: false
                   ]
                 },"users": {
                   Row: {
-                    "authUserId": string,"createdAt": string,"deactivatedAt": string | null,"email": string,"fullName": string,"id": string,"isActive": boolean,"passwordSetAt": string | null,"phone": string | null,"role": Database["public"]['Enums']["userRole"],"updatedAt": string
+                    "authUserId": string,"createdAt": string,"deactivatedAt": string | null,"email": string | null,"fullName": string,"id": string,"isActive": boolean,"passwordSetAt": string | null,"phone": string | null,"role": Database["public"]['Enums']["userRole"],"updatedAt": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "authUserId": string,"createdAt"?: string,"deactivatedAt"?: string | null,"email": string,"fullName": string,"id"?: string,"isActive"?: boolean,"passwordSetAt"?: string | null,"phone"?: string | null,"role": Database["public"]['Enums']["userRole"],"updatedAt"?: string
+                    "authUserId": string,"createdAt"?: string,"deactivatedAt"?: string | null,"email"?: string | null,"fullName": string,"id"?: string,"isActive"?: boolean,"passwordSetAt"?: string | null,"phone"?: string | null,"role": Database["public"]['Enums']["userRole"],"updatedAt"?: string
                   }
                   Update: {
-                    "authUserId"?: string,"createdAt"?: string,"deactivatedAt"?: string | null,"email"?: string,"fullName"?: string,"id"?: string,"isActive"?: boolean,"passwordSetAt"?: string | null,"phone"?: string | null,"role"?: Database["public"]['Enums']["userRole"],"updatedAt"?: string
+                    "authUserId"?: string,"createdAt"?: string,"deactivatedAt"?: string | null,"email"?: string | null,"fullName"?: string,"id"?: string,"isActive"?: boolean,"passwordSetAt"?: string | null,"phone"?: string | null,"role"?: Database["public"]['Enums']["userRole"],"updatedAt"?: string
                   }
                   Relationships: [
                     
@@ -452,6 +458,9 @@ isOneToOne: false
             "claimTeacherSignUp":
 { Args: { "phone": string }; Returns: Json
                            },
+"classPromotionOptions":
+{ Args: { "classId": string }; Returns: Json
+                           },
 "consumeAccountSetupCode":
 { Args: { "codeHash": string,"email": string }; Returns: Json
                            },
@@ -461,8 +470,14 @@ isOneToOne: false
 "findAuthUserIdByEmail":
 { Args: { "email": string }; Returns: string
                            },
+"graduateStudents":
+{ Args: { "graduatedOn": string,"sourceClassId": string,"studentIds": (string)[] }; Returns: Json
+                           },
 "issueAccountSetupCode":
 { Args: { "actorUserId": string,"codeHash": string,"expiresAt": string,"userId": string }; Returns: undefined
+                           },
+"promoteStudents":
+{ Args: { "sourceClassId": string,"students": Json,"targetClassId": string }; Returns: Json
                            },
 "provisionAppUser":
 { Args: { "actorUserId"?: string,"authUserId": string,"email": string,"fullName": string,"phone"?: string,"profile"?: Json,"role": Database["public"]['Enums']["userRole"] }; Returns: string

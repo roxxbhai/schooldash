@@ -287,8 +287,8 @@ export function AdminTeacherDetail() {
             <FormField id='fullName' label='Full name' error={save.fieldErrors.fullName} isRequired>
               <Input {...fieldControlProps('fullName', save.fieldErrors.fullName)} value={form.fullName} onChange={updateField('fullName')} autoComplete='off' />
             </FormField>
-            <FormField id='email' label='Email' description="The login email can't be changed.">
-              <Input {...fieldControlProps('email', undefined, true)} value={teacher.user.email} className='tabular-nums' readOnly disabled />
+            <FormField id='email' label='Email' description="The email can't be changed.">
+              <Input {...fieldControlProps('email', undefined, true)} value={teacher.user.email ?? ''} placeholder='Not recorded' className='tabular-nums' readOnly disabled />
             </FormField>
             <div className='grid gap-4 sm:grid-cols-2'>
               <FormField id='employeeCode' label='Employee code' description='Assigned automatically. It cannot be changed.'>

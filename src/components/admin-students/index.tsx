@@ -17,23 +17,25 @@ import { SearchInput } from '@/components/search-input';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { BLOOD_GROUP_OPTIONS, EMPTY_STUDENT_FORM, GENDER_OPTIONS, STUDENT_FORM_SCHEMA, type StudentForm } from '@/constants/admin-students';
+import { BLOOD_GROUP_OPTIONS, EMPTY_STUDENT_FORM, GENDER_OPTIONS, STUDENT_FORM_SCHEMA, type StudentForm, type StudentValues } from '@/constants/admin-students';
 import { API_PATHS } from '@/constants/api-client';
 import { ACCOUNT_STATUS_OPTIONS } from '@/constants/people';
 import { ROUTES } from '@/constants/routes';
-import { createStudent } from '@/functions/admin-students';
+import { createStudent, loadNextRollNumber } from '@/functions/admin-students';
 import { toSearchTerm } from '@/helpers/api-client';
 import { todayInSchool } from '@/helpers/format';
 import { fieldControlProps, withoutKey, zodFieldErrors } from '@/helpers/forms';
-import { classOptions } from '@/helpers/reference-labels';
+import { classLabel, classOptions } from '@/helpers/reference-labels';
 import { useApiQuery } from '@/hooks/use-api-query';
+import { useAsyncResult } from '@/hooks/use-async-result';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { useMutation } from '@/hooks/use-mutation';
 import { useReferenceData } from '@/hooks/use-reference-data';
+import type { CreatedStudent } from '@/types/admin-students';
 import type { PaginatedList } from '@/types/api';
 import type { Student } from '@/types/students';
 
-/** STUDENTS: SEARCH, FILTER BY CLASS AND STATUS, AND ADD. A NEW STUDENT SIGNS IN WITH THEIR ADMISSION NUMBER AND IS THEN ENROLLED IN A CLASS. */
+/** STUDENTS: SEARCH, FILTER BY CLASS AND STATUS, AND ADD. A NEW STUDENT SIGNS IN WITH THEIR ADMISSION NUMBER AND CAN BE ENROLLED IN A CLASS AS THEY ARE ADDED. */
 export function AdminStudents() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
@@ -41,8 +43,9 @@ export function AdminStudents() {
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [form, setForm] = useState<StudentForm>(EMPTY_STUDENT_FORM);
+  const [isRollNumberEdited, setIsRollNumberEdited] = useState(false);
 
-  const { classes, currentAcademicYear, isReady } = useReferenceData();
+  const { classes, classById, currentAcademicYear, isReady } = useReferenceData();
   const router = useRouter();
   const debouncedSearch = useDebouncedValue(toSearchTerm(search));
   const list = useApiQuery<PaginatedList<Student>>(API_PATHS.students, {
@@ -53,19 +56,38 @@ export function AdminStudents() {
     isActive: statusFilter,
   });
 
-  const create = useMutation((values: StudentForm) => createStudent(values), {
-    onSuccess: (student) => {
+  // THE NEXT FREE ROLL NUMBER IN THE CLASS CHOSEN IN THE FORM, SUGGESTED UNTIL THE ADMIN TYPES THEIR OWN.
+  const nextRollNumber = useAsyncResult(isFormOpen && form.classId ? `next-roll|${form.classId}` : null, () => loadNextRollNumber(form.classId ?? ''));
+  const create = useMutation((values: StudentValues) => createStudent(values), {
+    onSuccess: (student: CreatedStudent) => {
       setIsFormOpen(false);
       list.reload();
+      const enrollAction = { label: 'Enroll', onClick: () => router.push(`${ROUTES.admin.enrollments}?studentId=${student.id}`) };
+      if (student.enrollment) {
+        const rollText = student.enrollment.rollNumber === null ? '' : `, roll number ${student.enrollment.rollNumber}`;
+        toast.success(`Added ${student.user.fullName} to class ${classLabel(classById.get(student.enrollment.classId))}${rollText}.`, {
+          description: `They sign in with admission number ${student.admissionNumber}.`,
+        });
+        return;
+      }
+      if (form.classId) {
+        toast.warning(`Added ${student.user.fullName}, but couldn't enroll them in the class.`, {
+          description: 'Enroll them from the Enrollments page.',
+          action: enrollAction,
+        });
+        return;
+      }
       toast.success(`Added ${student.user.fullName}.`, {
         description: `They sign in with admission number ${student.admissionNumber}. Next, enroll them in a class.`,
-        action: { label: 'Enroll', onClick: () => router.push(`${ROUTES.admin.enrollments}?studentId=${student.id}`) },
+        action: enrollAction,
       });
     },
   });
 
   const isFiltered = Boolean(debouncedSearch) || classFilter !== null || statusFilter !== null;
   const currentClassOptions = currentAcademicYear ? classOptions(classes, currentAcademicYear.id) : [];
+  const suggestedRollNumber = form.classId && !nextRollNumber.isLoading ? (nextRollNumber.data ?? '') : '';
+  const rollNumber = isRollNumberEdited ? form.rollNumber : suggestedRollNumber;
 
   const columns: DataTableColumn<Student>[] = [
     {
@@ -76,12 +98,12 @@ export function AdminStudents() {
           <Link href={`${ROUTES.admin.students}/${student.id}`} className='font-medium text-foreground underline-offset-3 hover:text-primary hover:underline'>
             {student.user.fullName}
           </Link>
-          <p className='tabular-nums text-xs text-muted-foreground'>{student.user.email}</p>
+          {student.user.email && <p className='tabular-nums text-xs text-muted-foreground'>{student.user.email}</p>}
         </div>
       ),
     },
     { key: 'admission', header: 'Admission no.', cell: (student) => <span className='tabular-nums text-sm'>{student.admissionNumber}</span> },
-    { key: 'status', header: 'Status', cell: (student) => <AccountStatusBadge isActive={student.user.isActive} /> },
+    { key: 'status', header: 'Status', cell: (student) => <AccountStatusBadge isActive={student.user.isActive} graduatedOn={student.graduatedOn} /> },
   ];
 
   function handleSearchChange(value: string) {
@@ -100,7 +122,9 @@ export function AdminStudents() {
   }
 
   function openCreate() {
-    setForm({ ...EMPTY_STUDENT_FORM, admissionDate: todayInSchool() });
+    // A LIST FILTERED TO ONE CLASS SUGGESTS THAT CLASS FOR THE NEW STUDENT.
+    setForm({ ...EMPTY_STUDENT_FORM, admissionDate: todayInSchool(), classId: classFilter });
+    setIsRollNumberEdited(false);
     create.reset();
     setIsFormOpen(true);
   }
@@ -108,6 +132,21 @@ export function AdminStudents() {
   function setField<K extends keyof StudentForm>(field: K, value: StudentForm[K]) {
     setForm((current) => ({ ...current, [field]: value }));
     create.setFieldErrors((errors) => withoutKey(errors, field));
+  }
+
+  function handleFormClassChange(value: string | null) {
+    setField('classId', value);
+    create.setFieldErrors((errors) => withoutKey(errors, 'rollNumber'));
+    // WITHOUT A CLASS THERE IS NO ROLL NUMBER; A NEW CLASS STARTS FROM ITS OWN SUGGESTION AGAIN.
+    if (!value) {
+      setField('rollNumber', '');
+      setIsRollNumberEdited(false);
+    }
+  }
+
+  function handleRollNumberChange(event: React.ChangeEvent<HTMLInputElement>) {
+    setField('rollNumber', event.target.value);
+    setIsRollNumberEdited(true);
   }
 
   function updateField(field: keyof StudentForm) {
@@ -118,7 +157,7 @@ export function AdminStudents() {
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const parsed = STUDENT_FORM_SCHEMA.safeParse(form);
+    const parsed = STUDENT_FORM_SCHEMA.safeParse({ ...form, rollNumber: form.classId ? rollNumber : '' });
     if (!parsed.success) {
       create.setFieldErrors(zodFieldErrors(parsed.error));
       return;
@@ -130,7 +169,7 @@ export function AdminStudents() {
     <>
       <PageHeader
         title='Students'
-        description='Each student signs in with their admission number. After adding a student, enroll them in a class from the Enrollments page.'
+        description='Each student signs in with their admission number. Choose their class while adding them, or enroll them later from the Enrollments page.'
         actions={
           <Button onClick={openCreate}>
             <PlusIcon aria-hidden />
@@ -212,12 +251,39 @@ export function AdminStudents() {
               spellCheck={false}
             />
           </FormField>
+          <FormField id='classId' label='Class' description={`Enrolls them in ${currentAcademicYear?.name ?? 'the current year'}. Optional.`} error={create.fieldErrors.classId}>
+            <OptionSelect
+              {...fieldControlProps('classId', create.fieldErrors.classId, true)}
+              value={form.classId}
+              onValueChange={handleFormClassChange}
+              options={currentClassOptions}
+              placeholder={currentClassOptions.length === 0 ? 'No classes this year' : 'Not enrolled yet'}
+              emptyLabel='Not enrolled yet'
+              isDisabled={!isReady || currentClassOptions.length === 0}
+            />
+          </FormField>
+          <FormField
+            id='rollNumber'
+            label='Roll number'
+            description={form.classId ? (isRollNumberEdited ? 'Optional.' : 'Next in this class. Optional.') : 'Choose a class first.'}
+            error={create.fieldErrors.rollNumber}
+          >
+            <Input
+              {...fieldControlProps('rollNumber', create.fieldErrors.rollNumber, true)}
+              value={form.classId ? rollNumber : ''}
+              onChange={handleRollNumberChange}
+              placeholder={form.classId && nextRollNumber.isLoading ? 'Loading…' : undefined}
+              disabled={!form.classId}
+              inputMode='numeric'
+              className='tabular-nums'
+              autoComplete='off'
+            />
+          </FormField>
           <FormField
             id='email'
             label='Email'
-            description='For school records. It cannot be changed later.'
+            description='Optional. For school records; it cannot be changed later.'
             error={create.fieldErrors.email}
-            isRequired
             className='sm:col-span-2'
           >
             <Input

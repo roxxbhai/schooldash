@@ -94,7 +94,7 @@ function SidebarContent({ role, profile, isCollapsed }: SidebarContentProps) {
           </span>
           <div className={cn('min-w-0', COLLAPSIBLE_LABEL)}>
             <p className='truncate text-sm font-medium text-white'>{profile.fullName}</p>
-            <p className='truncate tabular-nums text-2xs text-sidebar-foreground/70'>{profile.email}</p>
+            {profile.email && <p className='truncate tabular-nums text-2xs text-sidebar-foreground/70'>{profile.email}</p>}
           </div>
         </div>
         <SignOutButton role={role} variant='sidebar' tooltip={isCollapsed ? 'Sign out' : undefined} className='mt-1 w-full' />
