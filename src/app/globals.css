@@ -331,3 +331,20 @@
     }
   }
 }
+
+/*
+ * BROWSER AUTOFILL KEEPS OUR FIELD COLOURS. CHROME PAINTS AN AUTOFILLED INPUT LIGHT BLUE
+ * WITH AN !important BACKGROUND THAT CSS CAN'T OVERRIDE, SO THE BACKGROUND CHANGE IS
+ * DELAYED FOREVER INSTEAD. WITHOUT THIS A PLAIN INPUT TURNS FULLY BLUE WHILE THE PASSWORD
+ * FIELD (AN INPUT INSIDE A GROUP WITH THE EYE BUTTON) ONLY TINTS ITS TEXT AREA.
+ * UNLAYERED ON PURPOSE: IT MUST BEAT THE transition-* UTILITIES ON THE INPUTS.
+ */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--foreground);
+  caret-color: var(--foreground);
+  transition-property: background-color, color, border-color, box-shadow;
+  transition-duration: 600000s, 600000s, 150ms, 150ms;
+  transition-timing-function: ease-out;
+}
