@@ -93,16 +93,19 @@ export function AdminStudents() {
     {
       key: 'name',
       header: 'Student',
+      className: 'whitespace-normal',
       cell: (student) => (
         <div className='min-w-0'>
           <Link href={`${ROUTES.admin.students}/${student.id}`} className='font-medium text-foreground underline-offset-3 hover:text-primary hover:underline'>
             {student.user.fullName}
           </Link>
-          {student.user.email && <p className='tabular-nums text-xs text-muted-foreground'>{student.user.email}</p>}
+          {student.user.email && <p className='tabular-nums text-xs break-all text-muted-foreground'>{student.user.email}</p>}
+          {/* ON PHONES THE ADMISSION NUMBER SITS UNDER THE NAME INSTEAD OF IN ITS OWN COLUMN. */}
+          <p className='tabular-nums text-xs text-muted-foreground sm:hidden'>{student.admissionNumber}</p>
         </div>
       ),
     },
-    { key: 'admission', header: 'Admission no.', cell: (student) => <span className='tabular-nums text-sm'>{student.admissionNumber}</span> },
+    { key: 'admission', header: 'Admission no.', className: 'hidden sm:table-cell', cell: (student) => <span className='tabular-nums text-sm'>{student.admissionNumber}</span> },
     { key: 'status', header: 'Status', cell: (student) => <AccountStatusBadge isActive={student.user.isActive} graduatedOn={student.graduatedOn} /> },
   ];
 

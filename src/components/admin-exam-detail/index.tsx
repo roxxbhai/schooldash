@@ -69,8 +69,22 @@ export function AdminExamDetail() {
 
   const columns: DataTableColumn<ExamSubject>[] = [
     { key: 'class', header: 'Class', cell: (paper) => <span className='font-medium text-foreground'>{classLabel(classById.get(paper.classId))}</span> },
-    { key: 'subject', header: 'Subject', cell: (paper) => subjectLabel(subjectById.get(paper.subjectId)) },
-    { key: 'max', header: 'Max marks', align: 'right', cell: (paper) => <span className='text-sm tabular-nums'>{formatMarks(paper.maxMarks)}</span> },
+    {
+      key: 'subject',
+      header: 'Subject',
+      className: 'whitespace-normal',
+      cell: (paper) => (
+        <div className='min-w-0'>
+          {subjectLabel(subjectById.get(paper.subjectId))}
+          {/* ON PHONES THE MARKS SIT UNDER THE SUBJECT INSTEAD OF IN THEIR OWN COLUMNS. */}
+          <span className='mt-0.5 block text-xs text-muted-foreground tabular-nums sm:hidden'>
+            Out of {formatMarks(paper.maxMarks)}
+            {paper.passMarks !== null && ` · pass ${formatMarks(paper.passMarks)}`}
+          </span>
+        </div>
+      ),
+    },
+    { key: 'max', header: 'Max marks', align: 'right', className: 'hidden sm:table-cell', cell: (paper) => <span className='text-sm tabular-nums'>{formatMarks(paper.maxMarks)}</span> },
     {
       key: 'pass',
       header: 'Pass marks',
@@ -99,12 +113,12 @@ export function AdminExamDetail() {
           <div className='flex justify-end gap-1'>
             <Button variant='ghost' size='sm' onClick={() => openPaperForm(paper)} aria-label={`Edit paper ${paperName}`}>
               <PencilIcon aria-hidden />
-              Edit
+              <span className='max-sm:sr-only'>Edit</span>
             </Button>
             <Button asChild variant='outline' size='sm'>
               <Link href={`${ROUTES.admin.results}?examSubjectId=${paper.id}`} aria-label={`Enter marks for ${paperName}`}>
                 <SquarePenIcon aria-hidden />
-                Enter marks
+                <span className='max-sm:sr-only'>Enter marks</span>
               </Link>
             </Button>
           </div>

@@ -227,7 +227,7 @@ export function AdminStudentDetail() {
           <Panel
             title='Enrollments'
             description='One class per academic year. Earlier years stay as history.'
-            bodyClassName='p-0'
+            bodyClassName='p-0 sm:p-0'
             actions={
               <Button asChild variant='outline' size='sm'>
                 <Link href={enrollHref}>

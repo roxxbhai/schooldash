@@ -79,16 +79,23 @@ export function AdminTeacherAssignments() {
       cell: (assignment) => {
         const teacher = teacherById.get(assignment.teacherId);
         return (
-          <span className='flex flex-wrap items-center gap-2 font-medium text-foreground'>
-            {teacherLabel(teacher)}
-            {teacher && !teacher.user.isActive && <StatusBadge tone='neutral'>Inactive</StatusBadge>}
-          </span>
+          <div className='min-w-0'>
+            <span className='flex flex-wrap items-center gap-2 font-medium text-foreground'>
+              {teacherLabel(teacher)}
+              {teacher && !teacher.user.isActive && <StatusBadge tone='neutral'>Inactive</StatusBadge>}
+            </span>
+            {/* ON PHONES THE CLASS AND SUBJECT SIT UNDER THE TEACHER INSTEAD OF IN THEIR OWN COLUMNS. */}
+            <span className='mt-0.5 block text-xs text-muted-foreground sm:hidden'>
+              {subjectLabel(subjectById.get(assignment.subjectId))} · {classLabel(classById.get(assignment.classId))}
+            </span>
+          </div>
         );
       },
     },
     {
       key: 'class',
       header: 'Class',
+      className: 'hidden sm:table-cell',
       cell: (assignment) => {
         const schoolClass = classById.get(assignment.classId);
         return (
@@ -99,7 +106,7 @@ export function AdminTeacherAssignments() {
         );
       },
     },
-    { key: 'subject', header: 'Subject', cell: (assignment) => subjectLabel(subjectById.get(assignment.subjectId)) },
+    { key: 'subject', header: 'Subject', className: 'hidden sm:table-cell', cell: (assignment) => subjectLabel(subjectById.get(assignment.subjectId)) },
     {
       key: 'actions',
       header: <span className='sr-only'>Actions</span>,
@@ -112,7 +119,7 @@ export function AdminTeacherAssignments() {
           aria-label={`Remove ${teacherLabel(teacherById.get(assignment.teacherId))} from ${subjectLabel(subjectById.get(assignment.subjectId))} in ${classLabel(classById.get(assignment.classId))}`}
         >
           <Trash2Icon aria-hidden />
-          Remove
+          <span className='max-sm:sr-only'>Remove</span>
         </Button>
       ),
     },

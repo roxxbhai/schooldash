@@ -59,14 +59,20 @@ export function AdminAcademicYears() {
       key: 'name',
       header: 'Academic year',
       cell: (year) => (
-        <span className='flex items-center gap-2 font-medium text-foreground'>
-          {year.name}
-          {year.isCurrent && <StatusBadge tone='success'>Current</StatusBadge>}
-        </span>
+        <div className='min-w-0'>
+          <span className='flex items-center gap-2 font-medium text-foreground'>
+            {year.name}
+            {year.isCurrent && <StatusBadge tone='success'>Current</StatusBadge>}
+          </span>
+          {/* ON PHONES THE DATES SIT UNDER THE NAME INSTEAD OF IN THEIR OWN COLUMNS. */}
+          <span className='mt-0.5 block text-xs text-muted-foreground tabular-nums sm:hidden'>
+            {formatDate(year.startDate)} – {formatDate(year.endDate)}
+          </span>
+        </div>
       ),
     },
-    { key: 'start', header: 'Starts', cell: (year) => <span className='tabular-nums text-sm'>{formatDate(year.startDate)}</span> },
-    { key: 'end', header: 'Ends', cell: (year) => <span className='tabular-nums text-sm'>{formatDate(year.endDate)}</span> },
+    { key: 'start', header: 'Starts', className: 'hidden sm:table-cell', cell: (year) => <span className='tabular-nums text-sm'>{formatDate(year.startDate)}</span> },
+    { key: 'end', header: 'Ends', className: 'hidden sm:table-cell', cell: (year) => <span className='tabular-nums text-sm'>{formatDate(year.endDate)}</span> },
     {
       key: 'actions',
       header: <span className='sr-only'>Actions</span>,
@@ -74,14 +80,14 @@ export function AdminAcademicYears() {
       cell: (year) => (
         <div className='flex justify-end gap-1'>
           {!year.isCurrent && (
-            <Button variant='ghost' size='sm' onClick={() => setMakingCurrent(year)}>
+            <Button variant='ghost' size='sm' onClick={() => setMakingCurrent(year)} aria-label={`Make ${year.name} current`}>
               <StarIcon aria-hidden />
-              Make current
+              <span className='max-sm:sr-only'>Make current</span>
             </Button>
           )}
           <Button variant='ghost' size='sm' onClick={() => openEdit(year)} aria-label={`Edit ${year.name}`}>
             <PencilIcon aria-hidden />
-            Edit
+            <span className='max-sm:sr-only'>Edit</span>
           </Button>
         </div>
       ),

@@ -38,17 +38,22 @@ export function AdminExams() {
       key: 'name',
       header: 'Exam',
       cell: (exam) => (
-        <Link
-          href={`${ROUTES.admin.exams}/${exam.id}`}
-          className='font-medium text-foreground underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none'
-        >
-          {exam.name}
-        </Link>
+        <div className='min-w-0'>
+          <Link
+            href={`${ROUTES.admin.exams}/${exam.id}`}
+            className='font-medium text-foreground underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none'
+          >
+            {exam.name}
+          </Link>
+          {/* ON PHONES THE DATES SIT UNDER THE NAME INSTEAD OF IN THEIR OWN COLUMN. */}
+          <span className='mt-0.5 block text-xs text-muted-foreground tabular-nums sm:hidden'>{examDatesLabel(exam) ?? 'Dates not set'}</span>
+        </div>
       ),
     },
     {
       key: 'dates',
       header: 'Dates',
+      className: 'hidden sm:table-cell',
       cell: (exam) => {
         const label = examDatesLabel(exam);
         return label ? <span className='text-sm tabular-nums'>{label}</span> : <span className='text-muted-foreground'>Dates not set</span>;
@@ -67,7 +72,7 @@ export function AdminExams() {
       cell: (exam) => (
         <Button variant='ghost' size='sm' onClick={() => openForm(exam)} aria-label={`Edit ${exam.name}`}>
           <PencilIcon aria-hidden />
-          Edit
+          <span className='max-sm:sr-only'>Edit</span>
         </Button>
       ),
     },

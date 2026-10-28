@@ -166,7 +166,7 @@ export function PortalNavigationDrawer({ role, profile }: PortalSidebarProps) {
     <Sheet open={isNavigationOpen} onOpenChange={setIsNavigationOpen}>
       <SheetContent
         side='left'
-        className='w-72 max-w-[85vw] gap-0 border-r-0 p-0 lg:hidden'
+        className='w-72 max-w-[85vw] gap-0 bg-sidebar p-0 data-[side=left]:border-r-0 lg:hidden'
         showCloseButton={false}
         onOpenAutoFocus={focusCurrentPage}
       >

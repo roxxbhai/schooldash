@@ -63,6 +63,7 @@ export function AdminNotices() {
     {
       key: 'title',
       header: 'Title',
+      className: 'min-w-0 whitespace-normal',
       cell: (notice) => (
         <Link href={noticeDetailPath(notice.id)} className='line-clamp-2 font-medium text-foreground underline-offset-2 hover:text-primary hover:underline'>
           {notice.title}

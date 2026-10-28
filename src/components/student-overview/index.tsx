@@ -75,7 +75,7 @@ export function StudentOverview() {
       )}
 
       <div className='grid gap-6 xl:grid-cols-3'>
-        <Panel title="Today's periods" description={formatDate(today)} className='xl:col-span-2' bodyClassName='p-0' actions={<PanelLink href={ROUTES.student.timetable} label='Timetable' />}>
+        <Panel title="Today's periods" description={formatDate(today)} className='xl:col-span-2' bodyClassName='p-0 sm:p-0' actions={<PanelLink href={ROUTES.student.timetable} label='Timetable' />}>
           {isLoading ? (
             <ListSkeleton rows={4} />
           ) : !data || data.periodsToday.length === 0 ? (
@@ -121,7 +121,7 @@ export function StudentOverview() {
           title='Latest result'
           description={reportCard ? reportCard.exam.name : undefined}
           className='xl:col-span-2'
-          bodyClassName='p-0'
+          bodyClassName='p-0 sm:p-0'
           actions={<PanelLink href={ROUTES.student.results} label='All results' />}
         >
           {isLoading ? (
@@ -160,7 +160,7 @@ export function StudentOverview() {
           )}
         </Panel>
 
-        <Panel title='Latest notices' bodyClassName='p-0' actions={<PanelLink href={ROUTES.student.notices} label='All' />}>
+        <Panel title='Latest notices' bodyClassName='p-0 sm:p-0' actions={<PanelLink href={ROUTES.student.notices} label='All' />}>
           {isLoading ? (
             <ListSkeleton rows={2} />
           ) : !data || data.notices.length === 0 ? (

@@ -63,16 +63,21 @@ export function TeacherClassRoster() {
     {
       key: 'name',
       header: 'Student',
+      className: 'whitespace-normal',
       cell: (row) => (
-        <span className='flex flex-wrap items-center gap-2'>
-          <Link href={`${ROUTES.teacher.students}/${row.enrollment.studentId}`} className='font-medium text-foreground underline-offset-3 hover:text-primary hover:underline'>
-            {row.student?.user.fullName ?? 'Unknown student'}
-          </Link>
-          {row.student && !row.student.user.isActive && <StatusBadge tone='neutral'>{row.student.graduatedOn ? 'Graduated' : 'Inactive'}</StatusBadge>}
+        <span className='flex flex-col'>
+          <span className='flex flex-wrap items-center gap-2'>
+            <Link href={`${ROUTES.teacher.students}/${row.enrollment.studentId}`} className='font-medium text-foreground underline-offset-3 hover:text-primary hover:underline'>
+              {row.student?.user.fullName ?? 'Unknown student'}
+            </Link>
+            {row.student && !row.student.user.isActive && <StatusBadge tone='neutral'>{row.student.graduatedOn ? 'Graduated' : 'Inactive'}</StatusBadge>}
+          </span>
+          {/* ON PHONES THE ADMISSION NUMBER SITS UNDER THE NAME INSTEAD OF IN ITS OWN COLUMN */}
+          {row.student && <span className='text-xs tabular-nums text-muted-foreground sm:hidden'>{row.student.admissionNumber}</span>}
         </span>
       ),
     },
-    { key: 'admission', header: 'Admission number', cell: (row) => <span className='tabular-nums text-sm'>{row.student?.admissionNumber ?? '—'}</span> },
+    { key: 'admission', header: 'Admission number', className: 'hidden sm:table-cell', cell: (row) => <span className='tabular-nums text-sm'>{row.student?.admissionNumber ?? '—'}</span> },
     ...nextYearColumn,
   ];
 

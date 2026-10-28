@@ -67,7 +67,7 @@ export function StudentProfile() {
           )}
         </Panel>
 
-        <Panel title='Classes' description='Your class in each academic year.' bodyClassName='p-0'>
+        <Panel title='Classes' description='Your class in each academic year.' bodyClassName='p-0 sm:p-0'>
           {!profile.data ? (
             <ListSkeleton rows={2} />
           ) : profile.data.enrollments.length === 0 ? (

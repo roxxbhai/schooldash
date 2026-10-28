@@ -104,20 +104,25 @@ export function AdminEnrollments() {
     {
       key: 'roll',
       header: 'Roll no.',
-      className: 'w-24',
+      className: 'w-16 sm:w-24',
       cell: (row) => <span className='tabular-nums text-sm'>{row.enrollment.rollNumber ?? '—'}</span>,
     },
     {
       key: 'student',
       header: 'Student',
+      className: 'whitespace-normal',
       cell: (row) =>
         row.student ? (
-          <Link
-            href={`${ROUTES.admin.students}/${row.enrollment.studentId}`}
-            className='font-medium text-foreground underline-offset-3 hover:text-primary hover:underline'
-          >
-            {row.student.user.fullName}
-          </Link>
+          <div className='flex flex-col'>
+            <Link
+              href={`${ROUTES.admin.students}/${row.enrollment.studentId}`}
+              className='font-medium text-foreground underline-offset-3 hover:text-primary hover:underline'
+            >
+              {row.student.user.fullName}
+            </Link>
+            {/* ON PHONES THE ADMISSION NUMBER SITS UNDER THE NAME INSTEAD OF IN ITS OWN COLUMN */}
+            <span className='text-xs tabular-nums text-muted-foreground sm:hidden'>{row.student.admissionNumber}</span>
+          </div>
         ) : (
           <span className='text-muted-foreground'>Unknown student</span>
         ),
@@ -125,6 +130,7 @@ export function AdminEnrollments() {
     {
       key: 'admission',
       header: 'Admission no.',
+      className: 'hidden sm:table-cell',
       cell: (row) => <span className='tabular-nums text-sm'>{row.student?.admissionNumber ?? '—'}</span>,
     },
     {
@@ -141,7 +147,7 @@ export function AdminEnrollments() {
       cell: (row) => (
         <Button variant='ghost' size='sm' onClick={() => openEdit(row)} aria-label={`Edit enrollment of ${row.student?.user.fullName ?? 'this student'}`}>
           <PencilIcon aria-hidden />
-          Edit
+          <span className='max-sm:sr-only'>Edit</span>
         </Button>
       ),
     },
@@ -280,7 +286,7 @@ export function AdminEnrollments() {
       </div>
 
       {classId === null ? (
-        <Panel bodyClassName='p-0'>
+        <Panel bodyClassName='p-0 sm:p-0'>
           <EmptyState
             icon={UsersIcon}
             title={isReady && academicYears.length === 0 ? 'Create an academic year first' : 'Choose a class'}

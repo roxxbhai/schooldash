@@ -9,12 +9,15 @@ interface PanelProps {
   children: React.ReactNode;
 }
 
-/** A WHITE, SOFTLY RAISED SECTION WITH AN OPTIONAL TITLE ROW; THE PORTAL'S CARD. */
+/**
+ * A WHITE, SOFTLY RAISED SECTION WITH AN OPTIONAL TITLE ROW; THE PORTAL'S CARD. THE BODY IS PADDED 16PX ON
+ * PHONES AND 20PX FROM sm UP, SO A `bodyClassName` THAT CHANGES THE PADDING MUST SET BOTH (E.G. 'p-0 sm:p-0').
+ */
 export function Panel({ title, description, actions, className, bodyClassName, children }: PanelProps) {
   return (
     <section className={cn('rounded-xl bg-card shadow-xs', className)}>
       {(title || actions) && (
-        <div className='flex flex-wrap items-start justify-between gap-3 border-b border-border/70 px-5 py-4'>
+        <div className='flex flex-wrap items-start justify-between gap-3 border-b border-border/70 px-4 py-4 sm:px-5'>
           <div className='min-w-0'>
             {title && <h2 className='text-xl font-semibold tracking-tight text-foreground'>{title}</h2>}
             {description && <div className='mt-0.5 text-sm text-muted-foreground'>{description}</div>}
@@ -22,7 +25,7 @@ export function Panel({ title, description, actions, className, bodyClassName, c
           {actions && <div className='flex shrink-0 items-center gap-2'>{actions}</div>}
         </div>
       )}
-      <div className={cn('p-5', bodyClassName)}>{children}</div>
+      <div className={cn('p-4 sm:p-5', bodyClassName)}>{children}</div>
     </section>
   );
 }

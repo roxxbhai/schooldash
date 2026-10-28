@@ -78,7 +78,7 @@ export function TeacherOverview() {
       )}
 
       <div className='grid gap-6 xl:grid-cols-3'>
-        <Panel title="Today's periods" description={formatDate(today)} className='xl:col-span-2' bodyClassName='p-0' actions={<PanelLink href={ROUTES.teacher.timetable} label='Timetable' />}>
+        <Panel title="Today's periods" description={formatDate(today)} className='xl:col-span-2' bodyClassName='p-0 sm:p-0' actions={<PanelLink href={ROUTES.teacher.timetable} label='Timetable' />}>
           {isLoading ? (
             <ListSkeleton rows={4} />
           ) : !data || data.periodsToday.length === 0 ? (
@@ -101,7 +101,7 @@ export function TeacherOverview() {
           )}
         </Panel>
 
-        <Panel title='Attendance today' description='Classes you teach this year.' bodyClassName='p-0' actions={<PanelLink href={ROUTES.teacher.attendance} label='Mark' />}>
+        <Panel title='Attendance today' description='Classes you teach this year.' bodyClassName='p-0 sm:p-0' actions={<PanelLink href={ROUTES.teacher.attendance} label='Mark' />}>
           {isLoading ? (
             <ListSkeleton rows={3} />
           ) : currentClasses.length === 0 ? (
@@ -126,7 +126,7 @@ export function TeacherOverview() {
           )}
         </Panel>
 
-        <Panel title='What you teach' description={currentAcademicYear?.name} className='xl:col-span-2' bodyClassName='p-0' actions={<PanelLink href={ROUTES.teacher.classes} label='My classes' />}>
+        <Panel title='What you teach' description={currentAcademicYear?.name} className='xl:col-span-2' bodyClassName='p-0 sm:p-0' actions={<PanelLink href={ROUTES.teacher.classes} label='My classes' />}>
           {isLoading ? (
             <ListSkeleton rows={3} />
           ) : teaching.length === 0 ? (
@@ -153,7 +153,7 @@ export function TeacherOverview() {
           )}
         </Panel>
 
-        <Panel title='Upcoming papers' description='Exam papers for the subjects you teach.' bodyClassName='p-0' actions={<PanelLink href={ROUTES.teacher.marks} label='Marks' />}>
+        <Panel title='Upcoming papers' description='Exam papers for the subjects you teach.' bodyClassName='p-0 sm:p-0' actions={<PanelLink href={ROUTES.teacher.marks} label='Marks' />}>
           {isLoading ? (
             <ListSkeleton rows={3} />
           ) : !data || data.upcomingPapers.length === 0 ? (
@@ -175,7 +175,7 @@ export function TeacherOverview() {
           )}
         </Panel>
 
-        <Panel title='Latest notices' className='xl:col-span-3' bodyClassName='p-0' actions={<PanelLink href={ROUTES.teacher.notices} label='All notices' />}>
+        <Panel title='Latest notices' className='xl:col-span-3' bodyClassName='p-0 sm:p-0' actions={<PanelLink href={ROUTES.teacher.notices} label='All notices' />}>
           {isLoading ? (
             <ListSkeleton rows={2} />
           ) : !data || data.notices.length === 0 ? (

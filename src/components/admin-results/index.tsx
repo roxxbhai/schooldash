@@ -307,7 +307,7 @@ export function AdminResults({ role = 'ADMIN', canEnterPaper }: AdminResultsProp
             </Button>
           </>
         }
-        bodyClassName='flex flex-col gap-4 p-0'
+        bodyClassName='flex flex-col gap-4 p-0 sm:p-0'
       >
         {(save.formError ?? sheet.formError) && (
           <FormAlert tone='error' title='Not saved' className='mx-5 mt-5'>

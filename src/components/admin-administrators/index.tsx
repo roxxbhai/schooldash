@@ -86,12 +86,18 @@ export function AdminAdministrators() {
             {administrator.id === me.data?.id && <span className='ml-1.5 text-xs font-normal text-muted-foreground'>(you)</span>}
           </p>
           <p className='tabular-nums text-xs break-all text-muted-foreground'>{administrator.email}</p>
+          {/* ON PHONES THE STATUS SITS UNDER THE NAME INSTEAD OF IN ITS OWN COLUMN. */}
+          <div className='mt-1.5 flex flex-wrap gap-1.5 sm:hidden'>
+            <AccountStatusBadge isActive={administrator.isActive} />
+            {!administrator.passwordSetAt && <StatusBadge tone='warning'>Setup pending</StatusBadge>}
+          </div>
         </div>
       ),
     },
     {
       key: 'status',
       header: 'Status',
+      className: 'hidden sm:table-cell',
       cell: (administrator) => (
         <div className='flex flex-wrap gap-1.5'>
           <AccountStatusBadge isActive={administrator.isActive} />
@@ -114,7 +120,7 @@ export function AdminAdministrators() {
           {administrator.isActive && (
             <Button variant='ghost' size='sm' onClick={() => openAction('setupCode', administrator)} aria-label={`New setup code for ${administrator.fullName}`}>
               <KeyRoundIcon aria-hidden />
-              New setup code
+              <span className='max-sm:sr-only'>New setup code</span>
             </Button>
           )}
           {administrator.id !== me.data?.id && (
@@ -126,7 +132,7 @@ export function AdminAdministrators() {
               className={administrator.isActive ? 'text-destructive hover:text-destructive' : undefined}
             >
               {administrator.isActive ? <UserXIcon aria-hidden /> : <UserCheckIcon aria-hidden />}
-              {administrator.isActive ? 'Deactivate' : 'Reactivate'}
+              <span className='max-sm:sr-only'>{administrator.isActive ? 'Deactivate' : 'Reactivate'}</span>
             </Button>
           )}
         </div>
