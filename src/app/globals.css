@@ -2,6 +2,14 @@
 @import 'tw-animate-css';
 
 /*
+ * THE APP IS LIGHT-ONLY. TAILWIND'S DEFAULT dark: FOLLOWS THE OPERATING SYSTEM, SO THE
+ * dark: CLASSES SHIPPED WITH THE SHADCN COMPONENTS WOULD RECOLOUR SOME FIELDS (E.G. THE
+ * PASSWORD INPUT GROUP) FOR ANYONE WHOSE COMPUTER IS IN DARK MODE. TYING dark: TO A
+ * .dark CLASS THAT IS NEVER SET KEEPS EVERY SCREEN LIGHT.
+ */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
  * STATE VARIANTS USED BY THE SHADCN COMPONENTS (data-open:, data-checked: …).
  * RADIX MARKS STATE WITH data-state="open|closed|checked|active"; CMDK WITH
  * data-selected="true"; BOTH WITH data-disabled. THESE MAP THE SHORTHANDS TO
