@@ -1,6 +1,7 @@
 'use client';
 
 import { PanelLeftCloseIcon, PanelLeftOpenIcon } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { SignOutButton } from '@/components/sign-out-button';
@@ -47,8 +48,12 @@ function SidebarContent({ role, profile, isCollapsed }: SidebarContentProps) {
 
   return (
     <div data-collapsed={isCollapsed} className='group/sidebar flex h-full flex-col overflow-hidden bg-sidebar text-sidebar-foreground'>
-      <div className='flex h-16 shrink-0 items-center border-b border-sidebar-border pr-14 pl-5'>
-        <span className={cn('truncate text-base leading-5 font-semibold tracking-tight text-white', COLLAPSIBLE_LABEL)}>{SCHOOL.name}</span>
+      <div className='flex h-16 shrink-0 items-center border-b border-sidebar-border pr-14 pl-4'>
+        {/* THE CREST FADES WITH THE NAME: THE COLLAPSE TOGGLE TAKES THIS SPOT IN THE ICON RAIL */}
+        <div className={cn('flex min-w-0 items-center gap-2', COLLAPSIBLE_LABEL)}>
+          <Image src={SCHOOL.logo} alt='' width={28} height={28} className='shrink-0' />
+          <span className='truncate text-base leading-5 font-semibold tracking-tight text-white'>{SCHOOL.name}</span>
+        </div>
       </div>
 
       <nav aria-label={portal.navigationLabel} className='scrollbar-hidden flex-1 overflow-x-hidden overflow-y-auto px-3 py-4'>

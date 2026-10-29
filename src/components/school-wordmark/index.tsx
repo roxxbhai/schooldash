@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import { SCHOOL } from '@/constants/school';
 import { cn } from '@/helpers/cn';
 
@@ -8,17 +9,20 @@ interface SchoolWordmarkProps {
   className?: string;
 }
 
+/** CREST SIZE IN PIXELS FOR EACH WORDMARK SIZE. */
+const CREST_SIZE = { sm: 40, md: 48, lg: 72 } as const;
+
 /**
- * TYPOGRAPHIC SCHOOL MARK, USED UNTIL AN OFFICIAL CREST IS SUPPLIED: A NAVY
- * RULE (WHITE ON DARK BACKGROUNDS), THE SCHOOL NAME, AND THE SCHOOL TYPE AND
- * TOWN IN SMALL CAPITALS.
+ * SCHOOL MARK: THE OFFICIAL CREST, THE SCHOOL NAME, AND THE SCHOOL TYPE AND
+ * TOWN IN SMALL CAPITALS. THE CREST IS DECORATIVE, THE NAME BESIDE IT SAYS WHO IT IS.
  */
 export function SchoolWordmark({ tone = 'default', size = 'md', className }: SchoolWordmarkProps) {
   const isInverse = tone === 'inverse';
+  const crestSize = CREST_SIZE[size];
 
   return (
-    <div className={cn('flex items-stretch gap-3', className)}>
-      <span aria-hidden className={cn('w-1 shrink-0 rounded-full', isInverse ? 'bg-white/80' : 'bg-primary', size === 'lg' ? 'w-1.5' : 'w-1')} />
+    <div className={cn('flex items-center', size === 'lg' ? 'gap-4' : 'gap-3', className)}>
+      <Image src={SCHOOL.logo} alt='' width={crestSize} height={crestSize} className='shrink-0' />
       <div className='flex flex-col justify-center'>
         <span
           className={cn(

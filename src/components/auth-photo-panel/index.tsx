@@ -1,9 +1,10 @@
 import Image from 'next/image';
+import { SchoolWordmark } from '@/components/school-wordmark';
 import { AUTH_PHOTOS } from '@/constants/auth-photos';
 
 /**
  * THE SCHOOL PHOTOGRAPH FOR THE AUTHENTICATION SCREENS, WITH A LIGHT NAVY WASH
- * THAT TIES IT TO THE PORTAL COLOURS.
+ * THAT TIES IT TO THE PORTAL COLOURS AND THE SCHOOL CREST AND NAME ALONG THE BOTTOM.
  * DESKTOP: THE FULL-HEIGHT LEFT HALF. TABLET AND MOBILE: ONE BAND ABOVE THE FORM.
  */
 export function AuthPhotoPanel() {
@@ -23,6 +24,10 @@ export function AuthPhotoPanel() {
           style={{ objectPosition: photo.position }}
         />
         <div aria-hidden className='absolute inset-0 bg-sidebar/15' />
+        {/* NAVY FADE UP FROM THE BOTTOM SO THE GOLD CREST AND WHITE NAME READ ON ANY PART OF THE PHOTO */}
+        <div aria-hidden className='absolute inset-x-0 bottom-0 h-3/4 bg-linear-to-t from-sidebar/90 via-sidebar/45 to-transparent lg:h-1/2' />
+        <SchoolWordmark tone='inverse' size='md' className='absolute bottom-4 left-5 sm:bottom-5 sm:left-10 lg:hidden' />
+        <SchoolWordmark tone='inverse' size='lg' className='absolute bottom-10 left-10 hidden lg:flex' />
       </div>
     </div>
   );
